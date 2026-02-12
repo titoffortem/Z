@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase';
-import { 
-  GoogleAuthProvider, 
-  signInWithRedirect, 
-  getRedirectResult, 
+import {
+  GoogleAuthProvider,
+  signInWithPopup,
+  onAuthStateChanged
 } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -13,44 +13,44 @@ import { GoogleIcon, ZLogoIcon } from '@/components/icons';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from 'lucide-react';
-import { useAuth } from '@/components/auth-provider';
 
 export default function LoginPage() {
-  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isProcessingRedirect, setIsProcessingRedirect] = useState(true);
 
-  // Effect to redirect away if user is already logged in
   useEffect(() => {
-    if (!authLoading && user) {
-      router.replace('/feed');
-    }
-  }, [user, authLoading, router]);
+    // This listener handles the core logic: if a user is detected, redirect them.
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // User is signed in, redirect to the feed.
+        router.replace('/feed');
+      } else {
+        // No user, so stop loading and show the login page.
+        setIsLoading(false);
+      }
+    });
 
-  // Effect to process the result from Google's redirect
-  useEffect(() => {
-    getRedirectResult(auth)
-      .catch((err) => {
-        console.error("Error on redirect result:", err);
-        setError(err.message || "An error occurred during login. Please try again.");
-      })
-      .finally(() => {
-        // We're done checking for a redirect result
-        setIsProcessingRedirect(false);
-      });
-  }, []); // Run only once on component mount
+    // Cleanup the subscription on component unmount
+    return () => unsubscribe();
+  }, [router]);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
+    setIsLoading(true);
     setError(null);
-    setIsProcessingRedirect(true);
     const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' }); 
-    signInWithRedirect(auth, provider);
+    try {
+      await signInWithPopup(auth, provider);
+      // On successful popup, the onAuthStateChanged listener above will trigger the redirect.
+    } catch (err: any) {
+      console.error("Ошибка входа через Google Popup:", err);
+      // Handle errors like popup closed by user
+      setError(err.message || "Ошибка входа. Попробуйте снова.");
+      setIsLoading(false); // Show the login button again
+    }
   };
 
-  const isLoading = authLoading || isProcessingRedirect;
-
+  // While checking auth state or after clicking login, show a loading message.
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -59,12 +59,7 @@ export default function LoginPage() {
     );
   }
 
-  // If we're done loading and a user exists, a redirect is in progress.
-  // Render nothing to avoid a flash of the login page.
-  if (user) {
-    return null;
-  }
-
+  // If not loading and no user, render the login page.
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm">
