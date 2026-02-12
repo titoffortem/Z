@@ -1,48 +1,8 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Правила для пользователей
-    match /users/{userId} {
-      allow read: if true;
-      allow create, update, delete: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // Правила для постов
-    match /posts/{postId} {
-      // Читать посты могут все
-      allow get, list: if true;
-      // Создавать посты могут авторизованнные
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      // Обновлять (лайкать, комментировать) могут авторизованнные
-      allow update: if request.auth != null;
-      // Удалять может только владелец
-      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
-
-      // ПРАВИЛО ДЛЯ КОММЕНТАРИЕВ (внутри поста)
-      match /comments/{commentId} {
-        // Читать и писать комментарии могут все авторизованные
-        allow read, write: if request.auth != null;
-      }
-    }
-    
-    // Правила для чатов (остаются без изменений, для будущей функциональности)
-    function isChatParticipant(chatId) {
-      return request.auth != null && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds;
-    }
-    
-    match /chats/{chatId} {
-      allow get: if isChatParticipant(chatId);
-      allow list: if false;
-      allow create: if request.auth != null && request.auth.uid in request.resource.data.participantIds;
-      allow update, delete: if isChatParticipant(chatId);
-      
-      match /messages/{messageId} {
-        allow read, list: if isChatParticipant(chatId);
-        allow create: if isChatParticipant(chatId) && request.resource.data.senderId == request.auth.uid;
-        allow update, delete: if isChatParticipant(chatId) && resource.data.senderId == request.auth.uid;
-      }
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }
