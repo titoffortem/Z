@@ -16,6 +16,7 @@ import { doc, updateDoc, increment, collection, query, orderBy, addDoc, serverTi
 import { cn } from "@/lib/utils";
 import { Textarea } from "./ui/textarea";
 import { useState } from "react";
+import { useAuth } from "@/components/auth-provider";
 
 function PostMedia({ mediaUrl, mediaType }: { mediaUrl?: string; mediaType?: string }) {
   if (mediaType === 'image' && mediaUrl) {
@@ -84,7 +85,7 @@ function CommentList({ postId }: { postId: string }) {
 }
 
 const CommentForm = React.forwardRef<HTMLTextAreaElement, { postId: string }>(({ postId }, ref) => {
-  const { user, userProfile } = useUser();
+  const { user, userProfile } = useAuth();
   const firestore = useFirestore();
   const { toast } = useToast();
   const [commentText, setCommentText] = useState('');
@@ -161,7 +162,7 @@ CommentForm.displayName = 'CommentForm';
 
 
 export function PostView({ post: initialPost, author }: { post: Post, author: UserProfile | null }) {
-    const { user, userProfile } = useUser();
+    const { user } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
     const commentInputRef = React.useRef<HTMLTextAreaElement>(null);
