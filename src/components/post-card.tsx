@@ -9,6 +9,12 @@ import { ru } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { useFirestore } from "@/firebase";
 import { doc, getDoc } from "firebase/firestore";
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { PostView } from './post-view';
 
 export function PostCard({ post }: { post: Post }) {
     const firestore = useFirestore();
@@ -49,44 +55,51 @@ export function PostCard({ post }: { post: Post }) {
     }
 
     return (
-        <div className="flex flex-col h-full bg-card rounded-lg overflow-hidden border">
-            <div className="relative aspect-square w-full flex items-center justify-center bg-muted overflow-hidden">
-                {mediaType === 'image' && mediaUrl ? (
-                    <Image src={mediaUrl} alt={post.caption || "Изображение записи"} fill objectFit="contain" />
-                ) : mediaType === 'video' && mediaUrl ? (
-                    <video src={mediaUrl} className="w-full h-full object-contain" muted loop playsInline />
-                ) : (
-                     <div className="p-4 h-full w-full overflow-y-auto">
-                        <p className="text-sm text-foreground break-words line-clamp-6">
-                            {post.caption}
-                        </p>
+        <Dialog>
+            <DialogTrigger asChild>
+                <div className="flex flex-col h-full bg-card rounded-lg overflow-hidden border cursor-pointer transition-transform hover:scale-[1.02]">
+                    <div className="relative aspect-square w-full flex items-center justify-center bg-muted overflow-hidden">
+                        {mediaType === 'image' && mediaUrl ? (
+                            <Image src={mediaUrl} alt={post.caption || "Изображение записи"} fill className="object-contain" />
+                        ) : mediaType === 'video' && mediaUrl ? (
+                            <video src={mediaUrl} className="w-full h-full object-contain" muted loop playsInline />
+                        ) : (
+                             <div className="p-4 h-full w-full overflow-y-auto">
+                                <p className="text-sm text-foreground break-words line-clamp-6">
+                                    {post.caption}
+                                </p>
+                            </div>
+                        )}
                     </div>
-                )}
-            </div>
 
-            <div className="p-3 flex flex-col flex-grow">
-                {mediaUrl && post.caption && (
-                    <p className="font-semibold leading-tight line-clamp-2 text-foreground mb-2 flex-grow">
-                        {post.caption}
-                    </p>
-                )}
-                {author && (
-                    <div className="flex items-center gap-3 mt-auto">
-                        <Link href={`/profile/${author.nickname}`} className="flex-shrink-0">
-                             <Avatar className="h-8 w-8">
-                                <AvatarImage src={author.profilePictureUrl ?? undefined} alt={author.nickname}/>
-                                <AvatarFallback>{author.nickname[0].toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                        </Link>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-foreground truncate">{author.nickname}</p>
-                            <p className="text-xs text-muted-foreground">
-                                {post.createdAt ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: ru }) : 'только что'}
+                    <div className="p-3 flex flex-col flex-grow">
+                        {mediaUrl && post.caption && (
+                            <p className="font-semibold leading-tight line-clamp-2 text-foreground mb-2 flex-grow">
+                                {post.caption}
                             </p>
-                        </div>
+                        )}
+                        {author && (
+                            <div className="flex items-center gap-3 mt-auto">
+                                <Link href={`/profile/${author.nickname}`} className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                     <Avatar className="h-8 w-8">
+                                        <AvatarImage src={author.profilePictureUrl ?? undefined} alt={author.nickname} />
+                                        <AvatarFallback>{author.nickname[0].toUpperCase()}</AvatarFallback>
+                                    </Avatar>
+                                </Link>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-foreground truncate">{author.nickname}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {post.createdAt ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: ru }) : 'только что'}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                )}
-            </div>
-        </div>
+                </div>
+            </DialogTrigger>
+            <DialogContent className="p-0 border-0 max-w-4xl bg-transparent shadow-none">
+                 <PostView post={post} author={author} />
+            </DialogContent>
+        </Dialog>
     );
 }
