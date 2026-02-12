@@ -53,9 +53,11 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                 </div>
 
                 <div className="p-4 flex-1 overflow-y-auto">
-                     <p className="text-sm text-foreground break-words">
-                        {post.caption}
-                    </p>
+                    {mediaUrl && post.caption && (
+                        <p className="text-sm text-foreground break-words">
+                            {post.caption}
+                        </p>
+                    )}
                 </div>
 
                 <div className="p-4 border-t text-center text-muted-foreground text-sm">
