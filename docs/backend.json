@@ -1,0 +1,304 @@
+{
+  "entities": {
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Represents a user's public profile and metadata within the Z app.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserProfile entity."
+        },
+        "nickname": {
+          "type": "string",
+          "description": "A unique nickname chosen by the user to identify themselves in the app."
+        },
+        "profilePictureUrl": {
+          "type": "string",
+          "description": "URL to the user's profile picture.",
+          "format": "uri"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user profile was created.",
+          "format": "date-time"
+        },
+        "followingUserIds": {
+          "type": "array",
+          "description": "References to UserProfiles this user is following. (Relationship: UserProfile N:N UserProfile)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "followerUserIds": {
+          "type": "array",
+          "description": "References to UserProfiles that are following this user. (Relationship: UserProfile N:N UserProfile)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "nickname",
+        "createdAt"
+      ]
+    },
+    "Post": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Post",
+      "type": "object",
+      "description": "Represents a user-generated content item, which can include various media types and captions.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Post entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who created the post. (Relationship: UserProfile 1:N Post)"
+        },
+        "caption": {
+          "type": "string",
+          "description": "The text caption for the post, potentially AI-generated."
+        },
+        "mediaUrls": {
+          "type": "array",
+          "description": "An array of URLs for images, videos, or documents associated with the post.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "mediaTypes": {
+          "type": "array",
+          "description": "An array of media types corresponding to `mediaUrls` (e.g., 'image', 'video', 'document').",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the post was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the post was last updated.",
+          "format": "date-time"
+        },
+        "likesCount": {
+          "type": "number",
+          "description": "A denormalized count of likes for this post, updated via the Like entity."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "mediaUrls",
+        "mediaTypes",
+        "createdAt"
+      ]
+    },
+    "Chat": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Chat",
+      "type": "object",
+      "description": "Represents a direct messaging conversation between multiple users.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Chat entity."
+        },
+        "participantIds": {
+          "type": "array",
+          "description": "References to the UserProfiles participating in this chat. (Relationship: UserProfile N:N Chat)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the chat conversation was initiated.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the last message was sent in this chat, or when the chat was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "participantIds",
+        "createdAt"
+      ]
+    },
+    "Message": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Message",
+      "type": "object",
+      "description": "Represents a single message sent within a chat conversation.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Message entity."
+        },
+        "chatId": {
+          "type": "string",
+          "description": "Reference to the Chat conversation this message belongs to. (Relationship: Chat 1:N Message)"
+        },
+        "senderId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who sent this message. (Relationship: UserProfile 1:N Message)"
+        },
+        "content": {
+          "type": "string",
+          "description": "The text content of the message."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the message was sent.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "chatId",
+        "senderId",
+        "content",
+        "createdAt"
+      ]
+    },
+    "Like": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Like",
+      "type": "object",
+      "description": "Represents a user's 'like' action on a specific post.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Like entity."
+        },
+        "postId": {
+          "type": "string",
+          "description": "Reference to the Post that was liked. (Relationship: Post 1:N Like)"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who liked the post. (Relationship: UserProfile 1:N Like)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the like was recorded.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "postId",
+        "userId",
+        "createdAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores user profile information. The `userId` corresponds to the Firebase Authentication UID. Publicly readable for discovery, but writeable only by the owner.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user profile, matching the Firebase Authentication UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/posts/{postId}",
+        "definition": {
+          "entityName": "Post",
+          "schema": {
+            "$ref": "#/backend/entities/Post"
+          },
+          "description": "Contains user-generated posts. Each document includes the `userId` of the creator for ownership checks. All posts are publicly readable to support the 'Smart Mix Feed'.",
+          "params": [
+            {
+              "name": "postId",
+              "description": "The unique identifier for the post."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/chats/{chatId}",
+        "definition": {
+          "entityName": "Chat",
+          "schema": {
+            "$ref": "#/backend/entities/Chat"
+          },
+          "description": "Stores direct messaging conversation metadata. Includes `participantIds` for authorization, restricting access to members of the chat. This field is denormalized to child messages.",
+          "params": [
+            {
+              "name": "chatId",
+              "description": "The unique identifier for the chat conversation."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/chats/{chatId}/messages/{messageId}",
+        "definition": {
+          "entityName": "Message",
+          "schema": {
+            "$ref": "#/backend/entities/Message"
+          },
+          "description": "Stores individual messages within a chat conversation. Includes denormalized 'participantIds' from the parent chat for authorization independence and efficient list queries.",
+          "params": [
+            {
+              "name": "chatId",
+              "description": "The unique identifier of the parent chat conversation."
+            },
+            {
+              "name": "messageId",
+              "description": "The unique identifier for the message."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/posts/{postId}/likes/{likeId}",
+        "definition": {
+          "entityName": "Like",
+          "schema": {
+            "$ref": "#/backend/entities/Like"
+          },
+          "description": "Records a user's 'like' on a specific post. The `likeId` is typically the `userId` to enforce uniqueness. Includes `userId` of the liker for ownership and is publicly readable to show who liked a post.",
+          "params": [
+            {
+              "name": "postId",
+              "description": "The unique identifier of the post that was liked."
+            },
+            {
+              "name": "likeId",
+              "description": "The unique identifier for the like, typically matching the `userId` of the liker."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed following the core principles of Authorization Independence, Structural Segregation, and consistent Access Modeling to ensure security, scalability, and debuggability. All documents within a collection share a homogeneous security posture, and authorization context is denormalized to avoid `get()` calls in security rules.\n\n**Authorization Independence via Denormalization:**\n*   **UserProfile:** Stored in `/users/{userId}`. The `userId` in the path directly corresponds to the authenticated user's UID for ownership, making authorization independent. Public fields are readable by all for user discovery.\n*   **Post:** Stored in `/posts/{postId}`. Each `Post` document includes the `userId` of its creator. This `userId` field is used directly in security rules to enforce ownership for updates/deletions, ensuring authorization independence. Read access is public for the 'Smart Mix Feed'.\n*   **Chat:** Stored in `/chats/{chatId}`. Each `Chat` document contains `participantIds` (an array of UIDs). This array serves as the membership map for authorization. Access to a `Chat` document is granted only if `request.auth.uid` is present in `resource.data.participantIds`.\n*   **Message:** Stored as a subcollection `/chats/{chatId}/messages/{messageId}`. **CRITICAL DENORMALIZATION:** Each `Message` document MUST include a denormalized `participantIds` field, copied from its parent `Chat` document. This allows security rules to check `request.auth.uid` against `resource.data.participantIds` directly on the `Message` document itself, eliminating the need for `get()` calls to the parent `Chat` document and ensuring authorization independence for individual messages.\n*   **Like:** Stored as a subcollection `/posts/{postId}/likes/{likeId}`. Each `Like` document includes the `userId` of the liker and `postId` (implicit in the path). This information is sufficient for authorization rules (e.g., only the `userId` owner can delete their `Like`), making it authorization independent. Read access for `Like` documents is public to display who liked a post.\n\n**QAPs (Queries are not Filters) Support:**\n*   **`/users/{userId}`:** Allows authenticated users to query for and read specific user profiles for the 'User Discovery Search' feature. Security rules will ensure that only the owner can modify their profile, while public fields are readable for all, enabling efficient discovery queries without filtering.\n*   **`/posts`:** This top-level collection supports efficient `list` operations required by the 'Personalized Smart Mix Feed'. Security rules will allow public read access to all `Post` documents, and queries can be made on fields like `createdAt`, `likesCount`, or `userId` for filtering (e.g., posts from followed users). Since all posts are publicly readable, no QAP violations occur.\n*   **`/chats/{chatId}/messages/{messageId}`:** The denormalization of `participantIds` into each `Message` document is essential for supporting QAPs. A client can query for all messages within a specific chat (`/chats/{chatId}/messages`). The security rules can evaluate `request.auth.uid in resource.data.participantIds` on *each* message document, allowing Firestore to return only the messages the user is authorized to see, while appearing as a full list query from the client perspective. This approach ensures efficient fetching of chat history.\n*   **`/posts/{postId}/likes/{likeId}`:** This subcollection allows clients to efficiently query and list all `Like` documents for a given `postId`. Security rules allow public read access to these documents, enabling features like displaying who liked a post without QAP issues."
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "placeholderImages": [
+    {
+      "id": "post1",
+      "description": "A person hiking on a mountain trail with a beautiful view.",
+      "imageUrl": "https://images.unsplash.com/photo-1511225070737-5af5ac9a690d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxtb3VudGFpbiUyMGhpa2luZ3xlbnwwfHx8fDE3NzA3OTIxNTd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "mountain hiking"
+    },
+    {
+      "id": "post2",
+      "description": "A close-up of a delicious-looking pizza on a wooden table.",
+      "imageUrl": "https://images.unsplash.com/photo-1634043319926-c2565ac15c63?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxkZWxpY2lvdXMlMjBwaXp6YXxlbnwwfHx8fDE3NzA4MTgxNTF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "delicious pizza"
+    },
+    {
+      "id": "post3",
+      "description": "A city skyline at night with illuminated buildings and light trails from traffic.",
+      "imageUrl": "https://images.unsplash.com/photo-1580895456895-cfdf02e4c23f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxjaXR5JTIwbmlnaHR8ZW58MHx8fHwxNzcwODAxNzAwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "city night"
+    },
+    {
+      "id": "post4",
+      "description": "A person working on a laptop in a cozy cafe.",
+      "imageUrl": "https://images.unsplash.com/photo-1685955010751-1b2d399015cb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxjYWZlJTIwd29ya3NwYWNlfGVufDB8fHx8MTc3MDkwMDU2M3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "cafe workspace"
+    },
+    {
+      "id": "post5",
+      "description": "A cute puppy playing in a field of grass.",
+      "imageUrl": "https://images.unsplash.com/photo-1582456891925-a53965520520?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxjdXRlJTIwcHVwcHl8ZW58MHx8fHwxNzcwODY2ODIwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "cute puppy"
+    }
+  ]
+}
