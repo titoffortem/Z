@@ -78,4 +78,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (context === undefined) {
+        throw new Error('useAuth must be used within an AuthProvider');
+    }
+    // A little hack to provide a stable userProfile object for CommentForm
+    const { user } = useUser();
+    if(user && context.userProfile) {
+        return context as { user: FirebaseAuthUser, userProfile: UserProfile, loading: boolean};
+    }
+    return context;
+};

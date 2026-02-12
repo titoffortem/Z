@@ -10,9 +10,8 @@ import { Heart, MessageCircle, Loader2, User } from "lucide-react";
 import { Button } from "./ui/button";
 import { ScrollArea } from "./ui/scroll-area";
 import * as React from "react";
-import { useAuth } from "./auth-provider";
 import { useToast } from "@/hooks/use-toast";
-import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase";
 import { doc, updateDoc, increment, collection, query, orderBy, addDoc, serverTimestamp, arrayUnion, arrayRemove } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { Textarea } from "./ui/textarea";
@@ -45,10 +44,11 @@ function PostMedia({ mediaUrl, mediaType }: { mediaUrl?: string; mediaType?: str
 
 function CommentList({ postId }: { postId: string }) {
   const firestore = useFirestore();
+  const { user } = useUser();
   const commentsQuery = useMemoFirebase(() => {
-    if (!firestore || !postId) return null;
+    if (!firestore || !postId || !user) return null;
     return query(collection(firestore, 'posts', postId, 'comments'), orderBy('createdAt', 'asc'));
-  }, [postId, firestore]);
+  }, [postId, firestore, user]);
 
   const { data: comments, isLoading } = useCollection<Comment>(commentsQuery);
 
@@ -84,7 +84,7 @@ function CommentList({ postId }: { postId: string }) {
 }
 
 const CommentForm = React.forwardRef<HTMLTextAreaElement, { postId: string }>(({ postId }, ref) => {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   const [commentText, setCommentText] = useState('');
@@ -161,7 +161,7 @@ CommentForm.displayName = 'CommentForm';
 
 
 export function PostView({ post: initialPost, author }: { post: Post, author: UserProfile | null }) {
-    const { user } = useAuth();
+    const { user, userProfile } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
     const commentInputRef = React.useRef<HTMLTextAreaElement>(null);

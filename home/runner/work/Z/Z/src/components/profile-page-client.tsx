@@ -7,7 +7,7 @@ import { collection, getDocs, query, where, limit } from "firebase/firestore";
 import { PostCard } from "@/components/post-card";
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useFirestore } from "@/firebase";
+import { useFirestore, useUser } from "@/firebase";
 
 export default function ProfilePageClient({ nickname }: { nickname: string }) {
     const [user, setUser] = useState<UserProfile | null>(null);
@@ -15,9 +15,10 @@ export default function ProfilePageClient({ nickname }: { nickname: string }) {
     const [loading, setLoading] = useState(true);
     const [userFound, setUserFound] = useState(true);
     const firestore = useFirestore();
+    const { user: authUser } = useUser();
 
     useEffect(() => {
-        if (!nickname || !firestore) {
+        if (!nickname || !firestore || !authUser) {
             setLoading(false);
             if (!nickname) setUserFound(false);
             return;
@@ -83,7 +84,7 @@ export default function ProfilePageClient({ nickname }: { nickname: string }) {
 
         fetchData();
 
-    }, [nickname, firestore]);
+    }, [nickname, firestore, authUser]);
 
 
     if (loading) {

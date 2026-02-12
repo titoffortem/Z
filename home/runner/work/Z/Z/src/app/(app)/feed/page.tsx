@@ -1,7 +1,7 @@
 'use client';
 
 import { PostCard } from "@/components/post-card";
-import { useFirestore } from "@/firebase";
+import { useFirestore, useUser } from "@/firebase";
 import { Post } from "@/types";
 import { collection, onSnapshot, orderBy, query, Timestamp } from "firebase/firestore";
 import { useEffect, useState } from "react";
@@ -9,12 +9,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function FeedPage() {
     const firestore = useFirestore();
+    const { user } = useUser();
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!firestore) return;
+        if (!firestore || !user) {
+            setLoading(false);
+            return;
+        }
         
+        setLoading(true);
         const postsCol = collection(firestore, 'posts');
         const q = query(postsCol, orderBy('createdAt', 'desc'));
 
@@ -42,7 +47,7 @@ export default function FeedPage() {
         });
 
         return () => unsubscribe();
-    }, [firestore]);
+    }, [firestore, user]);
 
     if (loading) {
         return (

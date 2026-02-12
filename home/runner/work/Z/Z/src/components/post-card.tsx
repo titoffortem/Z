@@ -10,15 +10,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { PostView } from "./post-view";
 import { Heart } from "lucide-react";
-import { useAuth } from "./auth-provider";
-import { useFirestore } from "@/firebase";
+import { useFirestore, useUser } from "@/firebase";
 import { doc, getDoc, updateDoc, increment, arrayUnion, arrayRemove } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 export function PostCard({ post }: { post: Post }) {
     const [open, setOpen] = React.useState(false);
-    const { user } = useAuth();
+    const { user } = useUser();
     const { toast } = useToast();
     const firestore = useFirestore();
     const [author, setAuthor] = React.useState<UserProfile | null>(null);
@@ -26,7 +25,7 @@ export function PostCard({ post }: { post: Post }) {
 
     React.useEffect(() => {
         const fetchAuthor = async () => {
-            if (post.userId && firestore) {
+            if (post.userId && firestore && user) {
                 try {
                     const userDoc = await getDoc(doc(firestore, 'users', post.userId));
                     if (userDoc.exists()) {
@@ -51,7 +50,7 @@ export function PostCard({ post }: { post: Post }) {
             }
         };
         fetchAuthor();
-    }, [post.userId, firestore]);
+    }, [post.userId, firestore, user]);
 
     const isLikedByCurrentUser = user ? post.likes?.includes(user.uid) : false;
     const [optimisticLiked, setOptimisticLiked] = React.useState(isLikedByCurrentUser);
