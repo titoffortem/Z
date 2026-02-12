@@ -1,55 +1,36 @@
-'use client';
-
 import { PostCard } from "@/components/post-card";
-import { useCollection, useMemoFirebase, useFirestore } from "@/firebase";
+import { db } from "@/lib/firebase";
 import { Post } from "@/types";
-import { collection, orderBy, query } from "firebase/firestore";
-import { Skeleton } from "@/components/ui/skeleton";
+import { collection, getDocs, orderBy, query } from "firebase/firestore";
 
-export default function FeedPage() {
-    const firestore = useFirestore();
+export const dynamic = 'force-dynamic';
 
-    const postsQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'posts'), orderBy('createdAt', 'desc'));
-    }, [firestore]);
+async function getPosts(): Promise<Post[]> {
+    const postsCol = collection(db, 'posts');
+    const q = query(postsCol, orderBy('createdAt', 'desc'));
+    const postSnapshot = await getDocs(q);
+    const postList = postSnapshot.docs.map(doc => {
+        const data = doc.data();
+        // Timestamps need to be converted to serializable format (string)
+        // for Next.js Server Components.
+        const createdAt = data.createdAt && typeof data.createdAt.toDate === 'function'
+            ? data.createdAt.toDate().toISOString()
+            : new Date().toISOString();
+        const updatedAt = data.updatedAt && typeof data.updatedAt.toDate === 'function'
+            ? data.updatedAt.toDate().toISOString()
+            : new Date().toISOString();
+        return {
+            ...data,
+            id: doc.id,
+            createdAt,
+            updatedAt,
+        } as Post;
+    });
+    return postList;
+}
 
-    const { data: postsFromHook, isLoading } = useCollection<any>(postsQuery);
-
-    const posts: Post[] | null = postsFromHook
-        ? postsFromHook.map(post => {
-            const data = post;
-            const createdAt = data.createdAt?.toDate?.().toISOString() || new Date().toISOString();
-            const updatedAt = data.updatedAt?.toDate?.().toISOString() || new Date().toISOString();
-            return {
-                ...data,
-                id: post.id,
-                createdAt,
-                updatedAt,
-            } as Post;
-        })
-        : null;
-
-    if (isLoading) {
-        return (
-            <div className="mx-auto max-w-7xl">
-                <header className="border-b border-border/50 p-4 sticky top-0 bg-background/80 backdrop-blur-sm z-10">
-                    <h1 className="text-xl font-bold">Лента</h1>
-                </header>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 p-4">
-                    {[...Array(8)].map((_, i) => (
-                        <div key={i} className="flex flex-col space-y-3">
-                            <Skeleton className="h-52 w-full rounded-lg" />
-                            <div className="space-y-2">
-                                <Skeleton className="h-4 w-3/4" />
-                                <Skeleton className="h-4 w-1/2" />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        );
-    }
+export default async function FeedPage() {
+    const posts = await getPosts();
 
     return (
         <div className="mx-auto max-w-7xl">
@@ -57,11 +38,11 @@ export default function FeedPage() {
                 <h1 className="text-xl font-bold">Лента</h1>
             </header>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 p-4">
-                {posts && posts.map(post => (
+                {posts.map(post => (
                     <PostCard key={post.id} post={post} />
                 ))}
             </div>
-             {posts && posts.length === 0 && (
+             {posts.length === 0 && (
                 <div className="p-8 text-center text-muted-foreground mt-10">
                     <p>Здесь пока тихо...</p>
                     <p className="text-sm">Создайте первую запись!</p>
