@@ -87,10 +87,10 @@ export default function ProfilePageClient({ nickname }: { nickname: string }) {
     if (loading) {
         return (
             <div className="overflow-y-auto h-screen">
-                <header className="p-4">
+                <header className="p-4 border-b border-border/50">
                     <div className="flex items-center gap-4">
                         <Skeleton className="h-20 w-20 rounded-full" />
-                        <div>
+                        <div className="flex-grow">
                             <Skeleton className="h-8 w-48 mb-2" />
                              <div className="flex gap-4 text-muted-foreground mt-2">
                                 <Skeleton className="h-6 w-24" />
@@ -98,10 +98,10 @@ export default function ProfilePageClient({ nickname }: { nickname: string }) {
                                 <Skeleton className="h-6 w-24" />
                             </div>
                         </div>
+                         <Skeleton className="h-10 w-24" />
                     </div>
-                     <Skeleton className="h-10 w-32 mt-4" />
                 </header>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1 p-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1 p-1 mt-4">
                     {[...Array(6)].map((_, i) => (
                          <Skeleton key={i} className="aspect-square w-full" />
                     ))}
@@ -128,13 +128,13 @@ export default function ProfilePageClient({ nickname }: { nickname: string }) {
 
     return (
         <div className="overflow-y-auto h-screen">
-            <header className="p-4">
+            <header className="p-4 border-b border-border/50">
                 <div className="flex items-center gap-4">
                     <Avatar className="h-20 w-20">
                         <AvatarImage src={user.profilePictureUrl ?? undefined} alt={user.nickname} />
                         <AvatarFallback>{user.nickname[0].toUpperCase()}</AvatarFallback>
                     </Avatar>
-                    <div>
+                    <div className="flex-grow">
                         <h1 className="text-2xl font-bold">{user.nickname}</h1>
                         <div className="flex gap-4 text-muted-foreground mt-2">
                             <span><span className="font-bold text-foreground">{posts.length}</span> Публикации</span>
@@ -142,9 +142,10 @@ export default function ProfilePageClient({ nickname }: { nickname: string }) {
                             <span><span className="font-bold text-foreground">{followingCount}</span> Подписки</span>
                         </div>
                     </div>
-                 <Button variant="outline" className="mt-4">Подписаться</Button>
+                    <Button variant="outline">Подписаться</Button>
+                </div>
             </header>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1 p-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1 p-1 mt-4">
                 {posts.length > 0 ? (
                     posts.map(post => (
                         <PostCard key={post.id} post={post} />
