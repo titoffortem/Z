@@ -13,7 +13,6 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { db } from '@/lib/firebase';
 import { collection, doc, getDocs, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
-import type { UserProfile } from '@/types';
 
 const formSchema = z.object({
   nickname: z.string().min(3, "Никнейм должен содержать не менее 3 символов").max(20, "Никнейм должен содержать не более 20 символов").regex(/^[a-zA-Z0-9_]+$/, "Никнейм может содержать только буквы, цифры и знаки подчеркивания"),
@@ -33,11 +32,16 @@ export default function CreateProfilePage() {
   });
 
   useEffect(() => {
-    if (!loading && userProfile) {
-      router.push('/feed');
+    if (loading) {
+      return; // Wait until authentication state is resolved
     }
-     if (!loading && !user) {
-      router.push('/login');
+    if (!user) {
+      // If not logged in, redirect to login page
+      router.replace('/login');
+    }
+    if (userProfile) {
+      // If profile already exists, redirect to feed
+      router.replace('/feed');
     }
   }, [user, userProfile, loading, router]);
 
@@ -95,11 +99,10 @@ export default function CreateProfilePage() {
     });
   };
 
-  if (loading || !user) {
+  // While loading or if user is being redirected, show a loading screen.
+  if (loading || !user || userProfile) {
     return <div className="flex h-screen w-full items-center justify-center">Загрузка...</div>;
   }
-  
-  if (userProfile) return null;
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">

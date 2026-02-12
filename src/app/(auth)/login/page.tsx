@@ -6,7 +6,6 @@ import {
   GoogleAuthProvider, 
   signInWithRedirect, 
   getRedirectResult, 
-  onAuthStateChanged 
 } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -14,58 +13,56 @@ import { GoogleIcon, ZLogoIcon } from '@/components/icons';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from 'lucide-react';
+import { useAuth } from '@/components/auth-provider';
 
 export default function LoginPage() {
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isProcessingRedirect, setIsProcessingRedirect] = useState(true);
 
+  // Effect to redirect away if user is already logged in
   useEffect(() => {
-    // 1. Check for redirect result from Google
+    if (!authLoading && user) {
+      router.replace('/feed');
+    }
+  }, [user, authLoading, router]);
+
+  // Effect to process the result from Google's redirect
+  useEffect(() => {
     getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user) {
-          // If result and user exist, login was successful
-          router.replace('/feed');
-        }
-        // If no result, we let onAuthStateChanged handle the state.
-      })
       .catch((err) => {
         console.error("Error on redirect result:", err);
         setError(err.message || "An error occurred during login. Please try again.");
-        setLoading(false);
+      })
+      .finally(() => {
+        // We're done checking for a redirect result
+        setIsProcessingRedirect(false);
       });
-
-    // 2. Listen for auth state changes
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        // If onAuthStateChanged confirms a user, redirect to feed.
-        router.replace('/feed');
-      } else {
-        // If no user, show the login button.
-        setLoading(false);
-      }
-    });
-
-    // Cleanup listener on component unmount
-    return () => unsubscribe();
-  }, [router]);
+  }, []); // Run only once on component mount
 
   const handleLogin = () => {
-    setLoading(true);
     setError(null);
+    setIsProcessingRedirect(true);
     const provider = new GoogleAuthProvider();
-    // Forcing account selection to avoid caching issues
     provider.setCustomParameters({ prompt: 'select_account' }); 
     signInWithRedirect(auth, provider);
   };
 
-  if (loading) {
+  const isLoading = authLoading || isProcessingRedirect;
+
+  if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         Проверяем статус авторизации...
       </div>
     );
+  }
+
+  // If we're done loading and a user exists, a redirect is in progress.
+  // Render nothing to avoid a flash of the login page.
+  if (user) {
+    return null;
   }
 
   return (
@@ -90,7 +87,7 @@ export default function LoginPage() {
             variant="outline"
             className="w-full font-semibold"
             onClick={handleLogin}
-            disabled={loading}
+            disabled={isLoading}
           >
             <GoogleIcon className="mr-2 h-5 w-5" />
             Войти через Google
