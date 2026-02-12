@@ -1,20 +1,11 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Прямое разрешение для всех документов
+    // This single, global rule allows any authenticated user to read or write
+    // to any document or subcollection. This is for debugging purposes to isolate
+    // whether the issue is with rules logic or something else (like indexing).
     match /{document=**} {
       allow read, write: if request.auth != null;
-    }
-
-    // Дублирующее разрешение специально для вложенных комментов
-    match /posts/{postId}/comments/{commentId} {
-      allow read, write: if request.auth != null;
-    }
-
-    // Разрешаем листинг (просмотр списка)
-    match /posts/{postId}/comments {
-      allow list: if request.auth != null;
     }
   }
 }
