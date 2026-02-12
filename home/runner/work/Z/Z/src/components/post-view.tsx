@@ -48,7 +48,7 @@ function PostMedia({ mediaUrl, mediaType }: { mediaUrl?: string; mediaType?: str
 function CommentList({ postId }: { postId: string }) {
   const commentsQuery = useMemoFirebase(() => {
     if (!db || !postId) return null;
-    return query(collection(db, 'chats', postId, 'messages'), orderBy('createdAt', 'asc'));
+    return query(collection(db, 'posts', postId, 'comments'), orderBy('createdAt', 'asc'));
   }, [postId]);
 
   const { data: comments, isLoading } = useCollection<Comment>(commentsQuery);
@@ -102,21 +102,25 @@ const CommentForm = React.forwardRef<HTMLTextAreaElement, { postId: string }>(({
     setIsSubmitting(true);
 
     try {
-      // Note: The data model uses /chats/{postId}/messages for comments
-      const commentsColRef = collection(db, 'chats', postId, 'messages');
+      const postRef = doc(db, 'posts', postId);
+      const commentsColRef = collection(db, 'posts', postId, 'comments');
+      
       await addDoc(commentsColRef, {
-        chatId: postId,
-        senderId: user.uid,
+        postId: postId,
+        userId: user.uid,
         content: commentText.trim(),
         createdAt: serverTimestamp(),
-        // Denormalizing for convenience, though rules might not need it
         authorNickname: userProfile.nickname,
         authorPhotoURL: userProfile.profilePictureUrl,
+      });
+
+      await updateDoc(postRef, {
+        commentCount: increment(1)
       });
       
       setCommentText('');
       toast({ title: 'Комментарий опубликован!' });
-      router.refresh(); // Or optimistic update
+      router.refresh();
     } catch (error: any) {
       toast({
         title: 'Ошибка публикации комментария',
@@ -189,7 +193,6 @@ export function PostView({ post: initialPost, author }: { post: Post, author: Us
         const likeRef = doc(db, 'posts', post.id, 'likes', user.uid);
         const wasLiked = isLikedByCurrentUser;
         
-        // Optimistic update
         setPost(currentPost => ({
             ...currentPost,
             likesCount: wasLiked ? currentPost.likesCount - 1 : currentPost.likesCount + 1,
@@ -208,7 +211,6 @@ export function PostView({ post: initialPost, author }: { post: Post, author: Us
             }
             router.refresh();
         } catch (error) {
-            // Revert optimistic update on failure
             setPost(initialPost); 
             toast({
                 title: "Ошибка",
