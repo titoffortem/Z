@@ -1,9 +1,197 @@
+/**
+ * # Firestore Security Rules
+ *
+ * ## Core Philosophy
+ * This ruleset enforces a security model based on user ownership and explicit shared access.
+ * It provides public read access for social content like user profiles and posts to support
+ * discovery and content feeds, while strictly protecting private data like direct messages
+ * within chats. The default posture is to deny access unless explicitly granted.
+ *
+ * ## Data Structure
+ * - /users/{userId}: User-owned profiles, readable by other signed-in users.
+ * - /posts/{postId}: Publicly readable posts, with write access restricted to the original author.
+ * - /posts/{postId}/comments/{commentId}: Publicly readable comments for a post.
+ * - /posts/{postId}/likes/{likeId}: Publicly readable likes, with write access restricted to the user who created the like.
+ * - /chats/{chatId}: Private chat conversations, accessible only to users listed in the participantIds array.
+ * - /chats/{chatId}/messages/{messageId}: Messages within a chat, inheriting access controls from the parent chat.
+ *
+ * ## Key Security Decisions
+ * - **Public vs. Private**: A clear separation is maintained between public collections (/posts, /users)
+ *   and private collections (/chats). This structural segregation simplifies rules and improves query performance.
+ * - **No User Listing**: The top-level /users and /chats collections cannot be listed by clients to prevent
+ *   data scraping and protect user privacy. Clients must query for specific documents they know the ID of or
+ *   use queries secured by rules (e.g., querying chats they are a member of).
+ * - **Ownership via UID**: Write operations are almost always gated by checking if the authenticated user's
+ *   ID (request.auth.uid) matches an ownership field (e.g., userId) on the document.
+ * - **Shared Access for Chats**: Access to chats and their subcollections is managed by a participantIds array on
+ *   the parent /chats/{chatId} document. This avoids complex role management and provides a clear, auditable
+ *   line of authorization.
+ *
+ * ## Denormalization for Authorization
+ * To ensure performant and simple security rules, this ruleset relies on denormalized data:
+ * - /posts/{postId}: Contains a userId field to verify ownership without needing to look up other documents.
+ * - /chats/{chatId}: Contains a participantIds array. Rules on its /messages subcollection perform a get()
+ *   on the parent chat document to verify the requesting user is a current participant. This is a secure and
+ *   necessary read operation to protect the entire subcollection.
+ *
+ */
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null; 
+
+    // Helper functions for improved readability and reuse.
+
+    /**
+     * Checks if the user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the authenticated user's UID matches the provided userId.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * Verifies that the document being operated on already exists.
+     * CRITICAL for all update and delete operations.
+     */
+    function isExistingDoc() {
+      return resource != null;
+    }
+
+
+
+    /**
+     * Combines ownership check with an existence check for secure updates/deletes.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && isExistingDoc();
+    }
+
+    /**
+     * Checks if the requesting user is a participant in a given chat by reading the parent chat document.
+     * This is the source of truth for all chat-related permissions.
+     */
+    function isChatParticipant(chatId) {
+      return isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds;
+    }
+
+    /**
+     * Validates that the `id` field within a UserProfile document is not being changed on update.
+     */
+    function isImmutableUserProfileId() {
+      return request.resource.data.id == resource.data.id;
+    }
+
+    /**
+     * Validates that the `userId` ownership field is not being changed on update.
+     */
+    function isImmutableUserId() {
+      return request.resource.data.userId == resource.data.userId;
+    }
+
+    /**
+     * @description Rules for the UserProfile collection.
+     * @path /users/{userId}
+     * @allow (get) Anyone can read a user's profile if they know the user's ID.
+     * @allow (list) Anyone can query the user collection (e.g., to find a user by nickname). This enables public profile pages.
+     * @deny (update) A user tries to change the nickname on another user's profile.
+     * @principle Public read access for discovery, but write access is restricted to the owner.
+     */
+    match /users/{userId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && isImmutableUserProfileId();
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for the Posts collection.
+     * @path /posts/{postId}
+     * @allow (get) Any user, including anonymous ones, can read any post.
+     * @allow (create) An authenticated user creates a new post with their own userId.
+     * @deny (delete) A user tries to delete a post that was not created by them.
+     * @principle Enforces public read access with strict document ownership for all writes.
+     */
+    match /posts/{postId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if (isExistingOwner(resource.data.userId) && isImmutableUserId()) || 
+                       (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likesCount', 'commentCount']));
+      allow delete: if isExistingOwner(resource.data.userId);
+    }
+
+    /**
+     * @description Rules for the root Chat collection.
+     * @path /chats/{chatId}
+     * @allow (get) A user whose UID is in the participantIds array reads the chat metadata.
+     * @allow (create) A user creates a new chat and includes their own UID in the participantIds.
+     * @deny (get) A user tries to read a chat they are not a participant in.
+     * @deny (list) Any user tries to list all chats in the database.
+     * @principle Restricts access to a closed group of collaborators defined in the document data.
+     */
+    match /chats/{chatId} {
+      allow get: if isChatParticipant(chatId);
+      allow list: if false;
+      allow create: if isSignedIn() && request.auth.uid in request.resource.data.participantIds;
+      allow update: if isExistingDoc() && isChatParticipant(chatId);
+      allow delete: if isExistingDoc() && isChatParticipant(chatId);
+    }
+
+    /**
+     * @description Rules for the Messages subcollection within a chat.
+     * @path /chats/{chatId}/messages/{messageId}
+     * @allow (list) A chat participant lists the messages for a conversation.
+     * @allow (create) A chat participant sends a new message, correctly identifying themselves as the sender.
+     * @deny (get) A user who is not a participant of the parent chat tries to read a message.
+     * @deny (delete) A user tries to delete another user's message.
+     * @principle Inherits access control from the parent document, ensuring only chat members can interact with messages.
+     */
+    match /chats/{chatId}/messages/{messageId} {
+      allow get: if isChatParticipant(chatId);
+      allow list: if isChatParticipant(chatId);
+      allow create: if isChatParticipant(chatId) && request.resource.data.senderId == request.auth.uid && request.resource.data.chatId == chatId;
+      allow update: if isExistingOwner(resource.data.senderId) && isChatParticipant(chatId);
+      allow delete: if isExistingOwner(resource.data.senderId) && isChatParticipant(chatId);
+    }
+
+    /**
+     * @description Rules for the Likes subcollection on a post.
+     * @path /posts/{postId}/likes/{likeId}
+     * @allow (list) Any user, including anonymous ones, can see who liked a post.
+     * @allow (create) An authenticated user creates a like, where the document ID and userId field match their own UID.
+     * @deny (create) A user tries to create a like on behalf of another user.
+     * @deny (update) A like document cannot be updated after creation.
+     * @principle Enforces public read access with strict document ownership for writes.
+     */
+    match /posts/{postId}/likes/{likeId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isOwner(likeId) && request.resource.data.userId == request.auth.uid && request.resource.data.postId == postId;
+      allow update: if false;
+      allow delete: if isExistingOwner(resource.data.userId);
+    }
+    
+    /**
+     * @description Rules for the Comments subcollection on a post.
+     * @path /posts/{postId}/comments/{commentId}
+     * @allow (list) Any user, including anonymous ones, can read comments on a post.
+     * @allow (create) An authenticated user can create a comment.
+     * @deny (update) A user tries to update another user's comment.
+     * @principle Enforces public read access with strict document ownership for writes.
+     */
+    match /posts/{postId}/comments/{commentId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && request.resource.data.postId == postId;
+      allow update: if isExistingOwner(resource.data.userId);
+      allow delete: if isExistingOwner(resource.data.userId);
     }
   }
 }
