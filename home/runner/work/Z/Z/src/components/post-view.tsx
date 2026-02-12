@@ -12,7 +12,7 @@ import { ScrollArea } from "./ui/scroll-area";
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase";
-import { doc, updateDoc, increment, collection, query, orderBy, addDoc, serverTimestamp, arrayUnion, arrayRemove } from "firebase/firestore";
+import { doc, updateDoc, increment, collection, query, addDoc, serverTimestamp, arrayUnion, arrayRemove } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { Textarea } from "./ui/textarea";
 import { useState } from "react";
@@ -48,18 +48,28 @@ function CommentList({ postId }: { postId: string }) {
   const { user } = useUser();
   const commentsQuery = useMemoFirebase(() => {
     if (!firestore || !postId || !user) return null;
-    // Re-adding orderBy, assuming the necessary Firestore index has been created.
-    return query(collection(firestore, 'posts', postId, 'comments'), orderBy('createdAt', 'asc'));
+    // We removed orderBy to prevent the Firestore index error.
+    // We will sort the comments on the client-side instead.
+    return query(collection(firestore, 'posts', postId, 'comments'));
   }, [postId, firestore, user]);
 
   const { data: comments, isLoading } = useCollection<Comment>(commentsQuery);
+
+  const sortedComments = React.useMemo(() => {
+    if (!comments) {
+      return [];
+    }
+    // Sort comments by creation date, oldest first.
+    return [...comments].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }, [comments]);
+
 
   if (isLoading) return <div className="text-center p-4"><Loader2 className="h-5 w-5 animate-spin mx-auto" /></div>;
   
   return (
     <div className="mt-6 space-y-6">
-      {comments && comments.length > 0 ? (
-        comments.map((comment) => (
+      {sortedComments.length > 0 ? (
+        sortedComments.map((comment) => (
           <div key={comment.id} className="flex items-start gap-3">
             <Avatar className="h-9 w-9">
               <AvatarImage src={comment.authorPhotoURL ?? undefined} />
