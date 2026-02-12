@@ -96,14 +96,14 @@ service cloud.firestore {
     /**
      * @description Rules for the UserProfile collection.
      * @path /users/{userId}
-     * @allow (create) A new user creates their own profile document: /users/user_abc.
-     * @allow (get) Any authenticated user reads the profile of another user: /users/user_xyz.
+     * @allow (get) Anyone can read a user's profile if they know the user's ID.
+     * @allow (list) Anyone can query the user collection (e.g., to find a user by nickname). This enables public profile pages.
      * @deny (update) A user tries to change the nickname on another user's profile.
-     * @principle Restricts access to a user's own data tree for writes, but allows reads for discovery.
+     * @principle Public read access for discovery, but write access is restricted to the owner.
      */
     match /users/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
+      allow get: if true;
+      allow list: if true;
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if isExistingOwner(userId) && isImmutableUserProfileId();
       allow delete: if isExistingOwner(userId);
