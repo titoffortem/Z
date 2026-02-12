@@ -12,6 +12,8 @@ import { doc, getDoc } from "firebase/firestore";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { PostView } from './post-view';
@@ -98,6 +100,10 @@ export function PostCard({ post }: { post: Post }) {
                 </div>
             </DialogTrigger>
             <DialogContent className="p-0 border-0 max-w-4xl bg-transparent shadow-none">
+                 <DialogTitle className="sr-only">Просмотр записи</DialogTitle>
+                 <DialogDescription className="sr-only">
+                    {`Подробный вид записи от пользователя ${author?.nickname || '...'} с подписью: ${post.caption || 'изображение'}`}
+                 </DialogDescription>
                  <PostView post={post} author={author} />
             </DialogContent>
         </Dialog>
