@@ -1,11 +1,32 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // This single, global rule allows any authenticated user to read or write
-    // to any document or subcollection. This is for debugging purposes to isolate
-    // whether the issue is with rules logic or something else (like indexing).
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+
+    // Rule for user profiles
+    // Anyone can read a profile, but only the user themselves can edit it.
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Rules for posts and their subcollections
+    match /posts/{postId} {
+      // Anyone can read posts.
+      allow read: if true;
+
+      // Only the post's author can create or delete it.
+      // Creating a post requires checking the incoming data (request.resource).
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+
+      // Any authenticated user can update a post (e.g., for liking).
+      allow update: if request.auth != null;
+
+      // Rules for the 'comments' subcollection
+      match /comments/{commentId} {
+        // Any authenticated user can read or write comments.
+        allow read, write: if request.auth != null;
+      }
     }
   }
 }
