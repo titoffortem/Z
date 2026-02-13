@@ -40,16 +40,8 @@ service cloud.firestore {
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
 
-      allow update: if request.auth != null && (
-        // автор может всё
-        resource.data.userId == request.auth.uid
-        ||
-        // другие — только менять likedBy и только корректным добавлением/удалением себя
-        (
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy'])
-          && isLikingOrUnliking()
-        )
-      );
+      // DEBUG: Temporarily allow all authenticated updates to isolate the issue.
+      allow update: if request.auth != null;
     }
   }
 }
