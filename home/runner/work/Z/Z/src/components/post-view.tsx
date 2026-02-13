@@ -146,131 +146,103 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     };
 
     return (
-        <div className="flex flex-col md:flex-row h-[90vh] w-full max-w-4xl mx-auto rounded-lg overflow-hidden relative bg-card">
+        <div className="flex flex-col md:flex-row h-[90vh] w-full max-w-5xl mx-auto rounded-xl overflow-hidden relative bg-card border border-border">
             
-            {/* Левая колонка (Контент) */}
-            <div className="w-full md:w-1/2 flex flex-col border-r border-border h-full relative">
-                {mediaUrl ? (
-                    <>
-                        {/* Media Container */}
-                        <div 
-                            className={cn(
-                                "cursor-pointer transition-all duration-300 ease-in-out bg-muted flex items-center justify-center overflow-hidden group",
-                                imageExpanded 
-                                    ? "absolute inset-0 z-50 w-full h-full bg-background/80 backdrop-blur-sm"
-                                    : "basis-1/2 w-full relative"
-                            )}
-                            onClick={() => setImageExpanded(!imageExpanded)}
-                        >
-                            {mediaType === 'image' && (
-                                <Image 
-                                    src={mediaUrl} 
-                                    alt="Контент" 
-                                    fill 
-                                    className={cn("transition-all duration-300", imageExpanded ? "object-contain" : "object-cover")} 
-                                />
-                            )}
-                            {mediaType === 'video' && (
-                                <video src={mediaUrl} className="w-full h-full object-contain" controls autoPlay muted loop playsInline />
-                            )}
-                            
-                            <div className="absolute top-2 right-2 bg-black/50 p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                                {imageExpanded ? <Minimize2 className="text-white h-4 w-4"/> : <Maximize2 className="text-white h-4 w-4"/>}
-                            </div>
+            <div className="w-full md:w-1/2 h-full flex flex-col border-r border-border relative overflow-hidden">
+                
+                {mediaUrl && (
+                    <div 
+                        className={cn(
+                            "cursor-pointer transition-all duration-500 ease-in-out bg-muted flex items-center justify-center overflow-hidden group",
+                            imageExpanded 
+                                ? "absolute inset-0 z-[100] w-full h-full bg-background/80 backdrop-blur-sm" 
+                                : "basis-1/2 w-full relative border-b border-border"
+                        )}
+                        onClick={() => setImageExpanded(!imageExpanded)}
+                    >
+                        {mediaType === 'image' && (
+                            <Image 
+                                src={mediaUrl} 
+                                alt="Контент" 
+                                fill 
+                                className={cn(
+                                    "transition-all duration-500", 
+                                    imageExpanded ? "object-contain" : "object-cover"
+                                )} 
+                                priority
+                            />
+                        )}
+                        
+                        {mediaType === 'video' && (
+                            <video src={mediaUrl} className="w-full h-full object-contain" controls autoPlay muted loop playsInline />
+                        )}
+                        
+                        <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-[110]">
+                            {imageExpanded ? <Minimize2 className="text-white h-5 w-5"/> : <Maximize2 className="text-white h-5 w-5"/>}
                         </div>
-
-                        {/* Caption Container */}
-                        <div className={cn(
-                            "p-4 overflow-y-auto",
-                            "basis-1/2",
-                            imageExpanded && "opacity-0 pointer-events-none"
-                        )}>
-                            {post.caption && (
-                                <p className="text-sm text-foreground/90 whitespace-pre-wrap">
-                                    {post.caption}
-                                </p>
-                            )}
-                        </div>
-                    </>
-                ) : (
-                     // If no media, caption takes full height
-                    <div className="h-full p-6 overflow-y-auto">
-                        <p className="text-foreground/90 whitespace-pre-wrap text-left">{post.caption}</p>
                     </div>
                 )}
+
+                <div className={cn(
+                    "p-6 overflow-y-auto bg-card transition-all",
+                    mediaUrl ? "basis-1/2" : "h-full",
+                    imageExpanded && "opacity-0 pointer-events-none"
+                )}>
+                    <div>
+                         <p className="text-base md:text-lg leading-relaxed text-foreground whitespace-pre-wrap">
+                            {post.caption}
+                        </p>
+                    </div>
+                </div>
             </div>
 
-            {/* Правая колонка (Автор и Комментарии) */}
             <div className={cn(
-                "w-full md:w-1/2 flex flex-col bg-card h-full", 
-                imageExpanded && "hidden md:flex"
+                "w-full md:w-1/2 flex flex-col bg-card h-full transition-opacity duration-300 border-l border-border",
+                imageExpanded ? "opacity-0 pointer-events-none md:opacity-0" : "opacity-100" 
             )}>
-                {/* Шапка автора */}
-                <div className="p-4 border-b border-border">
+                <div className="p-4 border-b border-border flex items-center justify-between">
                     {author ? (
-                         <div className="flex items-start gap-3">
-                            <Link href={`/profile/${author.nickname}`} className="flex-shrink-0">
-                                 <Avatar className="h-10 w-10">
-                                    <AvatarImage src={author.profilePictureUrl ?? undefined} alt={author.nickname} />
-                                    <AvatarFallback>{author.nickname[0].toUpperCase()}</AvatarFallback>
-                                 </Avatar>
-                            </Link>
-                            <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-foreground">
-                                    <Link href={`/profile/${author.nickname}`}>{author.nickname}</Link>
-                                </p>
+                        <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                                <AvatarImage src={author.profilePictureUrl || undefined} />
+                                <AvatarFallback>{author.nickname?.[0].toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <Link href={`/profile/${author.nickname}`} className="font-semibold text-foreground hover:underline">
+                                    {author.nickname}
+                                </Link>
                                 <p className="text-xs text-muted-foreground mt-0.5">
                                     {post.createdAt ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: ru }) : 'только что'}
                                 </p>
-                                 <div className="flex items-center gap-2 pt-2">
-                                    <Button variant="ghost" size="icon" className="-ml-2 h-8 w-8" onClick={handleLike}>
-                                        <Heart className={cn("h-5 w-5 transition-colors", isLiked && "fill-primary text-primary")} />
-                                    </Button>
-                                    <p className="text-sm font-semibold text-muted-foreground">
-                                        {likeCount}
-                                    </p>
-                                </div>
                             </div>
                         </div>
-                    ) : (
-                        <div className="flex items-center gap-3">
-                           <Skeleton className="h-10 w-10 rounded-full" />
-                           <div className="flex-1 space-y-2">
-                               <Skeleton className="h-4 w-24" />
-                               <Skeleton className="h-3 w-16" />
-                               <div className="flex items-center gap-2 pt-2">
-                                   <Skeleton className="h-6 w-6" />
-                                   <Skeleton className="h-4 w-12" />
-                               </div>
-                           </div>
-                       </div>
-                    )}
+                    ) : <Skeleton className="h-10 w-32"/>}
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={handleLike} 
+                        className={cn(
+                            "gap-2 rounded-full px-4 hover:bg-accent",
+                            isLiked ? "text-primary" : "text-muted-foreground"
+                        )}
+                    >
+                        <Heart className={cn("h-5 w-5", isLiked && "fill-current")} />
+                        <span className="font-mono text-sm">{likeCount}</span>
+                    </Button>
                 </div>
 
-                {/* Comments Area */}
-                <div className="p-4 flex-1 overflow-y-auto min-h-0">
-                    <div className="space-y-4">
-                        {commentsLoading && (
-                            [...Array(3)].map((_, i) => (
-                                <div key={i} className="flex items-start gap-3">
-                                    <Skeleton className="h-8 w-8 rounded-full" />
-                                    <div className="flex-1 space-y-2">
-                                        <Skeleton className="h-3 w-1/4" />
-                                        <Skeleton className="h-3 w-3/4" />
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                        {!commentsLoading && comments.map(comment => (
-                            <div key={comment.id} className="flex items-start gap-3">
-                                {comment.author ? (
-                                    <Link href={`/profile/${comment.author.nickname}`} className="flex-shrink-0">
-                                        <Avatar className="h-8 w-8">
-                                            <AvatarImage src={comment.author.profilePictureUrl ?? undefined} alt={comment.author.nickname} />
-                                            <AvatarFallback>{comment.author.nickname[0].toUpperCase()}</AvatarFallback>
-                                        </Avatar>
-                                    </Link>
-                                ) : <Skeleton className="h-8 w-8 rounded-full" />}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {commentsLoading ? (
+                        <div className="flex justify-center py-10"><Loader2 className="animate-spin text-muted-foreground" /></div>
+                    ) : comments.length === 0 ? (
+                        <div className="text-center py-16 text-muted-foreground text-sm">Комментариев пока нет. Будьте первым!</div>
+                    ) : (
+                        comments.map((comment: Comment) => (
+                            <div key={comment.id} className="flex items-start gap-3 animate-in fade-in">
+                                <Avatar className="h-8 w-8">
+                                    <AvatarImage src={comment.author?.profilePictureUrl || undefined} />
+                                    <AvatarFallback>{comment.author?.nickname?.[0].toUpperCase()}</AvatarFallback>
+                                </Avatar>
                                 <div>
                                     <p className="text-sm">
                                         <Link href={`/profile/${comment.author?.nickname}`} className="font-semibold text-foreground">{comment.author?.nickname}</Link>
@@ -283,40 +255,41 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                     </p>
                                 </div>
                             </div>
-                        ))}
-                         {!commentsLoading && comments.length === 0 && (
-                            <p className="text-sm text-muted-foreground text-center py-4">Комментариев пока нет. Будьте первым!</p>
-                        )}
-                    </div>
+                        ))
+                    )}
                 </div>
 
-                {/* Comment Input Footer */}
-                <div className="mt-auto p-4 border-t border-border">
-                    {userProfile && (
+                {userProfile && (
+                    <div className="p-4 border-t border-border">
                         <form onSubmit={handleCommentSubmit} className="flex items-start gap-3">
                             <Avatar className="h-8 w-8">
                                 <AvatarImage src={userProfile.profilePictureUrl ?? undefined} />
                                 <AvatarFallback>{userProfile.nickname?.[0].toUpperCase()}</AvatarFallback>
                             </Avatar>
-                            <Textarea
-                                placeholder="Добавить комментарий..."
+                            <Textarea 
                                 value={newComment}
                                 onChange={(e) => setNewComment(e.target.value)}
+                                placeholder="Добавить комментарий..."
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter' && !e.shiftKey) {
                                         e.preventDefault();
                                         handleCommentSubmit(e as any);
                                     }
                                 }}
+                                className="min-h-[40px] max-h-[120px] resize-none flex-1 bg-muted border-none focus-visible:ring-1 focus-visible:ring-ring h-auto text-sm"
                                 rows={1}
-                                className="flex-1 resize-none bg-muted border-none focus-visible:ring-1 focus-visible:ring-ring h-auto text-sm"
                             />
-                            <Button type="submit" variant="ghost" size="sm" disabled={isSubmittingComment || !newComment.trim()}>
-                                {isSubmittingComment ? <Loader2 className="h-4 w-4 animate-spin"/> : 'Отправить'}
+                            <Button 
+                                type="submit" 
+                                variant="ghost"
+                                size="sm" 
+                                disabled={!newComment.trim() || isSubmittingComment}
+                            >
+                                {isSubmittingComment ? <Loader2 className="animate-spin h-4 w-4"/> : 'Отправить'}
                             </Button>
                         </form>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
         </div>
     );
