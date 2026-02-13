@@ -173,6 +173,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
 
             {/* Right Column */}
             <div className="w-full md:w-1/2 flex flex-col bg-card">
+                {/* 1. Author Header */}
                 <div className="p-4 border-b">
                     {author ? (
                          <div className="flex items-start gap-3">
@@ -183,13 +184,20 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                  </Avatar>
                             </Link>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm">
-                                    <Link href={`/profile/${author.nickname}`} className="font-semibold text-foreground">{author.nickname}</Link>
-                                    {post.caption && <span className="ml-2 font-normal text-foreground/90 whitespace-pre-wrap">{post.caption}</span>}
+                                <p className="font-semibold text-foreground">
+                                    <Link href={`/profile/${author.nickname}`}>{author.nickname}</Link>
                                 </p>
                                 <p className="text-xs text-muted-foreground mt-0.5">
                                     {post.createdAt ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: ru }) : 'только что'}
                                 </p>
+                                 <div className="flex items-center gap-2 pt-2">
+                                    <Button variant="ghost" size="icon" onClick={handleLike}>
+                                        <Heart className={cn("h-6 w-6 transition-colors", isLiked && "fill-destructive text-destructive")} />
+                                    </Button>
+                                    <p className="text-sm font-semibold text-muted-foreground">
+                                        {likeCount} {getLikeText(likeCount)}
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     ) : (
@@ -203,8 +211,28 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                     )}
                 </div>
 
+                {/* 2. Scrollable Comments Area */}
                 <div className="p-4 flex-1 overflow-y-auto">
                     <div className="space-y-4">
+                        {post.caption && (
+                            <div className="flex items-start gap-3 pb-4 border-b mb-4">
+                                {author ? (
+                                    <Link href={`/profile/${author.nickname}`} className="flex-shrink-0">
+                                        <Avatar className="h-8 w-8">
+                                            <AvatarImage src={author.profilePictureUrl ?? undefined} alt={author.nickname} />
+                                            <AvatarFallback>{author.nickname[0].toUpperCase()}</AvatarFallback>
+                                        </Avatar>
+                                    </Link>
+                                ) : <Skeleton className="h-8 w-8 rounded-full" />}
+                                <div>
+                                    <p className="text-sm">
+                                        <Link href={`/profile/${author?.nickname}`} className="font-semibold text-foreground">{author?.nickname}</Link>
+                                        <span className="ml-2 text-foreground/90 whitespace-pre-wrap">{post.caption}</span>
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                        
                         {commentsLoading && (
                             [...Array(3)].map((_, i) => (
                                 <div key={i} className="flex items-start gap-3">
@@ -239,21 +267,14 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                 </div>
                             </div>
                         ))}
-                         {!commentsLoading && comments.length === 0 && (
+                         {!commentsLoading && comments.length === 0 && !post.caption && (
                             <p className="text-sm text-muted-foreground text-center py-4">Комментариев пока нет. Будьте первым!</p>
                         )}
                     </div>
                 </div>
 
-                <div className="mt-auto p-4 border-t space-y-4">
-                     <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" onClick={handleLike}>
-                            <Heart className={cn("h-6 w-6 transition-colors", isLiked && "fill-destructive text-destructive")} />
-                        </Button>
-                        <p className="text-sm font-semibold text-muted-foreground">
-                            {likeCount} {getLikeText(likeCount)}
-                        </p>
-                    </div>
+                {/* 3. Footer with Actions */}
+                <div className="mt-auto p-4 border-t">
                     {userProfile && (
                         <form onSubmit={handleCommentSubmit} className="flex items-start gap-3">
                             <Avatar className="h-8 w-8">
