@@ -146,17 +146,16 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
 
     return (
         <div className="flex flex-col md:flex-row h-[90vh] w-full max-w-5xl mx-auto rounded-xl overflow-hidden relative bg-background border border-border shadow-2xl">
-            
             <div className={cn(
-                "h-full border-r border-border bg-background transition-all duration-300 relative md:w-1/2",
-                isImageExpanded ? "w-full overflow-hidden" : "w-full overflow-y-auto custom-scrollbar"
+                "relative h-full border-r border-border bg-background transition-all duration-300",
+                isImageExpanded ? "w-full" : "w-full md:w-1/2"
             )}>
                 {mediaUrl && (
                     <div 
                         className={cn(
-                            "relative w-full aspect-square bg-muted",
+                            "relative w-full bg-muted",
                              mediaType === 'image' && "cursor-pointer",
-                             isImageExpanded && "h-full"
+                             isImageExpanded ? "h-full" : "aspect-square"
                         )}
                          onClick={mediaType === 'image' ? () => setIsImageExpanded(!isImageExpanded) : undefined}
                     >
@@ -188,35 +187,60 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                 "w-full md:w-1/2 flex flex-col bg-card h-full",
                 isImageExpanded && "hidden"
             )}>
-                <div className="p-4 border-b border-border flex items-center justify-between gap-4 bg-muted/20">
-                    {author && (
-                        <>
-                            <div className="flex items-center gap-3 min-w-0">
-                                <Avatar className="h-10 w-10 ring-1 ring-border flex-shrink-0">
-                                    <AvatarImage src={author.profilePictureUrl || undefined} alt={author.nickname} />
-                                    <AvatarFallback className="bg-background text-muted-foreground">{author.nickname?.[0].toUpperCase()}</AvatarFallback>
-                                </Avatar>
-                                <div className="min-w-0">
-                                    <Link href={`/profile/${author.nickname}`} className="font-bold text-foreground hover:text-primary transition-colors block truncate">
-                                        @{author.nickname}
-                                    </Link>
-                                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">
-                                        {post.createdAt ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: ru }) : 'только что'}
-                                    </p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={handleLike} 
-                                className={cn(
-                                    "inline-flex items-center justify-center gap-2 p-2 rounded-md flex-shrink-0",
-                                    isLiked ? "text-primary" : "text-muted-foreground"
-                                )}
-                            >
-                                <Heart className={cn("h-6 w-6", isLiked && "fill-current")} />
-                                <span className="font-mono text-base">{likeCount}</span>
-                            </button>
-                        </>
-                    )}
+                 <div className="p-4 border-b border-border flex items-center justify-between bg-muted/20">
+                  {author && (
+                    <>
+                      {/* Левая часть: аватар + текст */}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Avatar className="h-10 w-10 ring-1 ring-border flex-shrink-0">
+                          <AvatarImage src={author.profilePictureUrl || undefined} />
+                          <AvatarFallback className="bg-background text-muted-foreground">
+                            {author.nickname?.[0].toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+
+                        <div className="flex flex-col">
+                          <Link
+                            href={`/profile/${author.nickname}`}
+                            className="font-bold text-foreground hover:text-primary transition-colors"
+                          >
+                            @{author.nickname}
+                          </Link>
+
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {post.createdAt
+                              ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: ru })
+                              : "только что"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Правая часть: лайк */}
+                      <button
+                        onClick={handleLike}
+                        className={cn(
+                          "flex items-center gap-2 px-2 py-1",
+                          "bg-transparent border-none shadow-none",
+                          "hover:bg-transparent active:bg-transparent",
+                          "focus:outline-none focus-visible:ring-0",
+                          "transition-colors",
+                          isLiked
+                            ? "text-primary"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <Heart
+                          className={cn(
+                            "h-5 w-5 transition-colors",
+                            isLiked && "fill-current"
+                          )}
+                        />
+                        <span className="text-sm font-semibold">
+                          {likeCount}
+                        </span>
+                      </button>
+                    </>
+                  )}
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-5 space-y-5 comments-scrollbar">
