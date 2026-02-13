@@ -18,16 +18,6 @@ import { Textarea } from "./ui/textarea";
 import { Skeleton } from "./ui/skeleton";
 
 
-function getLikeText(count: number): string {
-    if (count % 10 === 1 && count % 100 !== 11) {
-        return 'лайк';
-    }
-    if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) {
-        return 'лайка';
-    }
-    return 'лайков';
-}
-
 export function PostView({ post, author }: { post: Post, author: UserProfile | null }) {
     const mediaUrl = post.mediaUrls && post.mediaUrls[0];
     const mediaType = post.mediaTypes && post.mediaTypes[0];
@@ -181,32 +171,42 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
             {/* Right Column */}
             <div className="w-full md:w-1/2 flex flex-col bg-card">
                 <div className="p-4 border-b">
-                    {author ? (
-                         <div className="flex items-center gap-3">
-                            <Link href={`/profile/${author.nickname}`} className="flex-shrink-0">
-                                 <Avatar className="h-10 w-10">
-                                    <AvatarImage src={author.profilePictureUrl ?? undefined} alt={author.nickname} />
-                                    <AvatarFallback>{author.nickname[0].toUpperCase()}</AvatarFallback>
-                                 </Avatar>
-                            </Link>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-foreground truncate">
-                                    <Link href={`/profile/${author.nickname}`}>{author.nickname}</Link>
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                    {post.createdAt ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: ru }) : 'только что'}
-                                </p>
+                    <div className="flex justify-between items-center">
+                        {author ? (
+                             <div className="flex items-center gap-3">
+                                <Link href={`/profile/${author.nickname}`} className="flex-shrink-0">
+                                     <Avatar className="h-10 w-10">
+                                        <AvatarImage src={author.profilePictureUrl ?? undefined} alt={author.nickname} />
+                                        <AvatarFallback>{author.nickname[0].toUpperCase()}</AvatarFallback>
+                                     </Avatar>
+                                </Link>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-foreground truncate">
+                                        <Link href={`/profile/${author.nickname}`}>{author.nickname}</Link>
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {post.createdAt ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: ru }) : 'только что'}
+                                    </p>
+                                </div>
                             </div>
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-3">
-                           <Skeleton className="h-10 w-10 rounded-full" />
-                           <div className="flex-1 space-y-2">
-                               <Skeleton className="h-4 w-24" />
-                               <Skeleton className="h-3 w-16" />
+                        ) : (
+                            <div className="flex items-center gap-3 flex-1">
+                               <Skeleton className="h-10 w-10 rounded-full" />
+                               <div className="flex-1 space-y-2">
+                                   <Skeleton className="h-4 w-24" />
+                                   <Skeleton className="h-3 w-16" />
+                               </div>
                            </div>
-                       </div>
-                    )}
+                        )}
+                        <div className="flex items-center gap-2">
+                            <Button variant="ghost" size="icon" onClick={handleLike}>
+                                <Heart className={cn("h-6 w-6 transition-colors", isLiked && "fill-destructive text-destructive")} />
+                            </Button>
+                            <p className="text-sm font-semibold text-muted-foreground">
+                                {likeCount}
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="p-4 flex-1 overflow-y-auto">
@@ -253,16 +253,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                     </div>
                 </div>
 
-                <div className="mt-auto p-4 border-t space-y-4">
-                    <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" onClick={handleLike}>
-                            <Heart className={cn("h-6 w-6 transition-colors", isLiked && "fill-destructive text-destructive")} />
-                        </Button>
-                        <p className="text-sm font-semibold text-muted-foreground">
-                            {likeCount} {getLikeText(likeCount)}
-                        </p>
-                    </div>
-
+                <div className="mt-auto p-4 border-t">
                     {userProfile && (
                         <form onSubmit={handleCommentSubmit} className="flex items-start gap-3">
                             <Avatar className="h-8 w-8">
