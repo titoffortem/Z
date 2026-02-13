@@ -15,7 +15,6 @@ import { Button } from "./ui/button";
 import { Heart, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Textarea } from "./ui/textarea";
-import { Separator } from "./ui/separator";
 import { Skeleton } from "./ui/skeleton";
 
 
@@ -158,27 +157,31 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
 
     return (
         <div className="flex flex-col md:flex-row max-h-[90vh] w-full max-w-4xl mx-auto rounded-lg overflow-hidden">
-            {/* Media side */}
-            <div className="w-full md:w-1/2 bg-muted flex items-center justify-center overflow-hidden">
-                {mediaType === 'image' && mediaUrl ? (
-                    <div className="relative w-full aspect-square md:h-full">
-                        <Image src={mediaUrl} alt={post.caption || "Изображение записи"} fill className="object-contain" />
-                    </div>
-                ) : mediaType === 'video' && mediaUrl ? (
-                    <video src={mediaUrl} className="w-full h-full object-contain" controls autoPlay muted loop playsInline />
+            {/* Left Column */}
+            <div className="w-full md:w-1/2 flex flex-col bg-card border-r border-border">
+                {mediaUrl ? (
+                    <>
+                        <div className="flex-1 relative bg-muted flex items-center justify-center min-h-0">
+                            {mediaType === 'image' && <Image src={mediaUrl} alt={post.caption || "Изображение записи"} fill className="object-contain" />}
+                            {mediaType === 'video' && <video src={mediaUrl} className="w-full h-full object-contain" controls autoPlay muted loop playsInline />}
+                        </div>
+                        {post.caption && (
+                            <div className="h-1/3 flex-none p-4 border-t border-border overflow-y-auto">
+                                <p className="text-sm text-foreground/90 whitespace-pre-wrap">{post.caption}</p>
+                            </div>
+                        )}
+                    </>
                 ) : (
-                    <div className="p-4 h-full w-full flex items-center justify-center">
-                        <p className="text-foreground break-words text-center">
-                            {post.caption}
-                        </p>
+                    <div className="h-full flex items-center justify-center p-6 overflow-y-auto">
+                        <p className="text-foreground/90 whitespace-pre-wrap text-center">{post.caption}</p>
                     </div>
                 )}
             </div>
 
-            {/* Info side */}
+            {/* Right Column */}
             <div className="w-full md:w-1/2 flex flex-col bg-card">
                 <div className="p-4 border-b">
-                    {author && (
+                    {author ? (
                          <div className="flex items-center gap-3">
                             <Link href={`/profile/${author.nickname}`} className="flex-shrink-0">
                                  <Avatar className="h-10 w-10">
@@ -195,29 +198,18 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                 </p>
                             </div>
                         </div>
+                    ) : (
+                        <div className="flex items-center gap-3">
+                           <Skeleton className="h-10 w-10 rounded-full" />
+                           <div className="flex-1 space-y-2">
+                               <Skeleton className="h-4 w-24" />
+                               <Skeleton className="h-3 w-16" />
+                           </div>
+                       </div>
                     )}
                 </div>
 
                 <div className="p-4 flex-1 overflow-y-auto">
-                    {mediaUrl && post.caption && author && (
-                         <div className="flex items-start gap-3 mb-4">
-                            <Link href={`/profile/${author.nickname}`} className="flex-shrink-0">
-                                <Avatar className="h-8 w-8">
-                                    <AvatarImage src={author.profilePictureUrl ?? undefined} alt={author.nickname} />
-                                    <AvatarFallback>{author.nickname[0].toUpperCase()}</AvatarFallback>
-                                </Avatar>
-                            </Link>
-                            <div>
-                                <p className="text-sm">
-                                    <Link href={`/profile/${author.nickname}`} className="font-semibold text-foreground">{author.nickname}</Link>
-                                    <span className="ml-2 text-foreground/90">{post.caption}</span>
-                                </p>
-                            </div>
-                        </div>
-                    )}
-
-                    {(mediaUrl && post.caption && (comments.length > 0 || commentsLoading)) && <Separator className="mb-4" />}
-
                     <div className="space-y-4">
                         {commentsLoading && (
                             [...Array(3)].map((_, i) => (
