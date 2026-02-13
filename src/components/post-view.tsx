@@ -148,12 +148,13 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     return (
         <div className="flex flex-col md:flex-row h-[90vh] w-full max-w-5xl mx-auto rounded-xl overflow-hidden relative bg-background border border-border shadow-2xl">
             
+            {/* ЛЕВАЯ ЧАСТЬ (Контент) */}
             <div className="w-full md:w-1/2 h-full flex flex-col border-r border-border relative overflow-hidden">
                 
                 {mediaUrl && (
                     <div 
                         className={cn(
-                            "cursor-pointer transition-all duration-500 ease-in-out bg-muted flex items-center justify-center overflow-hidden group",
+                            "cursor-pointer transition-all duration-500 ease-in-out bg-black/20 flex items-center justify-center overflow-hidden group",
                             imageExpanded 
                                 ? "absolute inset-0 z-[100] w-full h-full bg-background/95" 
                                 : "basis-1/2 w-full relative border-b border-border"
@@ -179,6 +180,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                     </div>
                 )}
 
+                {/* ТЕКСТОВЫЙ БЛОК (Нижние 50%) */}
                 <div className={cn(
                     "p-6 overflow-y-auto bg-background custom-scrollbar transition-all",
                     mediaUrl ? "basis-1/2" : "h-full",
@@ -190,12 +192,14 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                 </div>
             </div>
 
+            {/* ПРАВАЯ ЧАСТЬ (Социалка) */}
             <div className={cn(
                 "w-full md:w-1/2 flex flex-col bg-card h-full transition-opacity duration-300",
                 imageExpanded ? "opacity-0 pointer-events-none" : "opacity-100"
             )}>
+                {/* Автор и Лайки */}
                 <div className="p-4 border-b border-border flex items-center justify-between bg-muted/20">
-                    {author ? (
+                    {author && (
                         <div className="flex items-center gap-3">
                             <Avatar className="h-10 w-10 ring-1 ring-border">
                                 <AvatarImage src={author.profilePictureUrl || undefined} />
@@ -210,7 +214,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                 </p>
                             </div>
                         </div>
-                    ) : null}
+                    )}
                     <Button 
                         variant="ghost" 
                         size="sm" 
@@ -225,6 +229,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                     </Button>
                 </div>
 
+                {/* Комментарии */}
                 <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar">
                     {commentsLoading ? (
                         <div className="flex justify-center py-10"><Loader2 className="animate-spin text-primary" /></div>
@@ -239,7 +244,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                 </Avatar>
                                 <div className="flex-1 min-w-0">
                                     <div className="bg-muted/50 rounded-2xl px-4 py-2 inline-block max-w-full border border-border">
-                                        <p className="text-xs font-bold text-primary/70 mb-0.5">@{comment.author?.nickname || 'user'}</p>
+                                        <p className="text-xs font-bold text-foreground mb-0.5">@{comment.author?.nickname || 'user'}</p>
                                         <p className="text-sm text-foreground break-words">{comment.text}</p>
                                     </div>
                                 </div>
@@ -248,25 +253,38 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                     )}
                 </div>
 
-                <div className="p-4 bg-muted/10 border-t border-border">
-                    <form onSubmit={handleCommentSubmit} className="flex items-end gap-2 bg-background rounded-2xl p-2 border border-border">
-                        <Textarea 
-                            value={newComment}
-                            onChange={(e) => setNewComment(e.target.value)}
-                            placeholder="Добавить комментарий..."
-                            className="min-h-[40px] max-h-[150px] resize-none bg-transparent border-none focus-visible:ring-0 text-sm py-2"
-                            rows={1}
-                        />
-                        <Button 
-                            type="submit" 
-                            size="sm" 
-                            className="rounded-xl h-10 bg-primary text-primary-foreground"
-                            disabled={!newComment.trim() || isSubmittingComment}
-                        >
-                            {isSubmittingComment ? <Loader2 className="animate-spin h-4 w-4"/> : 'ОК'}
-                        </Button>
-                    </form>
-                </div>
+                {/* Ввод сообщения */}
+                {userProfile && (
+                    <div className="p-4 bg-muted/10 border-t border-border">
+                        <form onSubmit={handleCommentSubmit} className="flex items-end gap-2 bg-background rounded-2xl p-2 border border-border">
+                             <Avatar className="h-8 w-8 self-start mt-1">
+                                <AvatarImage src={userProfile.profilePictureUrl ?? undefined} />
+                                <AvatarFallback>{userProfile.nickname?.[0].toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            <Textarea 
+                                value={newComment}
+                                onChange={(e) => setNewComment(e.target.value)}
+                                placeholder="Добавить комментарий..."
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        handleCommentSubmit(e as any);
+                                    }
+                                }}
+                                className="min-h-[40px] max-h-[120px] resize-none bg-transparent border-none focus-visible:ring-0 text-sm py-2"
+                                rows={1}
+                            />
+                            <Button 
+                                type="submit" 
+                                size="sm" 
+                                className="rounded-xl h-10 bg-primary text-primary-foreground"
+                                disabled={!newComment.trim() || isSubmittingComment}
+                            >
+                                {isSubmittingComment ? <Loader2 className="animate-spin h-4 w-4"/> : 'ОК'}
+                            </Button>
+                        </form>
+                    </div>
+                )}
             </div>
         </div>
     );
