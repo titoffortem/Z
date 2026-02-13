@@ -39,7 +39,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
         setLikeCount(post.likedBy?.length ?? 0);
     }, [post, user]);
 
-    React.useEffect(() => {
+     React.useEffect(() => {
         if (!firestore || !post.id) return;
 
         setCommentsLoading(true);
@@ -148,16 +148,15 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     return (
         <div className="flex flex-col md:flex-row h-[90vh] w-full max-w-5xl mx-auto rounded-xl overflow-hidden relative bg-background border border-border shadow-2xl">
             
-            {/* ЛЕВАЯ ЧАСТЬ (Контент) */}
             <div className="w-full md:w-1/2 h-full flex flex-col border-r border-border relative overflow-hidden">
                 
                 {mediaUrl && (
                     <div 
                         className={cn(
-                            "cursor-pointer transition-all duration-500 ease-in-out bg-black/20 flex items-center justify-center overflow-hidden group",
+                            "cursor-pointer transition-all duration-500 ease-in-out bg-black/20 flex items-center justify-center overflow-hidden group basis-1/2 flex-shrink-0",
                             imageExpanded 
-                                ? "absolute inset-0 z-[100] w-full h-full bg-background/95" 
-                                : "basis-1/2 w-full relative border-b border-border"
+                                ? "absolute inset-0 z-[100] w-full h-full" 
+                                : "relative"
                         )}
                         onClick={() => setImageExpanded(!imageExpanded)}
                     >
@@ -180,10 +179,9 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                     </div>
                 )}
 
-                {/* ТЕКСТОВЫЙ БЛОК (Нижние 50%) */}
                 <div className={cn(
-                    "p-6 overflow-y-auto bg-background custom-scrollbar transition-all",
-                    mediaUrl ? "basis-1/2" : "h-full",
+                    "p-6 overflow-y-auto bg-background custom-scrollbar transition-all flex-1 min-h-0",
+                    !mediaUrl && "basis-full",
                     imageExpanded && "opacity-0 pointer-events-none"
                 )}>
                     <p className="text-base md:text-lg leading-relaxed text-foreground whitespace-pre-wrap">
@@ -192,15 +190,13 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                 </div>
             </div>
 
-            {/* ПРАВАЯ ЧАСТЬ (Социалка) */}
             <div className={cn(
                 "w-full md:w-1/2 flex flex-col bg-card h-full transition-opacity duration-300",
                 imageExpanded ? "opacity-0 pointer-events-none" : "opacity-100"
             )}>
-                {/* Автор и Лайки */}
-                <div className="p-4 border-b border-border flex items-center justify-between bg-muted/20">
+                <div className="p-4 border-b border-border bg-muted/20">
                     {author && (
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-start gap-3">
                             <Avatar className="h-10 w-10 ring-1 ring-border">
                                 <AvatarImage src={author.profilePictureUrl || undefined} />
                                 <AvatarFallback className="bg-background text-muted-foreground">{author.nickname?.[0].toUpperCase()}</AvatarFallback>
@@ -212,24 +208,23 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                 <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">
                                     {post.createdAt ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: ru }) : 'только что'}
                                 </p>
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={handleLike} 
+                                    className={cn(
+                                        "gap-2 -ml-3 mt-1",
+                                        isLiked ? "text-primary" : "text-muted-foreground"
+                                    )}
+                                >
+                                    <Heart className={cn("h-5 w-5", isLiked && "fill-current")} />
+                                    <span className="font-mono text-sm">{likeCount}</span>
+                                </Button>
                             </div>
                         </div>
                     )}
-                    <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={handleLike} 
-                        className={cn(
-                            "gap-2 rounded-full px-4",
-                            isLiked ? "text-primary" : "text-muted-foreground"
-                        )}
-                    >
-                        <Heart className={cn("h-5 w-5", isLiked && "fill-current")} />
-                        <span className="font-mono text-sm">{likeCount}</span>
-                    </Button>
                 </div>
 
-                {/* Комментарии */}
                 <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar">
                     {commentsLoading ? (
                         <div className="flex justify-center py-10"><Loader2 className="animate-spin text-primary" /></div>
@@ -253,7 +248,6 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                     )}
                 </div>
 
-                {/* Ввод сообщения */}
                 {userProfile && (
                     <div className="p-4 bg-muted/10 border-t border-border">
                         <form onSubmit={handleCommentSubmit} className="flex items-end gap-2 bg-background rounded-2xl p-2 border border-border">
