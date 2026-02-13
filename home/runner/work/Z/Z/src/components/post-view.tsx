@@ -190,40 +190,44 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                 "w-full md:w-1/2 flex flex-col bg-card h-full",
                 isImageExpanded && "hidden"
             )}>
-                <div className="p-4 border-b border-border flex items-center gap-3 bg-muted/20">
+                {/* 1. Хедер: Аватар + (Ник и Лайк в одну строку) */}
+                <div className="p-4 border-b border-border flex items-center gap-3 bg-muted/10">
                     {author && (
                         <>
+                            {/* Аватар */}
                             <Avatar className="h-10 w-10 ring-1 ring-border flex-shrink-0">
                                 <AvatarImage src={author.profilePictureUrl || undefined} alt={author.nickname} />
-                                <AvatarFallback className="bg-background text-muted-foreground">{author.nickname?.[0].toUpperCase()}</AvatarFallback>
+                                <AvatarFallback className="bg-background text-muted-foreground">
+                                    {author.nickname?.[0].toUpperCase()}
+                                </AvatarFallback>
                             </Avatar>
                             
-                            {/* Обертка для ника, лайка и даты */}
+                            {/* Блок информации */}
                             <div className="flex flex-col min-w-0">
-                                <div className="flex items-center gap-2"> {/* Контейнер для Ника + Лайка */}
+                                <div className="flex items-center gap-2 w-fit"> {/* w-fit запрещает растягиваться */}
                                     <Link 
                                         href={`/profile/${author.nickname}`} 
-                                        className="font-bold text-foreground hover:text-primary transition-colors truncate max-w-[120px] sm:max-w-none block"
+                                        className="font-bold text-foreground hover:text-primary transition-colors truncate max-w-[150px]"
                                     >
                                         @{author.nickname}
                                     </Link>
                                     
-                                    {/* Кнопка лайка с рамкой как на скрине */}
-                                    <Button 
-                                        variant="outline" 
-                                        size="sm"
-                                        onClick={handleLike} 
+                                    {/* Кнопка лайка СРАЗУ за ником */}
+                                    <button 
+                                        onClick={handleLike}
                                         className={cn(
-                                            "h-7 px-2 gap-1.5 border-border bg-background/40 hover:bg-background/60 transition-all",
-                                            isLiked ? "text-primary border-primary/50" : "text-muted-foreground"
+                                            "flex items-center gap-1 px-2 py-0.5 rounded-md border transition-all",
+                                            isLiked 
+                                                ? "bg-primary/10 border-primary/30 text-primary" 
+                                                : "bg-background/40 border-border text-muted-foreground hover:border-muted-foreground/50"
                                         )}
                                     >
                                         <Heart className={cn("h-3.5 w-3.5", isLiked && "fill-current")} />
-                                        <span className="font-mono text-xs">{likeCount}</span>
-                                    </Button>
+                                        <span className="font-mono text-xs font-bold">{likeCount}</span>
+                                    </button>
                                 </div>
-                                
-                                {/* Дата под ними */}
+
+                                {/* Дата под ником и лайком */}
                                 <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">
                                     {post.createdAt ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: ru }) : 'только что'}
                                 </p>
