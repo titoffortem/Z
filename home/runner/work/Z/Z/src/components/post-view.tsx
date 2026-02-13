@@ -149,18 +149,18 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
         <div className="flex flex-col md:flex-row h-[90vh] w-full max-w-5xl mx-auto rounded-xl overflow-hidden relative bg-background border border-border shadow-2xl">
             
             <div className={cn(
-                "h-full border-r border-border bg-background transition-all duration-300 relative",
-                "w-full md:w-1/2",
-                isImageExpanded && "w-full md:w-full"
+                "relative h-full border-r border-border bg-background transition-all duration-300 md:w-1/2",
+                isImageExpanded ? "w-full overflow-hidden" : "w-full"
             )}>
+                {/* Scrollable area for content */}
                 <div className={cn(
                     "absolute inset-0 overflow-y-auto custom-scrollbar",
-                    isImageExpanded && "hidden"
+                    isImageExpanded && "hidden" // Hide scroll area when image is expanded
                 )}>
                     {mediaUrl && (
                         <div 
                             className="relative w-full aspect-square bg-muted cursor-pointer"
-                            onClick={() => setIsImageExpanded(true)}
+                            onClick={() => mediaType === 'image' && setIsImageExpanded(true)}
                         >
                             {mediaType === 'image' && (
                                 <Image src={mediaUrl} alt="Контент" fill className="object-contain" priority/>
@@ -179,6 +179,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                     )}
                 </div>
 
+                {/* Expanded image view */}
                 {isImageExpanded && mediaUrl && mediaType === 'image' && (
                      <div 
                         className="w-full h-full bg-black/50 cursor-pointer flex items-center justify-center"
@@ -197,7 +198,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
 
             <div className={cn(
                 "w-full md:w-1/2 flex flex-col bg-card h-full",
-                isImageExpanded && "hidden md:flex"
+                isImageExpanded && "hidden" // Hide comments when image is expanded
             )}>
                 <div className="p-4 border-b border-border flex items-center gap-3 bg-muted/20">
                     {author && (
@@ -206,9 +207,9 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                 <AvatarImage src={author.profilePictureUrl || undefined} alt={author.nickname} />
                                 <AvatarFallback className="bg-background text-muted-foreground">{author.nickname?.[0].toUpperCase()}</AvatarFallback>
                             </Avatar>
-                            <div className="flex-grow min-w-0">
+                            <div className="min-w-0">
                                 <div className="flex items-center gap-2">
-                                    <Link href={`/profile/${author.nickname}`} className="font-bold text-foreground hover:text-primary transition-colors block truncate">
+                                    <Link href={`/profile/${author.nickname}`} className="font-bold text-foreground hover:text-primary transition-colors">
                                         @{author.nickname}
                                     </Link>
                                     <Button 
