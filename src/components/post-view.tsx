@@ -161,19 +161,19 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
             <div className="w-full md:w-1/2 flex flex-col bg-card border-r border-border">
                 {mediaUrl ? (
                     <>
-                        <div className="flex-1 relative bg-muted flex items-center justify-center min-h-0">
+                        <div className="relative bg-muted flex items-center justify-center w-full aspect-square">
                             {mediaType === 'image' && <Image src={mediaUrl} alt={post.caption || "Изображение записи"} fill className="object-contain" />}
                             {mediaType === 'video' && <video src={mediaUrl} className="w-full h-full object-contain" controls autoPlay muted loop playsInline />}
                         </div>
                         {post.caption && (
-                             <div className="p-4 border-t">
+                             <div className="flex-1 p-4 border-t overflow-y-auto min-h-0">
                                 <p className="text-sm text-foreground/90 whitespace-pre-wrap">{post.caption}</p>
                             </div>
                         )}
                     </>
                 ) : (
                     <div className="h-full p-6 overflow-y-auto">
-                        <p className="text-foreground/90 whitespace-pre-wrap">{post.caption}</p>
+                        <p className="text-foreground/90 whitespace-pre-wrap text-left">{post.caption}</p>
                     </div>
                 )}
             </div>
