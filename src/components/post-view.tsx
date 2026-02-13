@@ -149,7 +149,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
             
             <div className={cn(
                 "h-full border-r border-border bg-background transition-all duration-300 relative md:w-1/2",
-                isImageExpanded ? "w-full overflow-hidden" : "w-full overflow-y-auto comments-scrollbar"
+                isImageExpanded ? "w-full overflow-hidden" : "w-full overflow-y-auto custom-scrollbar"
             )}>
                 {mediaUrl && (
                     <div 
@@ -188,48 +188,48 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                 "w-full md:w-1/2 flex flex-col bg-card h-full",
                 isImageExpanded && "hidden"
             )}>
-                {/* 1. Header: Аватар + Информация */}
-                <div className="p-4 border-b border-border flex items-center justify-start gap-3 bg-muted/20">
+                <div className="p-4 border-b border-border flex items-center justify-between bg-muted/20">
                     {author && (
                         <>
-                            {/* Аватар */}
+                        {/* Левая часть: аватар + текст */}
+                        <div className="flex items-center gap-3 min-w-0">
                             <Avatar className="h-10 w-10 ring-1 ring-border flex-shrink-0">
-                                <AvatarImage src={author.profilePictureUrl || undefined} alt={author.nickname} />
-                                <AvatarFallback className="bg-background text-muted-foreground">
-                                    {author.nickname?.[0].toUpperCase()}
-                                </AvatarFallback>
+                            <AvatarImage src={author.profilePictureUrl || undefined} alt={author.nickname}/>
+                            <AvatarFallback className="bg-background text-muted-foreground">
+                                {author.nickname?.[0].toUpperCase()}
+                            </AvatarFallback>
                             </Avatar>
-                            
-                            {/* Контейнер для текста и кнопки */}
-                            <div className="flex flex-col min-w-0 items-start">
-                                <div className="flex items-center gap-2"> {/* Кнопка лайка теперь ЗДЕСЬ, сразу за ником */}
-                                    <Link 
-                                        href={`/profile/${author.nickname}`} 
-                                        className="font-bold text-foreground hover:text-primary transition-colors truncate max-w-[150px] sm:max-w-none"
-                                    >
-                                        @{author.nickname}
-                                    </Link>
-                                    
-                                    {/* Кнопка лайка БЕЗ ml-auto */}
-                                    <button 
-                                        onClick={handleLike}
-                                        className={cn(
-                                            "flex items-center gap-1 px-2 py-0.5 rounded-md border transition-all flex-shrink-0",
-                                            isLiked 
-                                                ? "bg-primary/10 border-primary/30 text-primary" 
-                                                : "bg-background/40 border-border text-muted-foreground hover:border-muted-foreground/50"
-                                        )}
-                                    >
-                                        <Heart className={cn("h-3 w-3", isLiked && "fill-current")} />
-                                        <span className="font-mono text-[11px] font-bold">{likeCount}</span>
-                                    </button>
-                                </div>
 
-                                {/* Дата под ником и лайком */}
-                                <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">
-                                    {post.createdAt ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: ru }) : 'только что'}
-                                </p>
+                            <div className="flex flex-col">
+                            <Link
+                                href={`/profile/${author.nickname}`}
+                                className="font-bold text-foreground hover:text-primary transition-colors"
+                            >
+                                @{author.nickname}
+                            </Link>
+
+                            <p className="text-xs text-muted-foreground mt-1">
+                                {post.createdAt
+                                ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: ru })
+                                : "только что"}
+                            </p>
                             </div>
+                        </div>
+
+                        {/* Правая часть: лайк */}
+                        <button
+                            onClick={handleLike}
+                            className={cn(
+                            "flex items-center gap-2 px-4 py-2 rounded-xl border transition-all",
+                            "text-sm font-semibold",
+                            isLiked
+                                ? "bg-primary/10 border-primary/40 text-primary"
+                                : "bg-background border-border text-muted-foreground hover:border-muted-foreground/50"
+                            )}
+                        >
+                            <Heart className={cn("h-5 w-5", isLiked && "fill-current")} />
+                            <span>{likeCount}</span>
+                        </button>
                         </>
                     )}
                 </div>
