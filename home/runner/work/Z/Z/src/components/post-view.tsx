@@ -157,7 +157,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     };
 
     return (
-        <div className="flex flex-col md:flex-row h-[90vh] w-full max-w-4xl mx-auto rounded-lg overflow-hidden">
+        <div className="flex flex-col md:flex-row max-h-[90vh] w-full max-w-4xl mx-auto rounded-lg overflow-hidden">
             {/* Media side */}
             <div className="w-full md:w-1/2 bg-muted flex items-center justify-center overflow-hidden">
                 {mediaType === 'image' && mediaUrl ? (
@@ -199,7 +199,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                 </div>
 
                 <div className="p-4 flex-1 overflow-y-auto">
-                    {mediaUrl && post.caption && author && (
+                    {post.caption && author && (
                          <div className="flex items-start gap-3 mb-4">
                             <Link href={`/profile/${author.nickname}`} className="flex-shrink-0">
                                 <Avatar className="h-8 w-8">
@@ -216,7 +216,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                         </div>
                     )}
 
-                    {(mediaUrl && post.caption && (comments.length > 0 || commentsLoading)) && <Separator className="mb-4" />}
+                    {(post.caption && (comments.length > 0 || commentsLoading)) && <Separator className="mb-4" />}
 
                     <div className="space-y-4">
                         {commentsLoading && (
