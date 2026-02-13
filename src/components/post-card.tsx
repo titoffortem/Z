@@ -62,7 +62,7 @@ export function PostCard({ post }: { post: Post }) {
                 <div className="flex flex-col h-full bg-card rounded-lg overflow-hidden border cursor-pointer transition-transform hover:scale-[1.02]">
                     <div className="relative aspect-square w-full flex items-center justify-center bg-muted overflow-hidden">
                         {mediaType === 'image' && mediaUrl ? (
-                            <Image src={mediaUrl} alt={post.caption || "Изображение записи"} fill className="object-cover" />
+                            <Image src={mediaUrl} alt={post.caption || "Изображение записи"} fill className="object-contain" />
                         ) : mediaType === 'video' && mediaUrl ? (
                             <video src={mediaUrl} className="w-full h-full object-cover" muted loop playsInline />
                         ) : (
@@ -99,7 +99,7 @@ export function PostCard({ post }: { post: Post }) {
                     </div>
                 </div>
             </DialogTrigger>
-            <DialogContent className="p-0 border-0 max-w-5xl">
+            <DialogContent className="p-0 border-0 max-w-5xl bg-card">
                  <DialogTitle className="sr-only">Просмотр записи</DialogTitle>
                  <DialogDescription className="sr-only">
                     {`Подробный вид записи от пользователя ${author?.nickname || '...'} с подписью: ${post.caption || 'изображение'}`}

@@ -149,16 +149,16 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
         <div className="flex flex-col md:flex-row h-[90vh] w-full max-w-5xl mx-auto rounded-xl overflow-hidden relative bg-background border border-border shadow-2xl">
             
             <div className={cn(
-                "w-full h-full flex flex-col border-r border-border relative overflow-hidden transition-all duration-300 ease-in-out",
+                "w-full md:w-1/2 h-full flex flex-col border-r border-border relative overflow-hidden transition-[width] duration-300 ease-in-out",
                 imageExpanded && mediaUrl ? "md:w-full" : "md:w-1/2"
             )}>
                 
                 {mediaUrl && (
                     <div 
                         className={cn(
-                            "cursor-pointer transition-all duration-300 ease-in-out bg-black/20 flex items-center justify-center overflow-hidden group",
+                            "cursor-pointer transition-all duration-500 ease-in-out bg-black/20 flex items-center justify-center overflow-hidden group",
                             imageExpanded 
-                                ? "h-full w-full relative" 
+                                ? "absolute inset-0 z-[100] w-full h-full bg-background/95" 
                                 : "basis-1/2 w-full relative border-b border-border"
                         )}
                         onClick={() => setImageExpanded(!imageExpanded)}
@@ -169,8 +169,8 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                 alt="Контент" 
                                 fill 
                                 className={cn(
-                                    "transition-all duration-300", 
-                                    imageExpanded ? "object-contain" : "object-cover"
+                                    "transition-all duration-500", 
+                                    "object-contain"
                                 )} 
                                 priority
                             />
@@ -185,7 +185,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                 <div className={cn(
                     "p-6 overflow-y-auto bg-background custom-scrollbar transition-all",
                     mediaUrl ? "basis-1/2" : "h-full",
-                    imageExpanded && "hidden"
+                    imageExpanded && "opacity-0 pointer-events-none"
                 )}>
                     <p className="text-base md:text-lg leading-relaxed text-foreground whitespace-pre-wrap">
                         {post.caption}
@@ -194,8 +194,8 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
             </div>
 
             <div className={cn(
-                "w-full md:w-1/2 flex-col bg-card h-full transition-all duration-300 ease-in-out",
-                imageExpanded && mediaUrl ? "hidden" : "flex"
+                "w-full md:w-1/2 flex flex-col bg-card h-full transition-opacity duration-300",
+                imageExpanded && mediaUrl ? "opacity-0 pointer-events-none" : "opacity-100"
             )}>
                 <div className="p-4 border-b border-border flex items-start gap-3 bg-muted/20">
                     {author && (

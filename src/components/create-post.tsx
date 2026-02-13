@@ -196,7 +196,7 @@ export function CreatePost() {
                   </FormControl>
                   {preview && (
                      <div className="relative w-full aspect-video">
-                        <Image src={preview} alt="Preview" fill objectFit='cover' className="rounded-md" />
+                        <Image src={preview} alt="Preview" fill className="object-contain rounded-md" />
                         <Button type="button" size="icon" variant="destructive" className="absolute top-2 right-2 h-7 w-7" onClick={() => {form.setValue('image', undefined); setPreview(null)}}>
                             <Plus className="h-4 w-4 rotate-45" />
                         </Button>
