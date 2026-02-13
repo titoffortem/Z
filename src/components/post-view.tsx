@@ -149,18 +149,17 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
         <div className="flex flex-col md:flex-row h-[90vh] w-full max-w-5xl mx-auto rounded-xl overflow-hidden relative bg-background border border-border shadow-2xl">
             
             <div className={cn(
-                "h-full border-r border-border bg-background transition-all duration-300",
-                isImageExpanded ? "w-full" : "w-full md:w-1/2",
-                isImageExpanded ? "overflow-hidden" : "overflow-y-auto custom-scrollbar"
+                "h-full border-r border-border bg-background transition-all duration-300 relative md:w-1/2",
+                isImageExpanded ? "w-full overflow-hidden" : "w-full overflow-y-auto custom-scrollbar"
             )}>
                 {mediaUrl && (
                     <div 
                         className={cn(
-                            "relative w-full bg-muted",
-                            mediaType === 'image' && "cursor-pointer",
-                            isImageExpanded ? "h-full" : "aspect-square"
+                            "relative w-full aspect-square bg-muted",
+                             mediaType === 'image' && "cursor-pointer",
+                             isImageExpanded && "h-full"
                         )}
-                        onClick={mediaType === 'image' ? () => setIsImageExpanded(!isImageExpanded) : undefined}
+                         onClick={mediaType === 'image' ? () => setIsImageExpanded(!isImageExpanded) : undefined}
                     >
                         {mediaType === 'image' && (
                             <Image 
@@ -176,8 +175,9 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                         )}
                     </div>
                 )}
-                {post.caption && (
-                    <div className={cn("p-6", isImageExpanded && "hidden")}>
+
+                {post.caption && !isImageExpanded && (
+                    <div className="p-6">
                         <p className="text-base md:text-lg leading-relaxed text-foreground whitespace-pre-wrap">
                             {post.caption}
                         </p>
@@ -189,16 +189,16 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                 "w-full md:w-1/2 flex flex-col bg-card h-full",
                 isImageExpanded && "hidden"
             )}>
-                <div className="p-4 border-b border-border flex items-start gap-3 bg-muted/20">
+                <div className="p-4 border-b border-border flex items-center justify-between gap-4 bg-muted/20">
                     {author && (
-                         <div>
-                            <div className="flex items-center gap-3">
-                                <Avatar className="h-10 w-10 ring-1 ring-border">
+                        <>
+                            <div className="flex items-center gap-3 min-w-0">
+                                <Avatar className="h-10 w-10 ring-1 ring-border flex-shrink-0">
                                     <AvatarImage src={author.profilePictureUrl || undefined} alt={author.nickname} />
                                     <AvatarFallback className="bg-background text-muted-foreground">{author.nickname?.[0].toUpperCase()}</AvatarFallback>
                                 </Avatar>
-                                <div>
-                                    <Link href={`/profile/${author.nickname}`} className="font-bold text-foreground hover:text-primary transition-colors">
+                                <div className="min-w-0">
+                                    <Link href={`/profile/${author.nickname}`} className="font-bold text-foreground hover:text-primary transition-colors block truncate">
                                         @{author.nickname}
                                     </Link>
                                     <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">
@@ -208,21 +208,21 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                             </div>
                             <Button 
                                 variant="ghost" 
-                                size="sm"
+                                size="default"
                                 onClick={handleLike} 
                                 className={cn(
-                                    "gap-2 -ml-3 mt-1",
+                                    "gap-2 flex-shrink-0",
                                     isLiked ? "text-primary" : "text-muted-foreground"
                                 )}
                             >
-                                <Heart className={cn("h-5 w-5", isLiked && "fill-current")} />
-                                <span className="font-mono text-sm">{likeCount}</span>
+                                <Heart className={cn("h-6 w-6", isLiked && "fill-current")} />
+                                <span className="font-mono text-base">{likeCount}</span>
                             </Button>
-                        </div>
+                        </>
                     )}
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-5 space-y-5 comments-scrollbar">
                     {commentsLoading ? (
                         <div className="flex justify-center py-10"><Loader2 className="animate-spin text-primary" /></div>
                     ) : comments.length === 0 ? (
