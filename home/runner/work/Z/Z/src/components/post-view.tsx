@@ -12,7 +12,7 @@ import { useFirestore } from "@/firebase";
 import { doc, updateDoc, arrayUnion, arrayRemove, collection, query, orderBy, onSnapshot, Timestamp, getDoc, addDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "./ui/button";
-import { Heart, Loader2, Maximize2, Minimize2 } from "lucide-react";
+import { Heart, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Textarea } from "./ui/textarea";
 
@@ -30,7 +30,6 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     const [commentsLoading, setCommentsLoading] = React.useState(true);
     const [newComment, setNewComment] = React.useState('');
     const [isSubmittingComment, setIsSubmittingComment] = React.useState(false);
-    const [imageExpanded, setImageExpanded] = React.useState(false);
 
     React.useEffect(() => {
         if (user && post.likedBy) {
@@ -148,55 +147,35 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     return (
         <div className="flex flex-col md:flex-row h-[90vh] w-full max-w-5xl mx-auto rounded-xl overflow-hidden relative bg-background border border-border shadow-2xl">
             
-            <div className={cn(
-                "w-full h-full flex flex-col border-r border-border relative overflow-hidden transition-[width] duration-300 ease-in-out",
-                imageExpanded && mediaUrl ? "md:w-full" : "md:w-1/2"
-            )}>
-                
+            {/* ЛЕВАЯ ЧАСТЬ (Контент) - единая прокручиваемая область */}
+            <div className="w-full md:w-1/2 h-full border-r border-border overflow-y-auto custom-scrollbar">
                 {mediaUrl && (
-                    <div 
-                        className={cn(
-                            "cursor-pointer transition-all duration-500 ease-in-out bg-black/20 flex items-center justify-center overflow-hidden group",
-                            imageExpanded 
-                                ? "absolute inset-0 z-[100] w-full h-full bg-background/95" 
-                                : "basis-1/2 w-full relative border-b border-border"
-                        )}
-                        onClick={() => setImageExpanded(!imageExpanded)}
-                    >
+                    <div className="relative w-full aspect-square bg-muted">
                         {mediaType === 'image' && (
                             <Image 
                                 src={mediaUrl} 
                                 alt="Контент" 
                                 fill 
-                                className={cn(
-                                    "transition-all duration-500", 
-                                    "object-contain"
-                                )} 
+                                className="object-contain" 
                                 priority
                             />
                         )}
-                        
-                        <div className="absolute top-4 right-4 bg-background/60 backdrop-blur-md p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-[110]">
-                            {imageExpanded ? <Minimize2 className="h-5 w-5"/> : <Maximize2 className="h-5 w-5"/>}
-                        </div>
+                        {mediaType === 'video' && (
+                            <video src={mediaUrl} className="w-full h-full object-contain" controls autoPlay loop playsInline />
+                        )}
                     </div>
                 )}
-
-                <div className={cn(
-                    "p-6 overflow-y-auto bg-background custom-scrollbar transition-all",
-                    mediaUrl ? "basis-1/2" : "h-full",
-                    imageExpanded && "opacity-0 pointer-events-none"
-                )}>
-                    <p className="text-base md:text-lg leading-relaxed text-foreground whitespace-pre-wrap">
-                        {post.caption}
-                    </p>
-                </div>
+                {post.caption && (
+                    <div className="p-6">
+                        <p className="text-base md:text-lg leading-relaxed text-foreground whitespace-pre-wrap">
+                            {post.caption}
+                        </p>
+                    </div>
+                )}
             </div>
 
-            <div className={cn(
-                "w-full md:w-1/2 flex-col bg-card h-full transition-opacity duration-300",
-                imageExpanded && mediaUrl ? "hidden" : "flex"
-            )}>
+            {/* ПРАВАЯ ЧАСТЬ (Социалка) - всегда видима */}
+            <div className="w-full md:w-1/2 flex flex-col bg-card h-full">
                 <div className="p-4 border-b border-border flex items-start gap-3 bg-muted/20">
                     {author && (
                          <div>
