@@ -2,15 +2,23 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Correctly implements symmetric difference to check if a user is only adding/removing their own UID.
     function isLikingOrUnliking() {
-      // The symmetric difference between the old and new 'likedBy' sets
-      // should contain only the current user's UID.
-      let diff = request.resource.data.likedBy.toSet().symmetricDifference(resource.data.likedBy.toSet());
-      return diff.size() == 1 && diff.has(request.auth.uid);
+      // Ensure the fields exist and are lists
+      return request.resource.data.likedBy is list
+        && resource.data.likedBy is list
+        && (
+          // Compute the sets
+          let newSet = request.resource.data.likedBy.toSet();
+          let oldSet = resource.data.likedBy.toSet();
+          // The symmetric difference is (A union B) minus (A intersect B)
+          let symDifference = newSet.union(oldSet).difference(newSet.intersection(oldSet));
+          // The difference must contain exactly one item, which is the current user's UID
+          return symDifference.size() == 1 && symDifference.has(request.auth.uid);
+        );
     }
 
     // Rule for user profiles
-    // Anyone can read a profile, but only the user themselves can edit it.
     match /users/{userId} {
       allow read: if true;
       allow write: if request.auth != null && request.auth.uid == userId;
