@@ -11,7 +11,6 @@ import { useAuth } from "@/components/auth-provider";
 import { useFirestore } from "@/firebase";
 import { doc, updateDoc, arrayUnion, arrayRemove, collection, query, orderBy, onSnapshot, Timestamp, getDoc, addDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "./ui/button";
 import { Heart, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Textarea } from "./ui/textarea";
@@ -206,10 +205,10 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                     </p>
                                 </div>
                             </div>
-                             <button
+                            <button
                                 onClick={handleLike} 
                                 className={cn(
-                                    "inline-flex items-center justify-center gap-2 p-2 rounded-md transition-colors",
+                                    "inline-flex items-center justify-center gap-2 p-2 rounded-md flex-shrink-0",
                                     isLiked ? "text-primary" : "text-muted-foreground"
                                 )}
                             >
@@ -263,14 +262,13 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                 className="min-h-[40px] max-h-[120px] resize-none bg-transparent border-none focus-visible:ring-0 text-sm py-2"
                                 rows={1}
                             />
-                            <Button 
+                            <button
                                 type="submit" 
-                                size="sm" 
-                                className="rounded-xl h-10 bg-primary text-primary-foreground"
+                                className="rounded-xl h-10 bg-primary text-primary-foreground px-4 text-sm font-medium disabled:opacity-50"
                                 disabled={!newComment.trim() || isSubmittingComment}
                             >
                                 {isSubmittingComment ? <Loader2 className="animate-spin h-4 w-4"/> : 'ОК'}
-                            </Button>
+                            </button>
                         </form>
                     </div>
                 )}
