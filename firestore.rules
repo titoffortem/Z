@@ -14,9 +14,12 @@ service cloud.firestore {
       // Anyone can read posts.
       allow read: if true;
 
-      // Only the post's author can create, update, or delete it.
+      // Only the post's author can create or delete it.
       allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      
+      // Any authenticated user can update a post (for likes).
+      allow update: if request.auth != null;
     }
   }
 }

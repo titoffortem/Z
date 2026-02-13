@@ -62,6 +62,7 @@ export default function ProfilePageClient({ nickname }: { nickname: string }) {
                     id: doc.id,
                     createdAt: createdAt,
                     updatedAt: updatedAt,
+                    likedBy: data.likedBy || [],
                 } as Post;
             });
             posts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());

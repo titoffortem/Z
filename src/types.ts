@@ -17,4 +17,5 @@ export type Post = {
   mediaTypes: string[];
   createdAt: string;
   updatedAt: string;
+  likedBy: string[];
 };

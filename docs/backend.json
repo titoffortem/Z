@@ -86,6 +86,13 @@
           "type": "string",
           "description": "Timestamp indicating when the post was last updated.",
           "format": "date-time"
+        },
+        "likedBy": {
+          "type": "array",
+          "description": "An array of user IDs who have liked the post.",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [

@@ -7,10 +7,74 @@ import Image from "next/image";
 import Link from "next/link";
 import * as React from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { useAuth } from "@/components/auth-provider";
+import { useFirestore } from "@/firebase";
+import { doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "./ui/button";
+import { Heart } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+function getLikeText(count: number): string {
+    if (count % 10 === 1 && count % 100 !== 11) {
+        return 'лайк';
+    }
+    if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) {
+        return 'лайка';
+    }
+    return 'лайков';
+}
 
 export function PostView({ post, author }: { post: Post, author: UserProfile | null }) {
     const mediaUrl = post.mediaUrls && post.mediaUrls[0];
     const mediaType = post.mediaTypes && post.mediaTypes[0];
+
+    const { user } = useAuth();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+
+    const [isLiked, setIsLiked] = React.useState(false);
+    const [likeCount, setLikeCount] = React.useState(post.likedBy?.length ?? 0);
+
+    React.useEffect(() => {
+        if (user && post.likedBy) {
+            setIsLiked(post.likedBy.includes(user.uid));
+        }
+        setLikeCount(post.likedBy?.length ?? 0);
+    }, [post, user]);
+
+    const handleLike = async () => {
+        if (!user || !firestore) {
+            toast({ title: "Чтобы поставить лайк, необходимо войти.", variant: "destructive" });
+            return;
+        }
+
+        const postRef = doc(firestore, 'posts', post.id);
+        const newLikeStatus = !isLiked;
+
+        // Optimistic update
+        setIsLiked(newLikeStatus);
+        setLikeCount(currentCount => newLikeStatus ? currentCount + 1 : currentCount - 1);
+
+        try {
+            if (newLikeStatus) {
+                await updateDoc(postRef, {
+                    likedBy: arrayUnion(user.uid)
+                });
+            } else {
+                await updateDoc(postRef, {
+                    likedBy: arrayRemove(user.uid)
+                });
+            }
+        } catch (error) {
+            // Revert UI on error
+            setIsLiked(!newLikeStatus);
+            setLikeCount(currentCount => newLikeStatus ? currentCount - 1 : currentCount + 1);
+            toast({ title: "Не удалось обновить статус лайка.", description: "Попробуйте еще раз.", variant: "destructive" });
+            console.error("Error updating like status:", error);
+        }
+    };
+
 
     return (
         <div className="flex flex-col md:flex-row max-h-[90vh] w-full max-w-4xl mx-auto rounded-lg overflow-hidden">
@@ -60,8 +124,13 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                     )}
                 </div>
 
-                <div className="p-4 border-t text-center text-muted-foreground text-sm">
-                    <p>Комментарии и лайки скоро появятся снова!</p>
+                <div className="p-4 border-t flex items-center gap-2">
+                    <Button variant="ghost" size="icon" onClick={handleLike}>
+                        <Heart className={cn("h-6 w-6 transition-colors", isLiked && "fill-destructive text-destructive")} />
+                    </Button>
+                    <p className="text-sm font-semibold text-muted-foreground">
+                        {likeCount} {getLikeText(likeCount)}
+                    </p>
                 </div>
             </div>
         </div>

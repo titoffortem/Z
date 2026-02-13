@@ -37,6 +37,7 @@ export default function FeedPage() {
                     id: doc.id,
                     createdAt,
                     updatedAt,
+                    likedBy: data.likedBy || [],
                 } as Post;
             });
             setPosts(postList);

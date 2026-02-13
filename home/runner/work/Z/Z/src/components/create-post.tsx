@@ -137,6 +137,7 @@ export function CreatePost() {
           mediaTypes: mediaType ? [mediaType] : [],
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
+          likedBy: [],
         };
 
         await setDoc(doc(firestore, 'posts', postId), postData);
