@@ -189,7 +189,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                 "w-full md:w-1/2 flex flex-col bg-card h-full",
                 isImageExpanded && "hidden"
             )}>
-                <div className="p-4 border-b border-border flex items-center gap-3 bg-muted/10">
+                <div className="p-4 border-b border-border flex items-center justify-start gap-3 bg-muted/20">
                     {author && (
                         <>
                             <Avatar className="h-10 w-10 ring-1 ring-border flex-shrink-0">
@@ -199,11 +199,11 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                 </AvatarFallback>
                             </Avatar>
                             
-                            <div className="flex flex-col min-w-0">
-                                <div className="flex items-center gap-2 w-fit">
+                            <div className="flex flex-col min-w-0 items-start">
+                                <div className="flex items-center gap-2">
                                     <Link 
                                         href={`/profile/${author.nickname}`} 
-                                        className="font-bold text-foreground hover:text-primary transition-colors truncate max-w-[150px]"
+                                        className="font-bold text-foreground hover:text-primary transition-colors truncate max-w-[150px] sm:max-w-none"
                                     >
                                         @{author.nickname}
                                     </Link>
@@ -211,14 +211,14 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                     <button 
                                         onClick={handleLike}
                                         className={cn(
-                                            "flex items-center gap-1 px-2 py-0.5 rounded-md border transition-all",
+                                            "flex items-center gap-1 px-2 py-0.5 rounded-md border transition-all flex-shrink-0",
                                             isLiked 
                                                 ? "bg-primary/10 border-primary/30 text-primary" 
                                                 : "bg-background/40 border-border text-muted-foreground hover:border-muted-foreground/50"
                                         )}
                                     >
-                                        <Heart className={cn("h-3.5 w-3.5", isLiked && "fill-current")} />
-                                        <span className="font-mono text-xs font-bold">{likeCount}</span>
+                                        <Heart className={cn("h-3 w-3", isLiked && "fill-current")} />
+                                        <span className="font-mono text-[11px] font-bold">{likeCount}</span>
                                     </button>
                                 </div>
 
