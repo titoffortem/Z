@@ -189,9 +189,11 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                 "w-full md:w-1/2 flex flex-col bg-card h-full",
                 isImageExpanded && "hidden"
             )}>
+                {/* 1. Header: Аватар + Информация */}
                 <div className="p-4 border-b border-border flex items-center justify-start gap-3 bg-muted/20">
                     {author && (
                         <>
+                            {/* Аватар */}
                             <Avatar className="h-10 w-10 ring-1 ring-border flex-shrink-0">
                                 <AvatarImage src={author.profilePictureUrl || undefined} alt={author.nickname} />
                                 <AvatarFallback className="bg-background text-muted-foreground">
@@ -199,8 +201,9 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                 </AvatarFallback>
                             </Avatar>
                             
+                            {/* Контейнер для текста и кнопки */}
                             <div className="flex flex-col min-w-0 items-start">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2"> {/* Кнопка лайка теперь ЗДЕСЬ, сразу за ником */}
                                     <Link 
                                         href={`/profile/${author.nickname}`} 
                                         className="font-bold text-foreground hover:text-primary transition-colors truncate max-w-[150px] sm:max-w-none"
@@ -208,13 +211,14 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                         @{author.nickname}
                                     </Link>
                                     
+                                    {/* Кнопка лайка БЕЗ ml-auto */}
                                     <button 
                                         onClick={handleLike}
                                         className={cn(
                                             "flex items-center gap-1 px-2 py-0.5 rounded-md border transition-all flex-shrink-0",
                                             isLiked 
                                                 ? "bg-primary/10 border-primary/30 text-primary" 
-                                                : "bg-background/40 border-border text-muted-foreground hover:border-muted-foreground/50"
+                                                : "bg-background/40 border-border text-muted-foreground"
                                         )}
                                     >
                                         <Heart className={cn("h-3 w-3", isLiked && "fill-current")} />
@@ -222,6 +226,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                     </button>
                                 </div>
 
+                                {/* Дата под ником и лайком */}
                                 <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">
                                     {post.createdAt ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: ru }) : 'только что'}
                                 </p>
