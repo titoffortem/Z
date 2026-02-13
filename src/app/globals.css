@@ -99,18 +99,18 @@ body {
 
 /* Сам ползунок (бегунок) */
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: #2d4f3f; /* Темно-зеленый цвет ползунка */
+  background-color: #577F59; /* Темно-зеленый цвет ползунка */
   border-radius: 20px; /* Скругление */
   border: 1px solid #1a2e25; /* Небольшая обводка в цвет фона, чтобы он казался тоньше */
 }
 
 /* Цвет ползунка при наведении */
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: #3d6b55; /* Чуть более светлый зеленый при наведении */
+  background-color: #688e6a; /* Чуть более светлый зеленый при наведении */
 }
 
 /* Для Firefox (стандартное свойство) */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #2d4f3f transparent;
+  scrollbar-color: #577F59 transparent;
 }
