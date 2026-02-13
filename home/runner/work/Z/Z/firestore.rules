@@ -2,6 +2,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isLikingOrUnliking() {
+      // The symmetric difference between the old and new 'likedBy' sets
+      // should contain only the current user's UID.
+      let diff = request.resource.data.likedBy.toSet().symmetricDifference(resource.data.likedBy.toSet());
+      return diff.size() == 1 && diff.has(request.auth.uid);
+    }
+
     // Rule for user profiles
     // Anyone can read a profile, but only the user themselves can edit it.
     match /users/{userId} {
@@ -20,11 +27,14 @@ service cloud.firestore {
       
       // Update logic:
       // 1. The author can update any field.
-      // 2. Any other authenticated user can ONLY update the 'likedBy' field.
+      // 2. Any other authenticated user can ONLY update the 'likedBy' field by adding/removing themselves.
       allow update: if request.auth != null && (
-                    (resource.data.userId == request.auth.uid) || 
-                    (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy']))
-                  );
+        (resource.data.userId == request.auth.uid) || 
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy']) &&
+          isLikingOrUnliking()
+        )
+      );
     }
   }
 }
