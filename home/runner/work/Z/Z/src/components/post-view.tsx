@@ -9,7 +9,7 @@ import * as React from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { useAuth } from "@/components/auth-provider";
 import { useFirestore } from "@/firebase";
-import { doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
+import { doc, updateDoc, arrayUnion, arrayRemove, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "./ui/button";
 import { Heart } from "lucide-react";
@@ -59,18 +59,20 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
         try {
             if (newLikeStatus) {
                 await updateDoc(postRef, {
-                    likedBy: arrayUnion(user.uid)
+                    likedBy: arrayUnion(user.uid),
+                    updatedAt: serverTimestamp()
                 });
             } else {
                 await updateDoc(postRef, {
-                    likedBy: arrayRemove(user.uid)
+                    likedBy: arrayRemove(user.uid),
+                    updatedAt: serverTimestamp()
                 });
             }
-        } catch (error) {
+        } catch (error: any) {
             // Revert UI on error
             setIsLiked(!newLikeStatus);
             setLikeCount(currentCount => newLikeStatus ? currentCount - 1 : currentCount + 1);
-            toast({ title: "Не удалось обновить статус лайка.", description: "Попробуйте еще раз.", variant: "destructive" });
+            toast({ title: "Не удалось обновить статус лайка.", description: error.message, variant: "destructive" });
             console.error("Error updating like status:", error);
         }
     };

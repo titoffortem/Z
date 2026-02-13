@@ -27,12 +27,13 @@ service cloud.firestore {
       
       // Update logic:
       // 1. The author can update any field.
-      // 2. Any other authenticated user can ONLY update the 'likedBy' field by adding/removing themselves.
+      // 2. Any other authenticated user can ONLY like/unlike, which updates 'likedBy' and 'updatedAt'.
       allow update: if request.auth != null && (
         (resource.data.userId == request.auth.uid) || 
         (
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy']) &&
-          isLikingOrUnliking()
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy', 'updatedAt']) &&
+          isLikingOrUnliking() &&
+          request.resource.data.updatedAt == request.time
         )
       );
     }
