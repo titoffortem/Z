@@ -90,7 +90,7 @@ body {
 /* 1. Стилизация скроллбара для всего сайта (глобально) */
 html, body {
   scrollbar-width: thin;
-  scrollbar-color: #577F59 #13231c; /* Цвет ползунка и фон дорожки для Firefox */
+  scrollbar-color: #577F59 #31443B; /* Цвет ползунка и фон дорожки для Firefox */
 }
 
 /* 2. Для браузеров Chrome, Safari, Edge (webkit) */
@@ -103,19 +103,19 @@ html, body {
 
 /* Фон дорожки */
 ::-webkit-scrollbar-track {
-  background: #13231c; /* Очень темный зеленый (под фон сайта) */
+  background: #31443B; /* Задний фон */
 }
 
 /* Сам ползунок */
 ::-webkit-scrollbar-thumb {
-  background-color: #577F59; /* Твой основной темно-зеленый */
+  background-color: #577F59; /* Основной цвет */
   border-radius: 10px;
-  border: 2px solid #13231c; /* Отступ вокруг ползунка, чтобы он казался аккуратнее */
+  border: 2px solid #31443B; /* Отступ вокруг ползунка в цвет фона дорожки */
 }
 
 /* Цвет ползунка при наведении */
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #6a946c; /* Яркий зеленый при наведении (акцент) */
+  background-color: #6a946c; /* Более светлый оттенок при наведении */
 }
 
 /* 3. Специфический стиль для элементов с классом custom-scrollbar (на всякий случай) */
