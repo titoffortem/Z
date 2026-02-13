@@ -42,6 +42,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     const [commentsLoading, setCommentsLoading] = React.useState(true);
     const [newComment, setNewComment] = React.useState('');
     const [isSubmittingComment, setIsSubmittingComment] = React.useState(false);
+    const [imageExpanded, setImageExpanded] = React.useState(false);
 
     React.useEffect(() => {
         if (user && post.likedBy) {
@@ -160,13 +161,33 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
             {/* Left Column */}
             <div className="w-full md:w-1/2 flex flex-col bg-card border-r border-border">
                 {mediaUrl ? (
-                    <div className="flex-1 relative bg-muted flex items-center justify-center min-h-0">
-                        {mediaType === 'image' && <Image src={mediaUrl} alt={post.caption || "Изображение записи"} fill className="object-contain" />}
-                        {mediaType === 'video' && <video src={mediaUrl} className="w-full h-full object-contain" controls autoPlay muted loop playsInline />}
-                    </div>
+                    <>
+                        <div 
+                             className={cn(
+                                "relative bg-muted flex items-center justify-center w-full cursor-pointer transition-all duration-300",
+                                imageExpanded ? "flex-1" : "h-3/5 flex-shrink-0"
+                            )}
+                            onClick={() => setImageExpanded(!imageExpanded)}
+                        >
+                            {mediaType === 'image' && (
+                                <Image 
+                                    src={mediaUrl} 
+                                    alt={post.caption || "Изображение записи"} 
+                                    fill 
+                                    className="object-contain" 
+                                />
+                            )}
+                            {mediaType === 'video' && <video src={mediaUrl} className="w-full h-full object-contain" controls autoPlay muted loop playsInline />}
+                        </div>
+                        {post.caption && !imageExpanded && (
+                             <div className="flex-1 p-4 border-t overflow-y-auto min-h-0">
+                                <p className="text-sm text-foreground/90 whitespace-pre-wrap text-left">{post.caption}</p>
+                            </div>
+                        )}
+                    </>
                 ) : (
-                    <div className="h-full flex items-center justify-center p-6 overflow-y-auto">
-                        <p className="text-foreground/90 whitespace-pre-wrap text-center">{post.caption}</p>
+                    <div className="h-full flex items-center justify-start p-6 overflow-y-auto">
+                        <p className="text-foreground/90 whitespace-pre-wrap text-left">{post.caption}</p>
                     </div>
                 )}
             </div>
@@ -191,8 +212,8 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                     {post.createdAt ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: ru }) : 'только что'}
                                 </p>
                                  <div className="flex items-center gap-2 pt-2">
-                                    <Button variant="ghost" size="icon" onClick={handleLike}>
-                                        <Heart className={cn("h-6 w-6 transition-colors", isLiked && "fill-destructive text-destructive")} />
+                                    <Button variant="ghost" size="icon" className="-ml-2 h-8 w-8" onClick={handleLike}>
+                                        <Heart className={cn("h-5 w-5 transition-colors", isLiked && "fill-primary text-primary")} />
                                     </Button>
                                     <p className="text-sm font-semibold text-muted-foreground">
                                         {likeCount} {getLikeText(likeCount)}
@@ -206,6 +227,10 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                            <div className="flex-1 space-y-2">
                                <Skeleton className="h-4 w-24" />
                                <Skeleton className="h-3 w-16" />
+                               <div className="flex items-center gap-2 pt-2">
+                                   <Skeleton className="h-6 w-6" />
+                                   <Skeleton className="h-4 w-12" />
+                               </div>
                            </div>
                        </div>
                     )}
@@ -214,25 +239,6 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                 {/* 2. Scrollable Comments Area */}
                 <div className="p-4 flex-1 overflow-y-auto">
                     <div className="space-y-4">
-                        {post.caption && (
-                            <div className="flex items-start gap-3 pb-4 border-b mb-4">
-                                {author ? (
-                                    <Link href={`/profile/${author.nickname}`} className="flex-shrink-0">
-                                        <Avatar className="h-8 w-8">
-                                            <AvatarImage src={author.profilePictureUrl ?? undefined} alt={author.nickname} />
-                                            <AvatarFallback>{author.nickname[0].toUpperCase()}</AvatarFallback>
-                                        </Avatar>
-                                    </Link>
-                                ) : <Skeleton className="h-8 w-8 rounded-full" />}
-                                <div>
-                                    <p className="text-sm">
-                                        <Link href={`/profile/${author?.nickname}`} className="font-semibold text-foreground">{author?.nickname}</Link>
-                                        <span className="ml-2 text-foreground/90 whitespace-pre-wrap">{post.caption}</span>
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-                        
                         {commentsLoading && (
                             [...Array(3)].map((_, i) => (
                                 <div key={i} className="flex items-start gap-3">
@@ -267,7 +273,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                 </div>
                             </div>
                         ))}
-                         {!commentsLoading && comments.length === 0 && !post.caption && (
+                         {!commentsLoading && comments.length === 0 && (
                             <p className="text-sm text-muted-foreground text-center py-4">Комментариев пока нет. Будьте первым!</p>
                         )}
                     </div>
