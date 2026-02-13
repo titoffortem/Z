@@ -165,11 +165,6 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                             {mediaType === 'image' && <Image src={mediaUrl} alt={post.caption || "Изображение записи"} fill className="object-contain" />}
                             {mediaType === 'video' && <video src={mediaUrl} className="w-full h-full object-contain" controls autoPlay muted loop playsInline />}
                         </div>
-                        {post.caption && (
-                            <div className="h-1/3 flex-none p-4 border-t border-border overflow-y-auto">
-                                <p className="text-sm text-foreground/90 whitespace-pre-wrap">{post.caption}</p>
-                            </div>
-                        )}
                     </>
                 ) : (
                     <div className="h-full flex items-center justify-center p-6 overflow-y-auto">
@@ -210,7 +205,22 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                 </div>
 
                 <div className="p-4 flex-1 overflow-y-auto">
-                    <div className="space-y-4">
+                    {post.caption && (
+                        <div className="mb-4">
+                            <p className="text-sm text-foreground/90 whitespace-pre-wrap">{post.caption}</p>
+                        </div>
+                    )}
+
+                    <div className="flex items-center gap-2 mb-4 border-b pb-4">
+                        <Button variant="ghost" size="icon" onClick={handleLike}>
+                            <Heart className={cn("h-6 w-6 transition-colors", isLiked && "fill-destructive text-destructive")} />
+                        </Button>
+                        <p className="text-sm font-semibold text-muted-foreground">
+                            {likeCount} {getLikeText(likeCount)}
+                        </p>
+                    </div>
+
+                    <div className="space-y-4 pt-4">
                         {commentsLoading && (
                             [...Array(3)].map((_, i) => (
                                 <div key={i} className="flex items-center gap-3">
@@ -253,16 +263,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                     </div>
                 </div>
 
-                <div className="mt-auto p-4 border-t space-y-4">
-                    <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" onClick={handleLike}>
-                            <Heart className={cn("h-6 w-6 transition-colors", isLiked && "fill-destructive text-destructive")} />
-                        </Button>
-                        <p className="text-sm font-semibold text-muted-foreground">
-                            {likeCount} {getLikeText(likeCount)}
-                        </p>
-                    </div>
-
+                <div className="mt-auto p-4 border-t">
                     {userProfile && (
                         <form onSubmit={handleCommentSubmit} className="flex items-start gap-3">
                             <Avatar className="h-8 w-8">
