@@ -14,7 +14,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Heart, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Textarea } from "./ui/textarea";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "./ui/carousel";
 
 export function PostView({ post, author }: { post: Post, author: UserProfile | null }) {
     const mediaUrls = post.mediaUrls || [];
@@ -30,7 +29,10 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     const [commentsLoading, setCommentsLoading] = React.useState(true);
     const [newComment, setNewComment] = React.useState('');
     const [isSubmittingComment, setIsSubmittingComment] = React.useState(false);
+
+    // new: fullscreen state + controlled index
     const [isImageExpanded, setIsImageExpanded] = React.useState(false);
+    const [currentIndex, setCurrentIndex] = React.useState(0);
 
     React.useEffect(() => {
         if (user && post.likedBy) {
@@ -145,47 +147,61 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
         }
     };
 
+    // helper for overlay carousel
+    const showImageAt = (index: number) => {
+        setCurrentIndex(index);
+        setIsImageExpanded(true);
+    };
+
     return (
         <>
             <div className="flex flex-col md:flex-row h-[90vh] w-full max-w-5xl mx-auto rounded-xl overflow-hidden relative bg-background border border-border shadow-2xl">
-                <div className="w-full md:w-1/2 flex flex-col bg-background h-full border-r border-border">
-                    <div className="relative bg-muted flex-shrink-0 w-full h-[60vh]">
-                        {mediaUrls.length > 0 && mediaTypes.every(type => type === 'image') ? (
-                            <Carousel className="w-full h-full">
-                                <CarouselContent className="h-full">
-                                    {mediaUrls.map((url, index) => (
-                                        <CarouselItem key={index} className="relative w-full h-full">
-                                            <Image
-                                                src={url}
-                                                alt={`Post content ${index + 1}`}
-                                                fill
-                                                className="object-contain cursor-pointer"
-                                                onClick={() => setIsImageExpanded(true)}
-                                                priority={index === 0}
-                                            />
-                                        </CarouselItem>
-                                    ))}
-                                </CarouselContent>
+                {/* LEFT: image + caption — whole column is scrollable */}
+                <div className="w-full md:w-1/2 flex flex-col bg-background h-full border-r border-border overflow-y-auto min-h-0">
+                    {/* image area — aspect-square provides a definite height for Image fill */}
+                    <div className="relative bg-muted flex-shrink-0 aspect-square w-full">
+                        {/* Render simple inline carousel thumbnails using img for reliability.
+                            We map mediaUrls and allow clicking any image to open overlay at that index.
+                            You can swap <img> -> <Image unoptimized /> later when domains configured. */}
+                        {mediaUrls.length > 0 && mediaTypes.every(t => t === 'image') && (
+                            <div className="w-full h-full relative">
+                                {/* show only the first as preview in card, but still allow nav arrows if you want */}
+                                {/* For reliability we show the first image filling the box */}
+                                <img
+                                  src={mediaUrls[0]}
+                                  alt={`Post media 1`}
+                                  className="w-full h-full object-contain cursor-pointer"
+                                  onClick={() => showImageAt(0)}
+                                />
+                                {/* If you want left/right arrows inside card that change displayed image,
+                                    you can implement local currentShown index — kept simple here. */}
                                 {mediaUrls.length > 1 && (
-                                    <>
-                                        <CarouselPrevious
-                                            className="absolute left-4 top-1/2 -translate-y-1/2 z-10 text-white bg-black/50 hover:bg-black/80"
-                                        />
-                                        <CarouselNext
-                                            className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-white bg-black/50 hover:bg-black/80"
-                                        />
-                                    </>
+                                  <>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setCurrentIndex(i => (i - 1 + mediaUrls.length) % mediaUrls.length); }}
+                                      className="absolute left-2 top-1/2 -translate-y-1/2 z-10 text-white bg-black/30 p-1 rounded"
+                                      aria-label="prev"
+                                    >‹</button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setCurrentIndex(i => (i + 1) % mediaUrls.length); }}
+                                      className="absolute right-2 top-1/2 -translate-y-1/2 z-10 text-white bg-black/30 p-1 rounded"
+                                      aria-label="next"
+                                    >›</button>
+                                  </>
                                 )}
-                            </Carousel>
-                        ) : mediaUrls.length === 1 && mediaTypes[0] === 'video' ? (
-                            <div className="w-full h-full">
-                               <video src={mediaUrls[0]} className="w-full h-full object-contain" controls autoPlay loop playsInline />
                             </div>
-                        ) : null}
+                        )}
+
+                        {mediaUrls.length === 1 && mediaTypes[0] === 'video' && (
+                            <div className="w-full h-full">
+                                <video src={mediaUrls[0]} className="w-full h-full object-contain" controls autoPlay loop playsInline />
+                            </div>
+                        )}
                     </div>
 
+                    {/* caption — now scrolls together with image because parent has overflow */}
                     {post.caption && (
-                        <div className="p-6 overflow-y-auto comments-scrollbar flex-1 min-h-0">
+                        <div className="p-6">
                             <p className="text-base md:text-lg leading-relaxed text-foreground whitespace-pre-wrap">
                                 {post.caption}
                             </p>
@@ -193,11 +209,11 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                     )}
                 </div>
 
+                {/* RIGHT: comments and input */}
                 <div className="w-full md:w-1/2 flex flex-col bg-card h-full">
                      <div className="p-4 border-b border-border flex items-center justify-between bg-muted/20">
                       {author && (
                         <>
-                          {/* Левая часть: аватар + текст */}
                           <div className="flex items-center gap-3 min-w-0">
                             <Avatar className="h-10 w-10 ring-1 ring-border flex-shrink-0">
                               <AvatarImage src={author.profilePictureUrl || undefined} />
@@ -222,7 +238,6 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                             </div>
                           </div>
 
-                          {/* Правая часть: лайк */}
                           <button
                             onClick={handleLike}
                             className={cn(
@@ -250,7 +265,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                       )}
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-5 space-y-5 comments-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-5 space-y-5 comments-scrollbar min-h-0">
                         {commentsLoading ? (
                             <div className="flex justify-center py-10"><Loader2 className="animate-spin text-primary" /></div>
                         ) : comments.length === 0 ? (
@@ -305,37 +320,43 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                     )}
                 </div>
             </div>
-            
+
+            {/* Overlay fullscreen viewer (simple controlled carousel) */}
             {isImageExpanded && mediaUrls.length > 0 && (
-              <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center animate-in fade-in-50">
+              <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center">
                 <button
                   onClick={() => setIsImageExpanded(false)}
                   className="absolute top-6 right-6 text-white bg-black/50 px-4 py-2 rounded-md z-50"
                 >
                   Закрыть
                 </button>
-                <div className="w-full max-w-6xl h-full flex items-center">
-                  <Carousel className="w-full h-full">
-                    <CarouselContent className="h-full">
-                      {mediaUrls.map((url, index) => (
-                        <CarouselItem key={index} className="relative w-full h-full">
-                          <Image
-                            src={url}
-                            alt={`Post content ${index + 1}`}
-                            fill
-                            className="object-contain"
-                            priority={index === 0}
-                          />
-                        </CarouselItem>
-                      ))}
-                    </CarouselContent>
-                    {mediaUrls.length > 1 && (
-                      <>
-                        <CarouselPrevious className="absolute left-6 top-1/2 -translate-y-1/2 text-white bg-black/50 hover:bg-black/80" />
-                        <CarouselNext className="absolute right-6 top-1/2 -translate-y-1/2 text-white bg-black/50 hover:bg-black/80" />
-                      </>
-                    )}
-                  </Carousel>
+
+                <div className="w-full max-w-6xl h-[80vh] flex items-center justify-center relative">
+                  {/* central image */}
+                  <button
+                    onClick={() => setCurrentIndex(i => (i - 1 + mediaUrls.length) % mediaUrls.length)}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-white bg-black/30 p-2 rounded z-50"
+                  >‹</button>
+
+                  <div className="w-full h-full flex items-center justify-center">
+                    {/* Here we use next/image but unoptimized to avoid remote domain issues.
+                        If that still doesn't show, replace with <img src=... /> */}
+                    <div className="relative w-full h-full">
+                      <Image
+                        src={mediaUrls[currentIndex]}
+                        alt={`Full ${currentIndex+1}`}
+                        fill
+                        className="object-contain"
+                        priority
+                        unoptimized={true} // use only for testing / if domains not configured
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentIndex(i => (i + 1) % mediaUrls.length)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white bg-black/30 p-2 rounded z-50"
+                  >›</button>
                 </div>
               </div>
             )}
