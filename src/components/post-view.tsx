@@ -31,7 +31,6 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     const [newComment, setNewComment] = React.useState('');
     const [isSubmittingComment, setIsSubmittingComment] = React.useState(false);
 
-    // new: fullscreen state + controlled index
     const [isImageExpanded, setIsImageExpanded] = React.useState(false);
     const [currentIndex, setCurrentIndex] = React.useState(0);
 
@@ -148,7 +147,6 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
         }
     };
 
-    // helper for overlay carousel
     const showImageAt = (index: number) => {
         setCurrentIndex(index);
         setIsImageExpanded(true);
@@ -157,11 +155,9 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     return (
         <>
             <div className="flex flex-col md:flex-row h-[90vh] w-full max-w-5xl mx-auto rounded-xl overflow-hidden relative bg-background border border-border shadow-2xl">
-                {/* LEFT: image + caption — whole column is scrollable */}
                 <div className="w-full md:w-1/2 flex flex-col bg-background h-full border-r border-border overflow-y-auto min-h-0 comments-scrollbar">
-                    {/* image area — aspect-square provides a definite height for Image fill */}
-                    <div className="relative bg-muted flex-shrink-0 aspect-square w-full">
-                        {mediaUrls.length > 0 && mediaTypes.every(t => t === 'image') && (
+                    <div className="relative bg-muted flex-shrink-0 w-full h-[60vh]">
+                        {mediaUrls.length > 0 && mediaTypes.every(t => t === 'image') ? (
                             <div className="w-full h-full relative">
                                 <img
                                   src={mediaUrls[currentIndex]}
@@ -184,18 +180,15 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                   </>
                                 )}
                             </div>
-                        )}
-
-                        {mediaUrls.length === 1 && mediaTypes[0] === 'video' && (
+                        ) : mediaUrls.length === 1 && mediaTypes[0] === 'video' ? (
                             <div className="w-full h-full">
                                 <video src={mediaUrls[0]} className="w-full h-full object-contain" controls autoPlay loop playsInline />
                             </div>
-                        )}
+                        ) : null}
                     </div>
 
-                    {/* caption — now scrolls together with image because parent has overflow */}
                     {post.caption && (
-                        <div className="p-6">
+                        <div className="p-6 overflow-y-auto comments-scrollbar flex-1 min-h-0">
                             <p className="text-base md:text-lg leading-relaxed text-foreground whitespace-pre-wrap">
                                 {post.caption}
                             </p>
@@ -203,7 +196,6 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                     )}
                 </div>
 
-                {/* RIGHT: comments and input */}
                 <div className="w-full md:w-1/2 flex flex-col bg-card h-full">
                      <div className="p-4 border-b border-border flex items-center justify-between bg-muted/20">
                       {author && (
@@ -317,26 +309,21 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
 
             {isImageExpanded && mediaUrls.length > 0 && (
               <div
-                className="fixed inset-0 z-50 flex items-center justify-center"
-                style={{ backgroundColor: '#40594D' }}
+                className="fixed inset-0 z-50 flex items-center justify-center bg-[#31443B]/80 p-4"
               >
-                <DialogPrimitive.Close
-                  onClick={() => setIsImageExpanded(false)}
-                  className="absolute right-2 top-2 z-50 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+                <div 
+                  className="w-full max-w-6xl h-full relative rounded-3xl"
+                  style={{ backgroundColor: '#40594D' }}
                 >
-                  <X className="h-4 w-4" />
-                  <span className="sr-only">Close</span>
-                </DialogPrimitive.Close>
-            
-                <button
-                  onClick={() => setCurrentIndex(i => (i - 1 + mediaUrls.length) % mediaUrls.length)}
-                  className="absolute left-8 top-1/2 -translate-y-1/2 z-50 text-white/70 hover:text-white transition-colors text-5xl select-none"
-                >
-                  ‹
-                </button>
-            
-                <div className="w-full max-w-6xl h-[85vh] flex items-center justify-center relative rounded-3xl overflow-hidden">
-                  <div className="relative w-full h-full">
+                  <DialogPrimitive.Close
+                    onClick={() => setIsImageExpanded(false)}
+                    className="absolute right-2 top-2 z-10 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                    <span className="sr-only">Close</span>
+                  </DialogPrimitive.Close>
+                  
+                  <div className="relative w-full h-full rounded-3xl overflow-hidden">
                     <Image
                       src={mediaUrls[currentIndex]}
                       alt={`Full ${currentIndex + 1}`}
@@ -346,14 +333,20 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                       unoptimized
                     />
                   </div>
+                  <button
+                    onClick={() => setCurrentIndex(i => (i - 1 + mediaUrls.length) % mediaUrls.length)}
+                    className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-10 text-white/70 hover:text-white transition-colors text-5xl select-none"
+                  >
+                    ‹
+                  </button>
+
+                  <button
+                    onClick={() => setCurrentIndex(i => (i + 1) % mediaUrls.length)}
+                    className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-10 text-white/70 hover:text-white transition-colors text-5xl select-none"
+                  >
+                    ›
+                  </button>
                 </div>
-            
-                <button
-                  onClick={() => setCurrentIndex(i => (i + 1) % mediaUrls.length)}
-                  className="absolute right-8 top-1/2 -translate-y-1/2 z-50 text-white/70 hover:text-white transition-colors text-5xl select-none"
-                >
-                  ›
-                </button>
               </div>
             )}
         </>
