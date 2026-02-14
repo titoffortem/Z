@@ -145,9 +145,18 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
             setIsSubmittingComment(false);
         }
     };
+    
+    const handleImageContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        // Only toggle zoom if the click is on the container itself, not on the control buttons inside it.
+        if ((e.target as HTMLElement).closest('button')) {
+            return;
+        }
+        if (mediaUrls.length > 0) {
+            setIsImageExpanded(!isImageExpanded);
+        }
+    };
 
     return (
-        // The main container MUST be relative for the absolute positioning to work
         <div className="flex flex-col md:flex-row h-[90vh] w-full max-w-5xl mx-auto rounded-xl overflow-hidden relative bg-card border border-border shadow-2xl">
             
             {/* LEFT SIDE / EXPANDING IMAGE CONTAINER */}
@@ -158,63 +167,61 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                         ? "absolute inset-0 z-10 w-full h-full bg-black cursor-zoom-out"
                         : "relative w-full md:w-1/2 bg-muted cursor-zoom-in"
                 )}
-                onClick={() => {
-                    if (mediaUrls.length > 0) {
-                        setIsImageExpanded(!isImageExpanded);
-                    }
-                }}
+                onClick={handleImageContainerClick}
             >
                 {mediaUrls.length > 0 ? (
-                    <Image
-                        src={mediaUrls[currentIndex]}
-                        fill
-                        alt={`Post media ${currentIndex + 1}`}
-                        className={cn(
-                            "transition-all duration-500 ease-in-out",
-                            isImageExpanded ? "object-contain" : "object-cover"
+                    <>
+                        <Image
+                            src={mediaUrls[currentIndex]}
+                            fill
+                            alt={`Post media ${currentIndex + 1}`}
+                            className={cn(
+                                "transition-all duration-500 ease-in-out",
+                                isImageExpanded ? "object-contain" : "object-cover"
+                            )}
+                            priority
+                        />
+                        {mediaUrls.length > 1 && (
+                            <>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setCurrentIndex(i => (i - 1 + mediaUrls.length) % mediaUrls.length);
+                                    }}
+                                    className={cn(
+                                        "absolute top-1/2 -translate-y-1/2 z-20 text-white/80 hover:text-white transition-colors select-none bg-black/30 hover:bg-black/50 rounded-full p-1",
+                                        "left-4 h-10 w-10"
+                                    )}
+                                    aria-label="prev"
+                                >
+                                    <ChevronLeft className="h-full w-full"/>
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setCurrentIndex(i => (i + 1) % mediaUrls.length);
+                                    }}
+                                    className={cn(
+                                        "absolute top-1/2 -translate-y-1/2 z-20 text-white/80 hover:text-white transition-colors select-none bg-black/30 hover:bg-black/50 rounded-full p-1",
+                                        "right-4 h-10 w-10"
+                                    )}
+                                    aria-label="next"
+                                >
+                                    <ChevronRight className="h-full w-full"/>
+                                </button>
+                            </>
                         )}
-                        priority
-                    />
+                    </>
                 ) : (
+                    // Display caption in the media area if there are no images
                     <div className="p-6 text-foreground overflow-y-auto h-full w-full">
                         <p className="whitespace-pre-wrap">{post.caption}</p>
                     </div>
                 )}
-
-                {mediaUrls.length > 1 && (
-                     <>
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setCurrentIndex(i => (i - 1 + mediaUrls.length) % mediaUrls.length);
-                            }}
-                            className={cn(
-                                "absolute top-1/2 -translate-y-1/2 z-20 text-white/80 hover:text-white transition-colors select-none bg-black/30 hover:bg-black/50 rounded-full p-1",
-                                "left-4 h-10 w-10"
-                            )}
-                            aria-label="prev"
-                        >
-                            <ChevronLeft className="h-full w-full"/>
-                        </button>
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setCurrentIndex(i => (i + 1) % mediaUrls.length);
-                            }}
-                             className={cn(
-                                "absolute top-1/2 -translate-y-1/2 z-20 text-white/80 hover:text-white transition-colors select-none bg-black/30 hover:bg-black/50 rounded-full p-1",
-                                "right-4 h-10 w-10"
-                            )}
-                            aria-label="next"
-                        >
-                            <ChevronRight className="h-full w-full"/>
-                        </button>
-                    </>
-                )}
             </div>
 
             {/* RIGHT SIDE: Details and Comments */}
-            <div className="w-full md:w-1/2 flex flex-col bg-card h-full">
+            <div className={cn("w-full md:w-1/2 flex flex-col bg-card h-full", isImageExpanded && "invisible")}>
                 <div className="p-4 border-b border-border flex items-center justify-between bg-muted/20">
                     {author && (
                     <>
