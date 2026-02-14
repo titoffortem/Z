@@ -11,7 +11,7 @@ import { useAuth } from "@/components/auth-provider";
 import { useFirestore } from "@/firebase";
 import { doc, updateDoc, arrayUnion, arrayRemove, collection, query, orderBy, onSnapshot, Timestamp, getDoc, addDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Heart, Loader2, X } from "lucide-react";
+import { Heart, Loader2, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Textarea } from "./ui/textarea";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
@@ -146,7 +146,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
             setIsSubmittingComment(false);
         }
     };
-
+    
     const showImageAt = (index: number) => {
         setCurrentIndex(index);
         setIsImageExpanded(true);
@@ -188,7 +188,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                     </div>
 
                     {post.caption && (
-                        <div className="p-6 overflow-y-auto comments-scrollbar flex-1 min-h-0">
+                        <div className="p-6">
                             <p className="text-base md:text-lg leading-relaxed text-foreground whitespace-pre-wrap">
                                 {post.caption}
                             </p>
@@ -308,51 +308,56 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
             </div>
 
             {isImageExpanded && mediaUrls.length > 0 && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-[#31443B]/80 p-4"
-                    onClick={() => setIsImageExpanded(false)}
-                >
-                    <div
-                        className="relative flex h-[90vh] w-full max-w-5xl rounded-xl overflow-hidden bg-card border border-border shadow-2xl"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <DialogPrimitive.Close
-                            onClick={() => setIsImageExpanded(false)}
-                            className="absolute right-2 top-2 z-10 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+                <DialogPrimitive.Root open={isImageExpanded} onOpenChange={setIsImageExpanded}>
+                    <DialogPrimitive.Portal forceMount>
+                        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-[#31443B]/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+                        <DialogPrimitive.Content
+                            className={cn(
+                                "fixed left-[50%] top-[50%] z-50 h-[90vh] w-full max-w-5xl translate-x-[-50%] translate-y-[-50%] rounded-xl border border-border bg-background shadow-lg",
+                                "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+                            )}
                         >
-                            <X className="h-4 w-4" />
-                            <span className="sr-only">Close</span>
-                        </DialogPrimitive.Close>
-                        
-                        <div className="relative w-full h-full">
-                            <Image
-                                src={mediaUrls[currentIndex]}
-                                alt={`Full ${currentIndex + 1}`}
-                                fill
-                                className="object-contain"
-                                priority
-                                unoptimized
-                            />
-                        </div>
+                            <div className="relative h-full w-full">
+                                <Image
+                                    src={mediaUrls[currentIndex]}
+                                    alt={`Full screen post media ${currentIndex + 1}`}
+                                    fill
+                                    className="object-contain"
+                                    priority
+                                    unoptimized
+                                />
+                            </div>
 
-                        {mediaUrls.length > 1 && (
-                            <>
+                            {mediaUrls.length > 1 && (
+                                <>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setCurrentIndex(i => (i - 1 + mediaUrls.length) % mediaUrls.length); }}
+                                        className="absolute left-4 top-1/2 -translate-y-1/2 z-20 rounded-full bg-black/30 p-1 text-white/80 backdrop-blur-sm transition-colors hover:bg-black/50 hover:text-white"
+                                        aria-label="Previous image"
+                                    >
+                                        <ChevronLeft className="h-6 w-6" />
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setCurrentIndex(i => (i + 1) % mediaUrls.length); }}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 z-20 rounded-full bg-black/30 p-1 text-white/80 backdrop-blur-sm transition-colors hover:bg-black/50 hover:text-white"
+                                        aria-label="Next image"
+                                    >
+                                        <ChevronRight className="h-6 w-6" />
+                                    </button>
+                                </>
+                            )}
+
+                            <DialogPrimitive.Close asChild>
                                 <button
-                                    onClick={(e) => { e.stopPropagation(); setCurrentIndex(i => (i - 1 + mediaUrls.length) % mediaUrls.length); }}
-                                    className="absolute left-4 top-1/2 -translate-y-1/2 z-10 text-white/70 hover:text-white transition-colors text-5xl select-none"
+                                    className="absolute right-2 top-2 z-20 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
+                                    aria-label="Close"
                                 >
-                                    ‹
+                                    <X className="h-4 w-4" />
                                 </button>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); setCurrentIndex(i => (i + 1) % mediaUrls.length); }}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-white/70 hover:text-white transition-colors text-5xl select-none"
-                                >
-                                    ›
-                                </button>
-                            </>
-                        )}
-                    </div>
-                </div>
+                            </DialogPrimitive.Close>
+                        </DialogPrimitive.Content>
+                    </DialogPrimitive.Portal>
+                </DialogPrimitive.Root>
             )}
         </>
     );
