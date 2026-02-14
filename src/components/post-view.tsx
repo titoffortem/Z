@@ -145,6 +145,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     };
     
     const handleImageContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        // Prevent closing when clicking on carousel navigation buttons
         if ((e.target as HTMLElement).closest('button')) {
             return;
         }
@@ -215,15 +216,6 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                     <div className="p-6 text-foreground overflow-y-auto h-full w-full">
                         <p className="whitespace-pre-wrap">{post.caption}</p>
                     </div>
-                )}
-                 {isImageExpanded && (
-                    <button
-                        onClick={(e) => { e.stopPropagation(); setIsImageExpanded(false); }}
-                        className="absolute top-4 right-4 z-20 text-white/80 hover:text-white transition-colors"
-                        aria-label="Закрыть"
-                    >
-                        <X className="w-8 h-8" />
-                    </button>
                 )}
             </div>
 
