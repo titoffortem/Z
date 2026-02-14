@@ -153,7 +153,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
         >
             <div
               className={cn(
-                "relative bg-background transition-all duration-300",
+                "relative bg-background transition-all duration-300 overflow-y-auto comments-scrollbar",
                 isImageExpanded
                   ? "w-full h-full"
                   : "w-full md:w-1/2 h-full border-r border-border"
