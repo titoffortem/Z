@@ -108,7 +108,7 @@ export function PostCard({ post }: { post: Post }) {
         <Dialog>
             <DialogTrigger asChild>
                 <div className="flex flex-col h-full bg-card rounded-lg overflow-hidden border cursor-pointer transition-transform hover:scale-[1.02]">
-                    <div className={cn("relative aspect-square w-full bg-muted overflow-hidden", !mediaUrl && "items-start justify-start")}>
+                    <div className={cn("relative aspect-square w-full bg-muted overflow-hidden", mediaUrl && "flex items-center justify-center")}>
                         {mediaType === 'image' && mediaUrl ? (
                             <Image src={mediaUrl} alt={post.caption || "Изображение записи"} fill className="object-contain" />
                         ) : mediaType === 'video' && mediaUrl ? (
