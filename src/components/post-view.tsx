@@ -11,7 +11,7 @@ import { useAuth } from "@/components/auth-provider";
 import { useFirestore } from "@/firebase";
 import { doc, updateDoc, arrayUnion, arrayRemove, collection, query, orderBy, onSnapshot, Timestamp, getDoc, addDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Heart, Loader2 } from "lucide-react";
+import { Heart, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Textarea } from "./ui/textarea";
 
@@ -160,21 +160,14 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                 <div className="w-full md:w-1/2 flex flex-col bg-background h-full border-r border-border overflow-y-auto min-h-0">
                     {/* image area — aspect-square provides a definite height for Image fill */}
                     <div className="relative bg-muted flex-shrink-0 aspect-square w-full">
-                        {/* Render simple inline carousel thumbnails using img for reliability.
-                            We map mediaUrls and allow clicking any image to open overlay at that index.
-                            You can swap <img> -> <Image unoptimized /> later when domains configured. */}
                         {mediaUrls.length > 0 && mediaTypes.every(t => t === 'image') && (
                             <div className="w-full h-full relative">
-                                {/* show only the first as preview in card, but still allow nav arrows if you want */}
-                                {/* For reliability we show the first image filling the box */}
                                 <img
                                   src={mediaUrls[currentIndex]}
                                   alt={`Post media ${currentIndex + 1}`}
                                   className="w-full h-full object-contain cursor-pointer"
                                   onClick={() => showImageAt(currentIndex)}
                                 />
-                                {/* If you want left/right arrows inside card that change displayed image,
-                                    you can implement local currentShown index — kept simple here. */}
                                 {mediaUrls.length > 1 && (
                                   <>
                                     <button
@@ -199,7 +192,6 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                         )}
                     </div>
 
-                    {/* caption — now scrolls together with image because parent has overflow */}
                     {post.caption && (
                         <div className="p-6">
                             <p className="text-base md:text-lg leading-relaxed text-foreground whitespace-pre-wrap">
@@ -321,43 +313,45 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                 </div>
             </div>
 
-            {/* Overlay fullscreen viewer (simple controlled carousel) */}
             {isImageExpanded && mediaUrls.length > 0 && (
-              <div className="fixed inset-0 z-50 bg-primary flex items-center justify-center">
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center"
+                style={{ backgroundColor: '#40594D' }}
+              >
                 <button
                   onClick={() => setIsImageExpanded(false)}
-                  className="absolute top-6 right-6 text-white bg-black/50 px-4 py-2 rounded-md z-50"
+                  className="absolute top-6 right-6 z-50 text-white/80 hover:text-white transition-colors"
+                  aria-label="Закрыть"
                 >
-                  Закрыть
+                  <X className="w-7 h-7" />
                 </button>
-
-                <div className="w-full max-w-6xl h-[80vh] flex items-center justify-center relative">
-                  {/* central image */}
-                  <button
-                    onClick={() => setCurrentIndex(i => (i - 1 + mediaUrls.length) % mediaUrls.length)}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-white bg-black/30 p-2 rounded z-50"
-                  >‹</button>
-
-                  <div className="w-full h-full flex items-center justify-center">
-                    {/* Here we use next/image but unoptimized to avoid remote domain issues.
-                        If that still doesn't show, replace with <img src=... /> */}
-                    <div className="relative w-full h-full">
-                      <Image
-                        src={mediaUrls[currentIndex]}
-                        alt={`Full ${currentIndex+1}`}
-                        fill
-                        className="object-contain"
-                        priority
-                        unoptimized={true} // use only for testing / if domains not configured
-                      />
-                    </div>
+            
+                <button
+                  onClick={() => setCurrentIndex(i => (i - 1 + mediaUrls.length) % mediaUrls.length)}
+                  className="absolute left-6 top-1/2 -translate-y-1/2 text-white/70 hover:text-white z-50"
+                >
+                  ‹
+                </button>
+            
+                <div className="w-full max-w-6xl h-[85vh] flex items-center justify-center relative">
+                  <div className="relative w-full h-full">
+                    <Image
+                      src={mediaUrls[currentIndex]}
+                      alt={`Full ${currentIndex + 1}`}
+                      fill
+                      className="object-contain"
+                      priority
+                      unoptimized
+                    />
                   </div>
-
-                  <button
-                    onClick={() => setCurrentIndex(i => (i + 1) % mediaUrls.length)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white bg-black/30 p-2 rounded z-50"
-                  >›</button>
                 </div>
+            
+                <button
+                  onClick={() => setCurrentIndex(i => (i + 1) % mediaUrls.length)}
+                  className="absolute right-6 top-1/2 -translate-y-1/2 text-white/70 hover:text-white z-50"
+                >
+                  ›
+                </button>
               </div>
             )}
         </>
