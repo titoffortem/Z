@@ -158,66 +158,59 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     return (
         <div className="flex flex-col md:flex-row h-[90vh] w-full max-w-5xl mx-auto rounded-xl overflow-hidden relative bg-card border border-border shadow-2xl">
             
-            {/* IMAGE CONTAINER */}
             <div
                 className={cn(
-                    "cursor-pointer transition-all duration-500 ease-in-out overflow-hidden",
+                    "transition-all duration-500 ease-in-out",
+                    mediaUrls.length > 0 && "cursor-pointer",
                     isImageExpanded
-                        ? "fixed inset-0 z-50 flex items-center justify-center bg-background"
-                        : "relative md:basis-1/2 bg-muted border-r border-border",
-                    mediaUrls.length > 0 && !isImageExpanded && "flex items-center justify-center"
+                    ? "fixed inset-0 z-50 bg-background flex items-center justify-center"
+                    : "relative md:basis-1/2 bg-muted border-r border-border flex items-center justify-center"
                 )}
                 onClick={handleImageContainerClick}
-            >
+                >
                 {mediaUrls.length > 0 ? (
                     <>
-                        <div className="relative w-full h-full">
-                           <Image
-                                src={mediaUrls[currentIndex]}
-                                fill
-                                alt={`Post media ${currentIndex + 1}`}
-                                className={cn(
-                                    "transition-all duration-500 ease-in-out",
-                                    isImageExpanded ? "object-contain" : "object-cover"
-                                )}
-                                priority
-                                unoptimized
-                            />
-                        </div>
-
-                        {mediaUrls.length > 1 && (
-                            <>
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setCurrentIndex(i => (i - 1 + mediaUrls.length) % mediaUrls.length);
-                                    }}
-                                    className={cn(
-                                        "absolute top-1/2 -translate-y-1/2 z-20 text-white/80 hover:text-white transition-colors select-none bg-black/30 hover:bg-black/50 rounded-full p-1",
-                                        "left-4 h-10 w-10"
-                                    )}
-                                    aria-label="prev"
-                                >
-                                    <ChevronLeft className="h-full w-full"/>
-                                </button>
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setCurrentIndex(i => (i + 1) % mediaUrls.length);
-                                    }}
-                                    className={cn(
-                                        "absolute top-1/2 -translate-y-1/2 z-20 text-white/80 hover:text-white transition-colors select-none bg-black/30 hover:bg-black/50 rounded-full p-1",
-                                        "right-4 h-10 w-10"
-                                    )}
-                                    aria-label="next"
-                                >
-                                    <ChevronRight className="h-full w-full"/>
-                                </button>
-                            </>
+                    <div
+                        className={cn(
+                        "transition-transform duration-500 ease-in-out flex items-center justify-center w-full h-full",
+                        isImageExpanded ? "scale-100 p-4" : "scale-100"
                         )}
+                    >
+                        <Image
+                        src={mediaUrls[currentIndex]}
+                        alt={`Post media ${currentIndex + 1}`}
+                        width={1920}
+                        height={1080}
+                        className="object-contain max-w-full max-h-full"
+                        priority
+                        unoptimized
+                        />
+                    </div>
+
+                    {mediaUrls.length > 1 && (
+                        <>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setCurrentIndex(i => (i - 1 + mediaUrls.length) % mediaUrls.length);
+                            }}
+                            className="absolute top-1/2 left-4 -translate-y-1/2 z-50 p-2 bg-black/30 rounded-full text-white hover:bg-black/50"
+                            >
+                            <ChevronLeft className="h-6 w-6" />
+                        </button>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setCurrentIndex(i => (i + 1) % mediaUrls.length);
+                            }}
+                            className="absolute top-1/2 right-4 -translate-y-1/2 z-50 p-2 bg-black/30 rounded-full text-white hover:bg-black/50"
+                            >
+                            <ChevronRight className="h-6 w-6"/>
+                        </button>
+                        </>
+                    )}
                     </>
                 ) : (
-                    // Display caption in the media area if there are no images
                     <div className="p-6 text-foreground overflow-y-auto h-full w-full">
                         <p className="whitespace-pre-wrap">{post.caption}</p>
                     </div>
