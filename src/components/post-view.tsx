@@ -161,31 +161,55 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
               )}
             >
                 <div
-                    className="relative bg-muted flex-shrink-0"
-                    style={{
-                        height: isImageExpanded ? '100%' : 'auto',
-                        aspectRatio: isImageExpanded ? 'auto' : '1'
-                    }}
-                    onClick={mediaUrls.length > 0 ? () => setIsImageExpanded(!isImageExpanded) : undefined}
+                    className={cn(
+                        "relative bg-muted flex-shrink-0",
+                        isImageExpanded
+                          ? "h-full w-full"
+                          : "aspect-square w-full"
+                    )}
                 >
+                    {isImageExpanded && (
+                        <button
+                            onClick={() => setIsImageExpanded(false)}
+                            className="absolute top-4 right-4 z-20 bg-black/50 text-white px-3 py-1 rounded-md text-sm"
+                        >
+                            Закрыть
+                        </button>
+                    )}
+
                     {mediaUrls.length > 0 && mediaTypes.every(type => type === 'image') ? (
-                        <Carousel className="w-full h-full cursor-pointer">
+                        <Carousel className="w-full h-full">
                             <CarouselContent className="h-full">
                                 {mediaUrls.map((url, index) => (
                                     <CarouselItem key={index} className="relative w-full h-full">
-                                        <Image src={url} alt={`Post content ${index + 1}`} fill className="object-contain" priority={index === 0} />
+                                        <Image
+                                            src={url}
+                                            alt={`Post content ${index + 1}`}
+                                            fill
+                                            className="object-contain cursor-pointer"
+                                            onClick={() => setIsImageExpanded(true)}
+                                            priority={index === 0}
+                                        />
                                     </CarouselItem>
                                 ))}
                             </CarouselContent>
                             {mediaUrls.length > 1 && (
                                 <>
-                                    <CarouselPrevious className="absolute left-4 top-1/2 -translate-y-1/2 z-10 text-white bg-black/50 hover:bg-black/80 hover:text-white" />
-                                    <CarouselNext className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-white bg-black/50 hover:bg-black/80 hover:text-white" />
+                                    <CarouselPrevious
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="absolute left-4 top-1/2 -translate-y-1/2 z-10 text-white bg-black/50 hover:bg-black/80"
+                                    />
+                                    <CarouselNext
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-white bg-black/50 hover:bg-black/80"
+                                    />
                                 </>
                             )}
                         </Carousel>
                     ) : mediaUrls.length === 1 && mediaTypes[0] === 'video' ? (
-                        <video src={mediaUrls[0]} className="w-full h-full object-contain" controls autoPlay loop playsInline />
+                        <div onClick={(e) => e.stopPropagation()} className="w-full h-full">
+                           <video src={mediaUrls[0]} className="w-full h-full object-contain" controls autoPlay loop playsInline />
+                        </div>
                     ) : null}
                 </div>
 
