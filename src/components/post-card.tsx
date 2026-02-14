@@ -110,7 +110,7 @@ export function PostCard({ post }: { post: Post }) {
                 <div className="flex flex-col h-full bg-card rounded-lg overflow-hidden border cursor-pointer transition-transform hover:scale-[1.02]">
                     <div className={cn("relative aspect-square w-full bg-muted overflow-hidden", mediaType !== 'image' && 'flex items-center justify-center' )}>
                         {mediaType === 'image' && mediaUrl ? (
-                            <Image src={mediaUrl} alt={post.caption || "Изображение записи"} fill className="object-contain" />
+                            <Image src={mediaUrl} alt={post.caption || "Изображение записи"} fill className="object-cover" />
                         ) : mediaType === 'video' && mediaUrl ? (
                             <video src={mediaUrl} className="w-full h-full object-cover" muted loop playsInline />
                         ) : (

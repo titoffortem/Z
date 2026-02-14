@@ -90,6 +90,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
         return () => unsubscribe();
     }, [firestore, post.id]);
 
+
     const handleLike = async () => {
         if (!user || !firestore) {
             toast({ title: "Чтобы поставить лайк, необходимо войти.", variant: "destructive" });
@@ -161,9 +162,10 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
             <div
                 className={cn(
                     "transition-all duration-500 ease-in-out flex items-center justify-center overflow-hidden",
-                    isImageExpanded 
-                        ? "absolute inset-0 z-10 w-full h-full bg-background cursor-zoom-out"
-                        : "relative w-full md:w-1/2 bg-muted cursor-zoom-in"
+                    "cursor-pointer",
+                    isImageExpanded
+                        ? "absolute inset-0 z-10 w-full h-full bg-background"
+                        : "relative w-full basis-1/2 bg-muted"
                 )}
                 onClick={handleImageContainerClick}
             >
@@ -174,7 +176,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                             fill
                             alt={`Post media ${currentIndex + 1}`}
                             className={cn(
-                                "transition-transform duration-500 ease-in-out",
+                                "transition-all duration-500 ease-in-out",
                                 isImageExpanded ? "object-contain" : "object-cover"
                             )}
                             priority
@@ -221,7 +223,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
 
             {/* RIGHT SIDE: Details and Comments */}
             <div className={cn("w-full md:w-1/2 flex flex-col bg-card h-full", isImageExpanded && "invisible")}>
-                {/* Header with author info */}
+                 {/* Header with author info */}
                 <div className="p-4 border-b border-border flex items-center justify-between bg-muted/20">
                     {author && (
                     <>
@@ -275,7 +277,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
 
                 {/* Caption and Comments */}
                 <div className="flex-1 overflow-y-auto p-5 space-y-5 comments-scrollbar min-h-0">
-                    {post.caption && (
+                    {post.caption && mediaUrls.length > 0 && (
                          <div className="pb-4 border-b border-border">
                             <p className="text-base text-foreground whitespace-pre-wrap">
                                 {post.caption}
