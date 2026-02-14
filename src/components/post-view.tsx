@@ -168,10 +168,10 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                 {/* show only the first as preview in card, but still allow nav arrows if you want */}
                                 {/* For reliability we show the first image filling the box */}
                                 <img
-                                  src={mediaUrls[0]}
-                                  alt={`Post media 1`}
+                                  src={mediaUrls[currentIndex]}
+                                  alt={`Post media ${currentIndex + 1}`}
                                   className="w-full h-full object-contain cursor-pointer"
-                                  onClick={() => showImageAt(0)}
+                                  onClick={() => showImageAt(currentIndex)}
                                 />
                                 {/* If you want left/right arrows inside card that change displayed image,
                                     you can implement local currentShown index — kept simple here. */}
@@ -323,7 +323,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
 
             {/* Overlay fullscreen viewer (simple controlled carousel) */}
             {isImageExpanded && mediaUrls.length > 0 && (
-              <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center">
+              <div className="fixed inset-0 z-50 bg-primary flex items-center justify-center">
                 <button
                   onClick={() => setIsImageExpanded(false)}
                   className="absolute top-6 right-6 text-white bg-black/50 px-4 py-2 rounded-md z-50"
