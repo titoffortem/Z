@@ -188,26 +188,37 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                     </div>
 
                     {mediaUrls.length > 1 && (
-                        <>
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setCurrentIndex(i => (i - 1 + mediaUrls.length) % mediaUrls.length);
-                            }}
-                            className="absolute top-1/2 left-4 -translate-y-1/2 z-50 p-2 bg-black/30 rounded-full text-white hover:bg-black/50"
-                            >
-                            <ChevronLeft className="h-6 w-6" />
-                        </button>
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setCurrentIndex(i => (i + 1) % mediaUrls.length);
-                            }}
-                            className="absolute top-1/2 right-4 -translate-y-1/2 z-50 p-2 bg-black/30 rounded-full text-white hover:bg-black/50"
-                            >
-                            <ChevronRight className="h-6 w-6"/>
-                        </button>
-                        </>
+                        isImageExpanded ? (
+                            <>
+                                <button
+                                  onClick={() => setCurrentIndex(i => (i - 1 + mediaUrls.length) % mediaUrls.length)}
+                                  className="absolute left-8 top-1/2 -translate-y-1/2 z-50 text-white/70 hover:text-white transition-colors text-5xl select-none"
+                                >
+                                  ‹
+                                </button>
+                                <button
+                                  onClick={() => setCurrentIndex(i => (i + 1) % mediaUrls.length)}
+                                  className="absolute right-8 top-1/2 -translate-y-1/2 z-50 text-white/70 hover:text-white transition-colors text-5xl select-none"
+                                >
+                                  ›
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setCurrentIndex(i => (i - 1 + mediaUrls.length) % mediaUrls.length); }}
+                                  className="absolute left-4 top-1/2 -translate-y-1/2 z-10 text-white/70 hover:text-white transition-colors text-3xl select-none"
+                                >
+                                  ‹
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setCurrentIndex(i => (i + 1) % mediaUrls.length); }}
+                                  className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-white/70 hover:text-white transition-colors text-3xl select-none"
+                                >
+                                  ›
+                                </button>
+                            </>
+                        )
                     )}
                     </>
                 ) : (
