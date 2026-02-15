@@ -18,13 +18,11 @@ import {
     query,
     orderBy,
     onSnapshot,
-    Timestamp,
-    getDoc,
     addDoc,
     serverTimestamp
 } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Heart, Loader2 } from "lucide-react";
+import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Textarea } from "./ui/textarea";
 
@@ -39,14 +37,17 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     const [isLiked, setIsLiked] = React.useState(false);
     const [likeCount, setLikeCount] = React.useState(post.likedBy?.length ?? 0);
     const [comments, setComments] = React.useState<Comment[]>([]);
-    const [commentsLoading, setCommentsLoading] = React.useState(true);
     const [newComment, setNewComment] = React.useState('');
     const [isSubmittingComment, setIsSubmittingComment] = React.useState(false);
     const [currentIndex, setCurrentIndex] = React.useState(0);
     const [isImageExpanded, setIsImageExpanded] = React.useState(false);
 
     const mediaUrl = mediaUrls[currentIndex] || null;
+    const hasImage = mediaUrl && mediaTypes[currentIndex] === 'image';
 
+    /* =======================
+       LIKE LOGIC
+    ======================== */
     React.useEffect(() => {
         if (user && post.likedBy) {
             setIsLiked(post.likedBy.includes(user.uid));
@@ -54,99 +55,81 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
         setLikeCount(post.likedBy?.length ?? 0);
     }, [post, user]);
 
-    /* ===== LOAD COMMENTS ===== */
-    React.useEffect(() => {
-        if (!firestore || !post.id) return;
+    const toggleLike = async () => {
+        if (!user) return;
 
-        setCommentsLoading(true);
-
-        const q = query(
-            collection(firestore, 'posts', post.id, 'comments'),
-            orderBy('createdAt', 'asc')
-        );
-
-        const unsubscribe = onSnapshot(q, async (snapshot) => {
-            const data = snapshot.docs.map(doc => {
-                const d = doc.data();
-                const createdAt = d.createdAt instanceof Timestamp
-                    ? d.createdAt.toDate().toISOString()
-                    : new Date().toISOString();
-
-                return {
-                    id: doc.id,
-                    ...d,
-                    createdAt
-                } as Comment;
-            });
-
-            const withAuthors = await Promise.all(
-                data.map(async (comment) => {
-                    if (!comment.userId) return comment;
-
-                    const userDoc = await getDoc(doc(firestore, 'users', comment.userId));
-                    if (!userDoc.exists()) return comment;
-
-                    return {
-                        ...comment,
-                        author: {
-                            id: userDoc.id,
-                            ...userDoc.data()
-                        } as UserProfile
-                    };
-                })
-            );
-
-            setComments(withAuthors);
-            setCommentsLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, [firestore, post.id]);
-
-    /* ===== LIKE ===== */
-    const handleLike = async () => {
-        if (!user || !firestore) return;
-
-        const postRef = doc(firestore, 'posts', post.id);
-        const newStatus = !isLiked;
-
-        setIsLiked(newStatus);
-        setLikeCount(c => newStatus ? c + 1 : c - 1);
+        const postRef = doc(firestore, "posts", post.id);
 
         try {
-            await updateDoc(postRef, {
-                likedBy: newStatus
-                    ? arrayUnion(user.uid)
-                    : arrayRemove(user.uid)
-            });
-        } catch (e: any) {
+            if (isLiked) {
+                await updateDoc(postRef, {
+                    likedBy: arrayRemove(user.uid)
+                });
+                setLikeCount(prev => prev - 1);
+            } else {
+                await updateDoc(postRef, {
+                    likedBy: arrayUnion(user.uid)
+                });
+                setLikeCount(prev => prev + 1);
+            }
+
+            setIsLiked(!isLiked);
+        } catch {
             toast({
-                title: "Ошибка лайка",
-                description: e.message,
+                title: "Ошибка",
+                description: "Не удалось обновить лайк",
                 variant: "destructive"
             });
         }
     };
 
-    /* ===== ADD COMMENT ===== */
-    const handleCommentSubmit = async (e: React.FormEvent) => {
+    /* =======================
+       COMMENTS SUBSCRIBE
+    ======================== */
+    React.useEffect(() => {
+        const q = query(
+            collection(firestore, "posts", post.id, "comments"),
+            orderBy("createdAt", "asc")
+        );
+
+        const unsub = onSnapshot(q, (snapshot) => {
+            const data: Comment[] = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })) as Comment[];
+
+            setComments(data);
+        });
+
+        return () => unsub();
+    }, [firestore, post.id]);
+
+    /* =======================
+       ADD COMMENT
+    ======================== */
+    const handleSubmitComment = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!user || !newComment.trim()) return;
+        if (!newComment.trim() || !userProfile) return;
 
         setIsSubmittingComment(true);
 
         try {
-            await addDoc(collection(firestore, 'posts', post.id, 'comments'), {
-                postId: post.id,
-                userId: user.uid,
-                text: newComment.trim(),
-                createdAt: serverTimestamp()
-            });
+            await addDoc(
+                collection(firestore, "posts", post.id, "comments"),
+                {
+                    text: newComment.trim(),
+                    authorId: userProfile.uid,
+                    authorNickname: userProfile.nickname,
+                    authorProfilePictureUrl: userProfile.profilePictureUrl || null,
+                    createdAt: serverTimestamp()
+                }
+            );
+
             setNewComment('');
-        } catch (e: any) {
+        } catch {
             toast({
-                title: "Ошибка комментария",
-                description: e.message,
+                title: "Ошибка",
+                description: "Не удалось добавить комментарий",
                 variant: "destructive"
             });
         } finally {
@@ -154,56 +137,75 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
         }
     };
 
+    /* =======================
+       RENDER
+    ======================== */
     return (
-        <div className="flex flex-col md:flex-row h-[90vh] w-full max-w-5xl mx-auto rounded-xl overflow-hidden relative bg-[#40594D] border border-border shadow-2xl">
+        <div className="flex flex-col md:flex-row h-[90vh] w-full max-w-5xl mx-auto rounded-xl overflow-hidden bg-[#40594D] border border-border shadow-2xl">
 
-            {/* ===== LEFT IMAGE BLOCK (если есть изображение) ===== */}
-            {mediaUrl && mediaTypes[currentIndex] === 'image' && (
-                <div className="relative md:w-1/2 w-full flex items-center justify-center bg-black">
-                    <Image
-                        src={mediaUrl}
-                        alt={post.caption || "Изображение"}
-                        fill
-                        className="object-contain"
-                        priority
-                        unoptimized
-                    />
-                </div>
-            )}
+            {/* ===== LEFT COLUMN ===== */}
+            <div className="w-full md:w-1/2 flex items-center justify-center p-8 overflow-y-auto">
+                {hasImage ? (
+                    <div
+                        className="relative w-full h-full flex items-center justify-center cursor-pointer"
+                        onClick={() => setIsImageExpanded(!isImageExpanded)}
+                    >
+                        <Image
+                            src={mediaUrl}
+                            alt={post.caption || "Изображение"}
+                            fill
+                            className="object-contain"
+                            priority
+                            unoptimized
+                        />
+                    </div>
+                ) : (
+                    <div className="w-full max-w-2xl">
+                        {post.caption && (
+                            <p className="text-lg whitespace-pre-wrap leading-relaxed text-white">
+                                {post.caption}
+                            </p>
+                        )}
+                    </div>
+                )}
+            </div>
 
-            {/* ===== RIGHT PANEL ВСЕГДА ===== */}
+            {/* ===== RIGHT COLUMN ===== */}
             <div className="w-full md:w-1/2 flex flex-col bg-card h-full">
 
                 {/* HEADER */}
-                <div className="p-4 border-b border-border flex items-center justify-between">
+                <div className="p-4 border-b border-border flex items-center justify-between bg-muted/20">
                     {author && (
                         <>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
                                 <Avatar className="h-10 w-10">
                                     <AvatarImage src={author.profilePictureUrl || undefined} />
                                     <AvatarFallback>
-                                        {author.nickname?.[0].toUpperCase()}
+                                        {author.nickname?.[0]?.toUpperCase()}
                                     </AvatarFallback>
                                 </Avatar>
 
                                 <div>
                                     <Link
                                         href={`/profile/${author.nickname}`}
-                                        className="font-bold"
+                                        className="font-bold hover:text-primary"
                                     >
                                         @{author.nickname}
                                     </Link>
 
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="text-xs text-muted-foreground mt-1">
                                         {post.createdAt
-                                            ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: ru })
+                                            ? formatDistanceToNow(
+                                                new Date(post.createdAt),
+                                                { addSuffix: true, locale: ru }
+                                            )
                                             : "только что"}
                                     </p>
                                 </div>
                             </div>
 
                             <button
-                                onClick={handleLike}
+                                onClick={toggleLike}
                                 className={cn(
                                     "flex items-center gap-2",
                                     isLiked ? "text-primary" : "text-muted-foreground"
@@ -216,48 +218,33 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                     )}
                 </div>
 
-                {/* CAPTION + COMMENTS */}
+                {/* COMMENTS LIST */}
                 <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                    {comments.map((comment) => (
+                        <div key={comment.id} className="flex gap-3">
+                            <Avatar className="h-8 w-8">
+                                <AvatarImage src={comment.authorProfilePictureUrl || undefined} />
+                                <AvatarFallback>
+                                    {comment.authorNickname?.[0]?.toUpperCase()}
+                                </AvatarFallback>
+                            </Avatar>
 
-                    {post.caption && (
-                        <div className="pb-4 border-b border-border">
-                            <p className="whitespace-pre-wrap">{post.caption}</p>
-                        </div>
-                    )}
-
-                    {commentsLoading ? (
-                        <div className="flex justify-center py-10">
-                            <Loader2 className="animate-spin" />
-                        </div>
-                    ) : comments.length === 0 ? (
-                        <div className="text-center text-muted-foreground text-sm">
-                            Комментариев пока нет
-                        </div>
-                    ) : (
-                        comments.map(comment => (
-                            <div key={comment.id} className="flex gap-3">
-                                <Avatar className="h-7 w-7">
-                                    <AvatarImage src={comment.author?.profilePictureUrl} />
-                                    <AvatarFallback>
-                                        {comment.author?.nickname?.[0]?.toUpperCase()}
-                                    </AvatarFallback>
-                                </Avatar>
-
-                                <div className="bg-muted rounded-xl px-3 py-2 text-sm">
-                                    <p className="font-semibold text-xs">
-                                        @{comment.author?.nickname || "user"}
-                                    </p>
-                                    <p>{comment.text}</p>
-                                </div>
+                            <div className="bg-muted/30 px-3 py-2 rounded-xl max-w-xs">
+                                <p className="text-sm font-semibold">
+                                    @{comment.authorNickname}
+                                </p>
+                                <p className="text-sm whitespace-pre-wrap">
+                                    {comment.text}
+                                </p>
                             </div>
-                        ))
-                    )}
+                        </div>
+                    ))}
                 </div>
 
                 {/* COMMENT INPUT */}
                 {userProfile && (
                     <div className="p-4 border-t border-border">
-                        <form onSubmit={handleCommentSubmit} className="flex gap-2">
+                        <form onSubmit={handleSubmitComment} className="flex gap-2">
                             <Textarea
                                 value={newComment}
                                 onChange={(e) => setNewComment(e.target.value)}
@@ -265,10 +252,11 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                 className="min-h-[40px] resize-none text-sm"
                             />
                             <button
-                                disabled={!newComment.trim() || isSubmittingComment}
-                                className="px-4 bg-primary text-primary-foreground rounded-xl disabled:opacity-50"
+                                type="submit"
+                                disabled={isSubmittingComment}
+                                className="px-4 bg-primary text-primary-foreground rounded-xl"
                             >
-                                {isSubmittingComment ? <Loader2 className="h-4 w-4 animate-spin" /> : "ОК"}
+                                OK
                             </button>
                         </form>
                     </div>
