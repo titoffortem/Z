@@ -8,6 +8,8 @@
     "buildwin": "cross-env NODE_ENV=production next build",
     "start": "next start",
     "lint": "next lint",
+    "sync": "npx cap sync",
+    "mobile": "npm run buildwin && npm run sync",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
