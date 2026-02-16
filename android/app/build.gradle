@@ -18,9 +18,7 @@ android {
     }
     signingConfigs {
         release {
-            // Мы будем передавать путь к файлу и пароли через переменные среды
-            // Если переменных нет (локальная сборка), gradle не упадет, но подписи не будет
-            storeFile file(System.getenv("RELEASE_STORE_FILE") ?: "z-release.keystore")
+            storeFile file(System.getenv("RELEASE_STORE_FILE") ?: "release.keystore")
             storePassword System.getenv("RELEASE_STORE_PASSWORD")
             keyAlias System.getenv("RELEASE_KEY_ALIAS")
             keyPassword System.getenv("RELEASE_STORE_PASSWORD")
@@ -32,6 +30,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
 }
