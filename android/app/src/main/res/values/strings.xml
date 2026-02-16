@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Z</string>
+    <string name="title_activity_main">Z</string>
+    <string name="package_name">com.zet.app</string>
+    <string name="custom_url_scheme">com.zet.app</string>
+    <string name="server_client_id">1011787360328-2ev3laqaaslks81lc6077gj216subrpi.apps.googleusercontent.com</string>
+</resources>
