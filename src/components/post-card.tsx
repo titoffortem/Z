@@ -31,6 +31,8 @@ export function PostCard({ post }: { post: Post }) {
     const [isLiked, setIsLiked] = React.useState(false);
     const [likeCount, setLikeCount] = React.useState(post.likedBy?.length ?? 0);
 
+    const [isOpen, setIsOpen] = React.useState(false);
+
     React.useEffect(() => {
         if (user && post.likedBy) {
             setIsLiked(post.likedBy.includes(user.uid));
@@ -105,7 +107,7 @@ export function PostCard({ post }: { post: Post }) {
     }
 
     return (
-        <Dialog>
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
                 <div className="flex flex-col h-full bg-card rounded-lg overflow-hidden border cursor-pointer transition-transform hover:scale-[1.02]">
                     <div className={cn("relative aspect-square w-full bg-muted overflow-hidden", mediaType !== 'image' && 'flex items-center justify-center' )}>
@@ -131,7 +133,7 @@ export function PostCard({ post }: { post: Post }) {
                         {author && (
                             <div className="flex items-center justify-between gap-3 mt-auto">
                                 <div className="flex items-center gap-3 min-w-0">
-                                    <Link href={`/profile/${author.nickname}`} className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                    <Link href={`/profile?nickname=${author.nickname}`} className="flex-shrink-0">
                                          <Avatar className="h-8 w-8">
                                             <AvatarImage src={author.profilePictureUrl ?? undefined} alt={author.nickname} />
                                             <AvatarFallback>{author.nickname[0].toUpperCase()}</AvatarFallback>

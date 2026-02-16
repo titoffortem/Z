@@ -5,6 +5,7 @@ import { useAuth as useFirebaseAuth, useUser } from '@/firebase';
 import {
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithCredential, // <--- Добавили этот импорт
 } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -13,13 +14,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from 'lucide-react';
 
+// --- ИМПОРТЫ ДЛЯ CAPACITOR ---
+import { Capacitor } from '@capacitor/core';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
+// -----------------------------
+
 export default function LoginPage() {
   const router = useRouter();
-  const auth = useFirebaseAuth();
+  const auth = useFirebaseAuth(); // Это ваш объект auth из firebase/auth
   const { user, isUserLoading } = useUser();
 
   const [error, setError] = useState<string | null>(null);
   const [isSigningIn, setIsSigningIn] = useState(false);
+
+  // Дополнительная подстраховка: инициализация плагина при загрузке страницы входа
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      GoogleAuth.initialize();
+    }
+  }, []);
 
   useEffect(() => {
     // Redirect if user is already logged in and auth state is resolved
@@ -30,15 +43,43 @@ export default function LoginPage() {
 
   const handleLogin = async () => {
     if (!auth) return;
+    
     setIsSigningIn(true);
     setError(null);
-    const provider = new GoogleAuthProvider();
+
     try {
-      await signInWithPopup(auth, provider);
-      // The `useEffect` above will handle the redirect once `user` state updates.
+      if (Capacitor.isNativePlatform()) {
+        // ==========================================
+        // 1. ЛОГИКА ДЛЯ ANDROID (APK)
+        // ==========================================
+        console.log("Запускаем Native Google Sign-In");
+        
+        // Открываем системное окно Google (не браузер!)
+        const googleUser = await GoogleAuth.signIn();
+        
+        // Получаем токен от Google
+        const idToken = googleUser.authentication.idToken;
+        
+        // Превращаем его в "ключ" для Firebase
+        const credential = GoogleAuthProvider.credential(idToken);
+        
+        // Входим в Firebase
+        await signInWithCredential(auth, credential);
+        
+      } else {
+        // ==========================================
+        // 2. ЛОГИКА ДЛЯ WEB БРАУЗЕРА
+        // ==========================================
+        const provider = new GoogleAuthProvider();
+        await signInWithPopup(auth, provider);
+      }
+      
+      // useEffect сверху сам перекинет на /feed, когда увидит user'а
+
     } catch (err: any) {
-      console.error("Ошибка входа через Google Popup:", err);
-      setError(err.message || "Ошибка входа. Попробуйте снова.");
+      console.error("Ошибка входа:", err);
+      // Показываем ошибку пользователю
+      setError(err.message || JSON.stringify(err) || "Ошибка входа. Попробуйте снова.");
       setIsSigningIn(false);
     }
   };
@@ -68,7 +109,10 @@ export default function LoginPage() {
              <Alert variant="destructive">
               <Terminal className="h-4 w-4" />
               <AlertTitle>Ошибка входа</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription className="break-words text-xs">
+                {/* break-words нужен, чтобы длинные тексты ошибок не ломали верстку */}
+                {error}
+              </AlertDescription>
             </Alert>
           )}
           <Button

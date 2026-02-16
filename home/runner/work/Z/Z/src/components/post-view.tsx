@@ -213,13 +213,13 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                               </AvatarFallback>
                             </Avatar>
 
-                            <div className="flex flex-col">
-                              <Link
-                                href={`/profile/${author.nickname}`}
-                                className="font-bold text-foreground hover:text-primary transition-colors"
-                              >
-                                @{author.nickname}
-                              </Link>
+                        <div className="flex flex-col">
+                          <Link
+                            href={`/profile?nickname=${author.nickname}`}
+                            className="font-bold text-foreground hover:text-primary transition-colors"
+                          >
+                            @{author.nickname}
+                          </Link>
 
                               <p className="text-xs text-muted-foreground mt-1">
                                 {post.createdAt

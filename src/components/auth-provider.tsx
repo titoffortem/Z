@@ -6,6 +6,10 @@ import { useUser, useFirestore } from '@/firebase';
 import type { UserProfile } from '@/types';
 import type { User as FirebaseAuthUser } from 'firebase/auth';
 
+import { Capacitor } from '@capacitor/core';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
+
+
 interface AuthContextType {
   user: FirebaseAuthUser | null;
   userProfile: UserProfile | null;
@@ -24,6 +28,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isProfileLoading, setProfileLoading] = useState(true);
+
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+       GoogleAuth.initialize(); 
+    }
+  }, []);
 
   useEffect(() => {
     if (user && firestore) {

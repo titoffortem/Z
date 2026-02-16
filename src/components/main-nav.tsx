@@ -57,7 +57,7 @@ export function MainNav() {
            {userProfile && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Link href={`/profile/${userProfile.nickname}`}>
+                <Link href={`/profile?nickname=${userProfile.nickname}`}>
                    <Avatar className="h-10 w-10">
                     <AvatarImage src={userProfile.profilePictureUrl ?? undefined} alt={userProfile.nickname} />
                     <AvatarFallback>{userProfile.nickname?.[0].toUpperCase()}</AvatarFallback>

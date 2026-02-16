@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "1011787360328",
+    "project_id": "studio-4793380372-e41da",
+    "storage_bucket": "studio-4793380372-e41da.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1011787360328:android:e84e9b47934a3af825d07d",
+        "android_client_info": {
+          "package_name": "com.zet.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1011787360328-jsb9ivojdt92re0jn9gbcdku4956jsie.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.zet.app",
+            "certificate_hash": "9c9a093dc9f464a930ee018be0fca27d8119ea4e"
+          }
+        },
+        {
+          "client_id": "1011787360328-2ev3laqaaslks81lc6077gj216subrpi.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDYZGTytmIf-gAtFru8MSQ2w_0ou8XGvf0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1011787360328-2ev3laqaaslks81lc6077gj216subrpi.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
