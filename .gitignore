@@ -37,7 +37,7 @@ yarn-error.log*
 
 
 # Capacitor / Android
-android/app/google-services.json  # <-- ВАЖНО! Содержит ключи Firebase
+android/app/google-services.json
 android/app/build/
 android/.gradle
 local.properties
