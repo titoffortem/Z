@@ -19,3 +19,12 @@ export type Post = {
   updatedAt: string;
   likedBy: string[];
 };
+
+export type Comment = {
+  id: string;
+  postId: string;
+  userId: string;
+  text: string;
+  createdAt: string;
+  author?: UserProfile;
+};
