@@ -131,7 +131,7 @@ export function PostCard({ post }: { post: Post }) {
                         {author && (
                             <div className="flex items-center justify-between gap-3 mt-auto">
                                 <div className="flex items-center gap-3 min-w-0">
-                                    <Link href={`/profile/${author.nickname}`} className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                    <Link href={`/profile?nickname=${author.nickname}`} className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                                          <Avatar className="h-8 w-8">
                                             <AvatarImage src={author.profilePictureUrl ?? undefined} alt={author.nickname} />
                                             <AvatarFallback>{author.nickname[0].toUpperCase()}</AvatarFallback>

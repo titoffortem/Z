@@ -87,8 +87,7 @@ export default function CreateProfilePage() {
           description: 'Ваш профиль создан.',
         });
         
-        router.push('/feed');
-        router.refresh();
+        window.location.href = '/feed';
 
       } catch (error: any) {
         toast({

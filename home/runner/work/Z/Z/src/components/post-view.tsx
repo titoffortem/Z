@@ -201,7 +201,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
 
                         <div className="flex flex-col">
                           <Link
-                            href={`/profile/${author.nickname}`}
+                            href={`/profile?nickname=${author.nickname}`}
                             className="font-bold text-foreground hover:text-primary transition-colors"
                           >
                             @{author.nickname}

@@ -8,8 +8,12 @@ import { PostCard } from "@/components/post-card";
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFirestore, useUser } from "@/firebase";
+import { useSearchParams } from "next/navigation";
 
-export default function ProfilePageClient({ nickname }: { nickname: string }) {
+export default function ProfilePageClient() {
+    const searchParams = useSearchParams();
+    const nickname = searchParams.get('nickname'); 
+
     const [user, setUser] = useState<UserProfile | null>(null);
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
@@ -18,6 +22,7 @@ export default function ProfilePageClient({ nickname }: { nickname: string }) {
     const { user: authUser } = useUser();
 
     useEffect(() => {
+        // Проверка остается той же (если nickname null, сработает !nickname)
         if (!nickname || !firestore || !authUser) {
             setLoading(false);
             if (!nickname) setUserFound(false);
@@ -72,6 +77,7 @@ export default function ProfilePageClient({ nickname }: { nickname: string }) {
         const fetchData = async () => {
             setLoading(true);
             setUserFound(true);
+            // TypeScript знает, что здесь nickname не null благодаря проверке в начале useEffect
             const userData = await getUserByNickname(nickname);
             if (userData) {
                 setUser(userData);

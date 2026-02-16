@@ -34,3 +34,16 @@ yarn-error.log*
 
 # VS Code settings
 .vscode/
+
+
+# Capacitor / Android
+android/app/google-services.json  # <-- ВАЖНО! Содержит ключи Firebase
+android/app/build/
+android/.gradle
+local.properties
+
+# Keystore (Ключ подписи)
+*.jks
+*.keystore
+key.properties
+
