@@ -4,12 +4,12 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Search, MessageSquare, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
-import { useAuth } from './auth-provider';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useAuth } from '@/components/auth-provider';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth as useFirebaseAuth } from '@/firebase';
-import { CreatePost } from './create-post';
-import { ZLogoIcon } from './icons';
+import { CreatePost } from '@/components/create-post';
+import { ZLogoIcon } from '@/components/icons';
 
 const navItems = [
   { href: '/feed', icon: Home, label: 'Лента' },
