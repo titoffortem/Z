@@ -101,7 +101,6 @@ export function PostCard({ post }: { post: Post }) {
 
     const mediaUrl = post.mediaUrls && post.mediaUrls[0];
     const mediaType = post.mediaTypes && post.mediaTypes[0];
-    const isTextOnly = !mediaUrl && !!post.caption;
 
     if (!post.caption && !mediaUrl) {
         return null;
@@ -121,24 +120,20 @@ export function PostCard({ post }: { post: Post }) {
                         ) : mediaType === 'video' && mediaUrl ? (
                             <video src={mediaUrl} className="w-full h-full object-cover" muted loop playsInline />
                         ) : (
-                             // ТЕКСТОВАЯ КАРТОЧКА: Занимает всё пространство, выровнена по левому верхнему углу
-                             <div className="p-4 h-full w-full overflow-hidden flex flex-col items-start justify-start bg-secondary/30">
-                                <p className="text-sm text-foreground whitespace-pre-wrap break-words line-clamp-[12] text-left leading-relaxed">
+                             <div className="p-4 h-full w-full overflow-hidden">
+                                <p className="text-sm text-foreground break-words line-clamp-6 text-left">
                                     {post.caption}
                                 </p>
                             </div>
                         )}
                     </div>
 
-                    {/* НИЖНЯЯ ЧАСТЬ: ИНФОРМАЦИЯ */}
-                    <div className="p-3 flex flex-col flex-grow min-h-0">
-                        {/* Если есть медиа, показываем краткое превью текста снизу */}
+                    <div className="p-3 flex flex-col flex-grow">
                         {mediaUrl && post.caption && (
                             <p className="font-semibold leading-snug line-clamp-2 text-foreground mb-3 flex-grow text-sm">
                                 {post.caption}
                             </p>
                         )}
-                        
                         {author && (
                             <div className="flex items-center justify-between gap-3 mt-auto">
                                 <div className="flex items-center gap-3 min-w-0">
@@ -180,18 +175,12 @@ export function PostCard({ post }: { post: Post }) {
                     </div>
                 </div>
             </DialogTrigger>
-
-            {/* КОНТЕНТ ОТКРЫТОГО ПОСТА */}
-            <DialogContent 
-                className="p-0 border-none max-w-5xl bg-background w-[95vw] md:w-full h-[85vh] md:h-auto overflow-hidden shadow-2xl rounded-xl"
-            >
-                 <DialogTitle className="sr-only">Просмотр записи от {author?.nickname}</DialogTitle>
+            <DialogContent className="p-0 border-0 max-w-5xl bg-card">
+                 <DialogTitle className="sr-only">Просмотр записи</DialogTitle>
                  <DialogDescription className="sr-only">
                     {post.caption || "Изображение записи"}
                  </DialogDescription>
-                 
-                 {/* Компонент отображения самого поста */}
-                 <PostView post={post} author={author} isTextOnly={isTextOnly} />
+                 <PostView post={post} author={author} />
             </DialogContent>
         </Dialog>
     );
