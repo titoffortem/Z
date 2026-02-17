@@ -15,7 +15,6 @@ import { Heart, Loader2, MessageCircle, X, ChevronLeft, ChevronRight, ArrowLeft,
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
 
-// 1. Добавляем isTextOnly в интерфейс пропсов (или деструктуризацию)
 export function PostView({ post, author, isTextOnly = false }: { post: Post, author: UserProfile | null, isTextOnly?: boolean }) {
     const mediaUrls = post.mediaUrls && post.mediaUrls.length > 0 ? post.mediaUrls : [];
     const mediaTypes = post.mediaTypes && post.mediaTypes.length > 0 ? post.mediaTypes : [];
@@ -35,7 +34,7 @@ export function PostView({ post, author, isTextOnly = false }: { post: Post, aut
     const [isImageExpanded, setIsImageExpanded] = React.useState(false);
     const [currentIndex, setCurrentIndex] = React.useState(0);
     
-    // 2. Если пост только текстовый, комментарии открыты по умолчанию
+    // Если пост только текстовый, комментарии открыты по умолчанию (чтобы справа был блок комментов)
     const [showComments, setShowComments] = React.useState(isTextOnly);
 
     const currentUrl = mediaUrls[currentIndex];
@@ -156,18 +155,18 @@ export function PostView({ post, author, isTextOnly = false }: { post: Post, aut
                     : "w-full h-full md:w-[60%] md:h-full md:border-r border-border"
             )}>
                 
-                {/* 3. Логика отображения: Текст ИЛИ Медиа */}
+                {/* ЛОГИКА ОТОБРАЖЕНИЯ: Текст ИЛИ Медиа */}
                 {isTextOnly ? (
                     // --- ВАРИАНТ ТОЛЬКО ТЕКСТ ---
-                    <div className="w-full h-full flex items-center justify-center p-8 bg-muted/10 overflow-y-auto custom-scrollbar">
-                        <div className="max-w-2xl w-full my-auto">
-                             <p className="text-xl md:text-2xl leading-relaxed text-foreground whitespace-pre-wrap break-words text-center font-medium">
+                    <div className="w-full h-full flex flex-col items-start justify-start p-6 md:p-8 bg-muted/10 overflow-y-auto custom-scrollbar">
+                        <div className="w-full">
+                             <p className="text-xl md:text-2xl leading-relaxed text-foreground whitespace-pre-wrap break-words text-left font-medium">
                                 {post.caption}
                             </p>
                         </div>
                     </div>
                 ) : (
-                    // --- ВАРИАНТ С МЕДИА (Как было раньше) ---
+                    // --- ВАРИАНТ С МЕДИА (Оставляем как было, с центрированием) ---
                     currentUrl && (
                         <div 
                             className={cn(

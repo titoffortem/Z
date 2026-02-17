@@ -102,7 +102,7 @@ export function PostCard({ post }: { post: Post }) {
     const mediaUrl = post.mediaUrls && post.mediaUrls[0];
     const mediaType = post.mediaTypes && post.mediaTypes[0];
 
-    // Определяем, является ли пост только текстовым
+    // Определяем, является ли пост чисто текстовым (нет медиа, но есть текст)
     const isTextOnly = !mediaUrl && !!post.caption;
 
     if (!post.caption && !mediaUrl) {
@@ -113,13 +113,18 @@ export function PostCard({ post }: { post: Post }) {
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
                 <div className="flex flex-col h-full bg-card rounded-lg overflow-hidden border cursor-pointer transition-transform hover:scale-[1.02]">
-                    <div className={cn("relative aspect-square w-full bg-muted overflow-hidden", mediaType !== 'image' && 'flex items-center justify-center' )}>
+                    <div className={cn(
+                        "relative aspect-square w-full bg-muted overflow-hidden", 
+                        // Если это медиа (не текст), то центрируем контент. Если текст - выравниваем по верху-лево.
+                        (mediaType !== 'image' && !isTextOnly) && 'flex items-center justify-center' 
+                    )}>
                         {mediaType === 'image' && mediaUrl ? (
                             <Image src={mediaUrl} alt={post.caption || "Изображение записи"} fill className="object-contain" />
                         ) : mediaType === 'video' && mediaUrl ? (
                             <video src={mediaUrl} className="w-full h-full object-cover" muted loop playsInline />
                         ) : (
-                             <div className="p-4 h-full w-full overflow-hidden flex items-center justify-center bg-secondary/30">
+                             // ТЕКСТОВАЯ КАРТОЧКА В ЛЕНТЕ
+                             <div className="p-4 h-full w-full overflow-hidden flex flex-col items-start justify-start bg-secondary/30">
                                 <p className="text-sm text-foreground break-words line-clamp-6 text-left">
                                     {post.caption}
                                 </p>
@@ -128,15 +133,12 @@ export function PostCard({ post }: { post: Post }) {
                     </div>
 
                     <div className="p-3 flex flex-col flex-grow">
-                        {/* Показываем превью текста снизу только если есть медиа, 
-                            иначе текст уже показан в большом квадрате выше */}
+                        {/* Показываем превью текста снизу только если есть медиа (картинка/видео) */}
                         {mediaUrl && post.caption && (
                             <p className="font-semibold leading-snug line-clamp-2 text-foreground mb-2 flex-grow text-sm">
                                 {post.caption}
                             </p>
                         )}
-                        {/* Если медиа нет, показываем начало текста, если оно не влезло в квадрат, 
-                            или можно скрыть, так как оно уже есть в квадрате. Оставим для единообразия. */}
                         
                         {author && (
                             <div className="flex items-center justify-between gap-3 mt-auto">
@@ -185,7 +187,6 @@ export function PostCard({ post }: { post: Post }) {
                     {`Подробный вид записи от пользователя ${author?.nickname || '...'} с подписью: ${post.caption || 'изображение'}`}
                  </DialogDescription>
                  {/* Передаем флаг isTextOnly в PostView */}
-                 {/* @ts-ignore - проп может отсутствовать в типах PostView, добавьте его туда */}
                  <PostView post={post} author={author} isTextOnly={isTextOnly} />
             </DialogContent>
         </Dialog>
