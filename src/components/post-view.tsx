@@ -156,10 +156,12 @@ export function PostView({ post, author, isTextOnly = false }: { post: Post, aut
                 
                 {isTextOnly ? (
                     // --- ВАРИАНТ ТОЛЬКО ТЕКСТ ---
-                    <div className="w-full h-full flex flex-col items-start justify-start p-6 md:p-8 bg-muted/10 overflow-y-auto custom-scrollbar">
+                    // Здесь добавлен bg-[#32463D]
+                    <div className="w-full h-full flex flex-col items-start justify-start p-6 md:p-8 bg-[#32463D] overflow-y-auto custom-scrollbar">
                         <div className="w-full">
-                            {/* ИЗМЕНЕНИЕ ЗДЕСЬ: text-lg вместо text-xl md:text-2xl */}
-                             <p className="text-lg leading-relaxed text-foreground whitespace-pre-wrap break-words text-left">
+                             {/* text-white добавлен для читаемости на темном фоне, 
+                                 text-lg для соответствия размеру из правой колонки */}
+                             <p className="text-lg leading-relaxed text-white whitespace-pre-wrap break-words text-left">
                                 {post.caption}
                             </p>
                         </div>
