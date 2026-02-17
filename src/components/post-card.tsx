@@ -117,7 +117,7 @@ export function PostCard({ post }: { post: Post }) {
                             <video src={mediaUrl} className="w-full h-full object-cover" muted loop playsInline />
                         ) : (
                              <div className="p-4 h-full w-full overflow-hidden">
-                                <p className="text-sm text-foreground break-words line-clamp-[12] text-left">
+                                <p className="text-sm text-foreground break-words line-clamp-6 text-left">
                                     {post.caption}
                                 </p>
                             </div>
