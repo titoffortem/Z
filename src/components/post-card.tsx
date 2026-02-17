@@ -102,7 +102,6 @@ export function PostCard({ post }: { post: Post }) {
     const mediaUrl = post.mediaUrls && post.mediaUrls[0];
     const mediaType = post.mediaTypes && post.mediaTypes[0];
 
-    // Определяем, является ли пост чисто текстовым (нет медиа, но есть текст)
     const isTextOnly = !mediaUrl && !!post.caption;
 
     if (!post.caption && !mediaUrl) {
@@ -115,7 +114,6 @@ export function PostCard({ post }: { post: Post }) {
                 <div className="flex flex-col h-full bg-card rounded-lg overflow-hidden border cursor-pointer transition-transform hover:scale-[1.02]">
                     <div className={cn(
                         "relative aspect-square w-full bg-muted overflow-hidden", 
-                        // Если это медиа (не текст), то центрируем контент. Если текст - выравниваем по верху-лево.
                         (mediaType !== 'image' && !isTextOnly) && 'flex items-center justify-center' 
                     )}>
                         {mediaType === 'image' && mediaUrl ? (
@@ -123,9 +121,11 @@ export function PostCard({ post }: { post: Post }) {
                         ) : mediaType === 'video' && mediaUrl ? (
                             <video src={mediaUrl} className="w-full h-full object-cover" muted loop playsInline />
                         ) : (
-                             // ТЕКСТОВАЯ КАРТОЧКА В ЛЕНТЕ
+                             // --- ИЗМЕНЕНИЯ ЗДЕСЬ ---
                              <div className="p-4 h-full w-full overflow-hidden flex flex-col items-start justify-start bg-secondary/30">
-                                <p className="text-sm text-foreground break-words line-clamp-6 text-left">
+                                {/* line-clamp-[12] позволяет тексту занимать почти всю высоту квадрата (около 12 строк) 
+                                    перед тем как обрезаться троеточием. whitespace-pre-wrap сохраняет абзацы. */}
+                                <p className="text-sm text-foreground whitespace-pre-wrap break-words line-clamp-[12] text-left">
                                     {post.caption}
                                 </p>
                             </div>
@@ -133,13 +133,11 @@ export function PostCard({ post }: { post: Post }) {
                     </div>
 
                     <div className="p-3 flex flex-col flex-grow">
-                        {/* Показываем превью текста снизу только если есть медиа (картинка/видео) */}
                         {mediaUrl && post.caption && (
                             <p className="font-semibold leading-snug line-clamp-2 text-foreground mb-2 flex-grow text-sm">
                                 {post.caption}
                             </p>
                         )}
-                        
                         {author && (
                             <div className="flex items-center justify-between gap-3 mt-auto">
                                 <div className="flex items-center gap-3 min-w-0">
@@ -186,7 +184,6 @@ export function PostCard({ post }: { post: Post }) {
                  <DialogDescription className="sr-only">
                     {`Подробный вид записи от пользователя ${author?.nickname || '...'} с подписью: ${post.caption || 'изображение'}`}
                  </DialogDescription>
-                 {/* Передаем флаг isTextOnly в PostView */}
                  <PostView post={post} author={author} isTextOnly={isTextOnly} />
             </DialogContent>
         </Dialog>
