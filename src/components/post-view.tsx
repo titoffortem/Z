@@ -11,7 +11,7 @@ import { useAuth } from "@/components/auth-provider";
 import { useFirestore } from "@/firebase";
 import { doc, updateDoc, arrayUnion, arrayRemove, collection, query, orderBy, onSnapshot, Timestamp, getDoc, addDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Heart, Loader2, MessageCircle, ChevronLeft, ChevronRight, ArrowLeft, Send } from "lucide-react"; 
+import { Heart, Loader2, MessageCircle, X, ChevronLeft, ChevronRight, ArrowLeft, Send } from "lucide-react"; 
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -193,19 +193,20 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                             <div className="flex items-center gap-2 opacity-90">
                                 <Avatar className="h-7 w-7 ring-1 ring-border/50">
                                     <AvatarImage src={author.profilePictureUrl || undefined} />
-                                    <AvatarFallback>{author.nickname[0]}</AvatarFallback>
+                                    <AvatarFallback>{author.nickname?.[0].toUpperCase()}</AvatarFallback>
                                 </Avatar>
-                                <span className="text-sm font-bold truncate">@{author.nickname}</span>
+                                <span className="text-sm font-bold truncate max-w-[120px]">@{author.nickname}</span>
                             </div>
-                        )}
-                        <div className="flex items-center gap-6">
+                        ) : <div></div>}
+
+                        <div className="flex items-center gap-5">
                             <button onClick={handleLike} className={cn("flex items-center gap-1.5", isLiked ? "text-primary" : "text-foreground")}>
                                 <Heart className={cn("h-6 w-6", isLiked && "fill-current")} />
-                                <span className="text-sm font-bold">{likeCount}</span>
+                                <span className="text-sm font-semibold">{likeCount}</span>
                             </button>
-                            <button onClick={() => setShowComments(true)} className="flex items-center gap-1.5 text-foreground">
+                            <button onClick={() => setShowComments(true)} className="flex items-center gap-1.5 text-foreground hover:text-primary transition-colors">
                                 <MessageCircle className="h-6 w-6" />
-                                <span className="text-sm font-bold">{comments.length}</span>
+                                <span className="text-sm font-semibold">{comments.length}</span>
                             </button>
                         </div>
                     </div>
@@ -256,6 +257,8 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                             </div>
                         </div>
                     )}
+                    
+                    {showComments && <span className="md:hidden font-semibold text-sm mx-auto">Комментарии</span>}
                 </div>
 
                 {/* 2. CONTENT */}
