@@ -34,7 +34,7 @@ export function PostView({ post, author, isTextOnly = false }: { post: Post, aut
     const [isImageExpanded, setIsImageExpanded] = React.useState(false);
     const [currentIndex, setCurrentIndex] = React.useState(0);
     
-    // Если пост только текстовый, комментарии открыты по умолчанию (чтобы справа был блок комментов)
+    // Если пост только текстовый, комментарии открыты по умолчанию
     const [showComments, setShowComments] = React.useState(isTextOnly);
 
     const currentUrl = mediaUrls[currentIndex];
@@ -47,7 +47,6 @@ export function PostView({ post, author, isTextOnly = false }: { post: Post, aut
         setLikeCount(post.likedBy?.length ?? 0);
     }, [post, user]);
 
-    // Если передан флаг isTextOnly, убедимся, что showComments всегда true
     React.useEffect(() => {
         if (isTextOnly) {
             setShowComments(true);
@@ -147,7 +146,7 @@ export function PostView({ post, author, isTextOnly = false }: { post: Post, aut
             isImageExpanded ? "flex-col h-[90vh]" : "flex-col h-[85vh] md:flex-row md:h-[90vh]"
         )}>
             
-            {/* ================= ЛЕВАЯ КОЛОНКА (МЕДИА ИЛИ ТЕКСТ) ================= */}
+            {/* ================= ЛЕВАЯ КОЛОНКА ================= */}
             <div className={cn(
                 "relative bg-background transition-all duration-300 overflow-y-auto scrollbar-hide flex flex-col",
                 isImageExpanded 
@@ -155,18 +154,18 @@ export function PostView({ post, author, isTextOnly = false }: { post: Post, aut
                     : "w-full h-full md:w-[60%] md:h-full md:border-r border-border"
             )}>
                 
-                {/* ЛОГИКА ОТОБРАЖЕНИЯ: Текст ИЛИ Медиа */}
                 {isTextOnly ? (
                     // --- ВАРИАНТ ТОЛЬКО ТЕКСТ ---
                     <div className="w-full h-full flex flex-col items-start justify-start p-6 md:p-8 bg-muted/10 overflow-y-auto custom-scrollbar">
                         <div className="w-full">
-                             <p className="text-xl md:text-2xl leading-relaxed text-foreground whitespace-pre-wrap break-words text-left font-medium">
+                            {/* ИЗМЕНЕНИЕ ЗДЕСЬ: text-lg вместо text-xl md:text-2xl */}
+                             <p className="text-lg leading-relaxed text-foreground whitespace-pre-wrap break-words text-left">
                                 {post.caption}
                             </p>
                         </div>
                     </div>
                 ) : (
-                    // --- ВАРИАНТ С МЕДИА (Оставляем как было, с центрированием) ---
+                    // --- ВАРИАНТ С МЕДИА ---
                     currentUrl && (
                         <div 
                             className={cn(
@@ -202,14 +201,12 @@ export function PostView({ post, author, isTextOnly = false }: { post: Post, aut
                     )
                 )}
 
-                {/* Если пост с картинкой, но есть текст - показываем его снизу на мобилке (как было) */}
                 {!isTextOnly && post.caption && !isImageExpanded && (
                     <div className="md:hidden p-4 pb-20">
                         <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap break-words">{post.caption}</p>
                     </div>
                 )}
 
-                {/* Мобильный футер с лайками под картинкой (скрываем, если textOnly, т.к. лайки будут справа) */}
                 {!isImageExpanded && !isTextOnly && (
                     <div className="md:hidden sticky bottom-0 left-0 right-0 p-3 bg-background/95 backdrop-blur border-t border-border flex items-center justify-between mt-auto z-10">
                         {author ? (
@@ -236,28 +233,26 @@ export function PostView({ post, author, isTextOnly = false }: { post: Post, aut
                 )}
             </div>
 
-            {/* ================= ПРАВАЯ КОЛОНКА (КОММЕНТАРИИ) ================= */}
+            {/* ================= ПРАВАЯ КОЛОНКА ================= */}
             <div className={cn(
                 "flex flex-col bg-background", 
                 isImageExpanded 
                     ? "hidden" 
                     : cn(
-                        "absolute inset-0 z-50 h-full w-full", // Mobile Overlay
-                        "md:static md:inset-auto md:h-full md:w-[40%] md:flex", // Desktop Static
-                        !showComments && !isTextOnly && "hidden md:flex" // Если TextOnly - всегда показываем
+                        "absolute inset-0 z-50 h-full w-full",
+                        "md:static md:inset-auto md:h-full md:w-[40%] md:flex",
+                        !showComments && !isTextOnly && "hidden md:flex"
                       )
             )}>
                  
                  {/* 1. HEADER */}
                  <div className="p-3 md:p-4 border-b border-border flex items-center justify-between bg-muted/20 flex-shrink-0">
-                    {/* Кнопка закрытия комментов на мобилке (если не TextOnly) */}
                     {showComments && !isTextOnly && (
                         <button onClick={() => setShowComments(false)} className="md:hidden p-2 -ml-2 text-muted-foreground hover:text-foreground">
                             <X className="h-6 w-6" />
                         </button>
                     )}
                     
-                    {/* Кнопка "Назад" на десктопе (Скрываем если TextOnly, т.к. некуда возвращаться) */}
                     {showComments && !isTextOnly && (
                         <button onClick={() => setShowComments(false)} className="hidden md:flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mr-auto">
                             <ArrowLeft className="h-4 w-4" />
@@ -265,7 +260,6 @@ export function PostView({ post, author, isTextOnly = false }: { post: Post, aut
                         </button>
                     )}
 
-                    {/* Информация об авторе (показываем всегда в TextOnly или если комменты открыты) */}
                     {((!showComments || showComments) && author) && (
                         <div className={cn("flex items-center gap-3 min-w-0", (showComments && !isTextOnly) && "hidden md:hidden")}> 
                             <Avatar className="h-10 w-10 ring-1 ring-border flex-shrink-0">
@@ -288,7 +282,6 @@ export function PostView({ post, author, isTextOnly = false }: { post: Post, aut
 
                 {/* 2. CONTENT */}
                 <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar relative min-h-0 bg-background">
-                    {/* Если НЕ TextOnly и комменты закрыты - показываем описание справа (стандартный режим) */}
                     {!showComments && !isTextOnly && (
                         <div className="hidden md:block h-full">
                             {post.caption ? (
@@ -303,7 +296,6 @@ export function PostView({ post, author, isTextOnly = false }: { post: Post, aut
                         </div>
                     )}
 
-                    {/* Если комменты открыты ИЛИ это TextOnly - показываем список комментариев */}
                     {(showComments || isTextOnly) && (
                         <div className="space-y-4 pb-4">
                             {commentsLoading ? (
@@ -340,7 +332,6 @@ export function PostView({ post, author, isTextOnly = false }: { post: Post, aut
 
                 {/* 3. FOOTER */}
                 <div className="flex-shrink-0 p-3 md:p-4 border-t border-border bg-background/95 backdrop-blur-sm mt-auto pb-safe">
-                    {/* Кнопки переключения (Скрываем, если TextOnly - т.к. справа всегда комментарии) */}
                     {!showComments && !isTextOnly && (
                         <div className="hidden md:flex items-center justify-between">
                              <div className="flex items-center gap-6">
@@ -357,10 +348,8 @@ export function PostView({ post, author, isTextOnly = false }: { post: Post, aut
                         </div>
                     )}
 
-                    {/* Поле ввода (Показываем если комменты открыты ИЛИ isTextOnly) */}
                     {(showComments || isTextOnly) && (
                         <div className="flex flex-col gap-3">
-                            {/* Для TextOnly добавляем кнопки лайков сюда, т.к. "обложки" нет */}
                             {isTextOnly && (
                                 <div className="flex items-center gap-4 mb-1">
                                     <button onClick={handleLike} className={cn("flex items-center gap-1.5 group", isLiked ? "text-primary" : "text-foreground hover:text-primary")}>
