@@ -191,6 +191,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                     </div>
                 )}
 
+                {/* Mobile: Текст поста */}
                 {post.caption && !isImageExpanded && (
                     <div className="md:hidden p-4 pb-20">
                         <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap break-words">{post.caption}</p>
