@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useFirestore } from "@/firebase";
 import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import {
@@ -30,6 +30,8 @@ export function PostCard({ post }: { post: Post }) {
     const [author, setAuthor] = React.useState<UserProfile | null>(null);
     const [isLiked, setIsLiked] = React.useState(false);
     const [likeCount, setLikeCount] = React.useState(post.likedBy?.length ?? 0);
+
+    const [isOpen, setIsOpen] = React.useState(false);
 
     React.useEffect(() => {
         if (user && post.likedBy) {
@@ -105,7 +107,7 @@ export function PostCard({ post }: { post: Post }) {
     }
 
     return (
-        <Dialog>
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
                 <div className="flex flex-col h-full bg-card rounded-lg overflow-hidden border cursor-pointer transition-transform hover:scale-[1.02]">
                     <div className={cn("relative aspect-square w-full bg-muted overflow-hidden", mediaType !== 'image' && 'flex items-center justify-center' )}>
@@ -115,7 +117,7 @@ export function PostCard({ post }: { post: Post }) {
                             <video src={mediaUrl} className="w-full h-full object-cover" muted loop playsInline />
                         ) : (
                              <div className="p-4 h-full w-full overflow-hidden">
-                                <p className="text-sm text-foreground break-words line-clamp-[12] text-left">
+                                <p className="text-sm text-foreground break-words line-clamp-6 text-left">
                                     {post.caption}
                                 </p>
                             </div>
@@ -131,7 +133,7 @@ export function PostCard({ post }: { post: Post }) {
                         {author && (
                             <div className="flex items-center justify-between gap-3 mt-auto">
                                 <div className="flex items-center gap-3 min-w-0">
-                                    <Link href={`/profile/${author.nickname}`} className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                    <Link href={`/profile?nickname=${author.nickname}`} className="flex-shrink-0">
                                          <Avatar className="h-8 w-8">
                                             <AvatarImage src={author.profilePictureUrl ?? undefined} alt={author.nickname} />
                                             <AvatarFallback>{author.nickname[0].toUpperCase()}</AvatarFallback>

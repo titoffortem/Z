@@ -34,3 +34,17 @@ yarn-error.log*
 
 # VS Code settings
 .vscode/
+
+
+# Capacitor / Android
+android/app/google-services.json
+android/app/build/
+android/.gradle
+local.properties
+
+# Keystore (Ключ подписи)
+*.jks
+*.keystore
+key.properties
+
+home/runner/work/Z/Z/
