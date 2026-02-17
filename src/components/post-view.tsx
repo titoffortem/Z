@@ -11,7 +11,7 @@ import { useAuth } from "@/components/auth-provider";
 import { useFirestore } from "@/firebase";
 import { doc, updateDoc, arrayUnion, arrayRemove, collection, query, orderBy, onSnapshot, Timestamp, getDoc, addDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Heart, Loader2, MessageCircle, X, ChevronLeft, ChevronRight, ArrowLeft, Send } from "lucide-react"; 
+import { Heart, Loader2, MessageCircle, ChevronLeft, ChevronRight, ArrowLeft, Send } from "lucide-react"; 
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -138,13 +138,13 @@ export function PostView({ post, author, isTextOnly = false }: { post: Post, aut
             isImageExpanded ? "flex-col" : "flex-col md:flex-row"
         )}>
             
-            {/* ================= ЛЕВАЯ КОЛОНКА (КОНТЕНТ) ================= */}
+            {/* ================= ЛЕВАЯ КОЛОНКА (ТОЛЬКО МЕДИА) ================= */}
             <div className={cn(
                 "relative flex flex-col min-h-0 bg-background transition-all duration-300",
                 isImageExpanded ? "w-full h-full" : "w-full h-full md:w-[60%] border-r border-border",
-                showComments && "hidden md:flex" 
+                // На мобилках скрываем картинку, если открыт вид комментариев
+                showComments && !isImageExpanded && "hidden md:flex" 
             )}>
-                {/* Scrollable Area */}
                 <div className="flex-1 overflow-y-auto min-h-0 relative custom-scrollbar flex flex-col">
                     {isTextOnly ? (
                         <div className="flex-grow flex flex-col p-6 md:p-10 bg-[#32463D] min-h-full">
@@ -153,50 +153,43 @@ export function PostView({ post, author, isTextOnly = false }: { post: Post, aut
                             </p>
                         </div>
                     ) : (
-                        <div className="flex flex-col min-h-full flex-grow">
+                        <div className="flex flex-col min-h-full flex-grow relative bg-black">
                             {currentUrl && (
                                 <div className={cn(
-                                    "relative w-full bg-muted/20 select-none group flex items-center justify-center flex-grow",
-                                    isImageExpanded ? "h-full" : "aspect-square md:aspect-auto md:min-h-[400px]"
+                                    "relative w-full select-none group flex items-center justify-center flex-grow",
+                                    isImageExpanded ? "h-full" : "h-full md:min-h-[400px]"
                                 )}>
-                                    {/* Кнопки навигации */}
+                                    {/* Навигация слайдера */}
                                     {mediaUrls.length > 1 && (
                                         <>
-                                            <button onClick={prevSlide} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/90 hover:text-white transition-all hover:scale-110 z-30 drop-shadow-md">
-                                                <ChevronLeft className="h-10 w-10 md:h-12 md:w-12" />
+                                            <button onClick={prevSlide} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/90 hover:text-white transition-all hover:scale-110 z-30 drop-shadow-lg">
+                                                <ChevronLeft className="h-10 w-10 md:h-14 md:w-14" strokeWidth={1.5} />
                                             </button>
-                                            <button onClick={nextSlide} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/90 hover:text-white transition-all hover:scale-110 z-30 drop-shadow-md">
-                                                <ChevronRight className="h-10 w-10 md:h-12 md:w-12" />
+                                            <button onClick={nextSlide} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/90 hover:text-white transition-all hover:scale-110 z-30 drop-shadow-lg">
+                                                <ChevronRight className="h-10 w-10 md:h-14 md:w-14" strokeWidth={1.5} />
                                             </button>
-                                            {/* Точки внизу */}
-                                            <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-30">
+                                            <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-1.5 z-30">
                                                 {mediaUrls.map((_, idx) => (
-                                                    <div key={idx} className={cn("h-1.5 rounded-full transition-all shadow-sm", idx === currentIndex ? "bg-white w-5" : "bg-white/50 w-1.5")} />
+                                                    <div key={idx} className={cn("h-1.5 rounded-full transition-all shadow-lg", idx === currentIndex ? "bg-white w-6" : "bg-white/40 w-1.5")} />
                                                 ))}
                                             </div>
                                         </>
                                     )}
 
                                     {currentType === 'image' ? (
-                                        <div className="relative w-full h-full cursor-zoom-in" onClick={() => setIsImageExpanded(!isImageExpanded)}>
-                                            <Image src={currentUrl} alt="Post media" fill className="object-contain" priority />
+                                        <div className="relative w-full h-full cursor-pointer" onClick={() => setIsImageExpanded(!isImageExpanded)}>
+                                            <Image src={currentUrl} alt="Media" fill className="object-contain" priority />
                                         </div>
                                     ) : (
                                         <video src={currentUrl} className="w-full h-full object-contain" controls autoPlay loop playsInline />
                                     )}
                                 </div>
                             )}
-
-                            {post.caption && !isImageExpanded && (
-                                <div className="p-4 bg-background">
-                                    <p className="text-sm md:text-base leading-relaxed whitespace-pre-wrap">{post.caption}</p>
-                                </div>
-                            )}
                         </div>
                     )}
                 </div>
 
-                {/* НИЖНЯЯ ПЛАШКА (ТОЛЬКО ДЛЯ МОБИЛОК) */}
+                {/* Нижняя мобильная плашка: СКРЫВАЕМ, если картинка развернута */}
                 {!isImageExpanded && (
                     <div className="md:hidden flex-shrink-0 sticky bottom-0 w-full p-4 bg-background/95 backdrop-blur border-t border-border flex items-center justify-between z-20">
                         {author && (
@@ -220,23 +213,13 @@ export function PostView({ post, author, isTextOnly = false }: { post: Post, aut
                         </div>
                     </div>
                 )}
-
-                {/* Кнопка закрытия Expand-режима */}
-                {isImageExpanded && (
-                    <button 
-                        onClick={() => setIsImageExpanded(false)} 
-                        className="absolute top-4 right-4 z-50 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
-                    >
-                        <X className="h-6 w-6" />
-                    </button>
-                )}
             </div>
 
-            {/* ================= ПРАВАЯ КОЛОНКА (КОММЕНТАРИИ) ================= */}
+            {/* ================= ПРАВАЯ КОЛОНКА (ИНФОРМАЦИЯ И КОММЕНТАРИИ) ================= */}
             <div className={cn(
                 "flex flex-col min-h-0 bg-background transition-all duration-300",
                 isImageExpanded ? "hidden" : "w-full h-full md:w-[40%] absolute inset-0 md:static z-40",
-                !showComments && "hidden md:flex"
+                !showComments && !isTextOnly && "hidden md:flex"
             )}>
                 {/* Header */}
                 <div className="flex-shrink-0 p-4 border-b border-border flex items-center gap-4 bg-muted/10">
@@ -251,47 +234,57 @@ export function PostView({ post, author, isTextOnly = false }: { post: Post, aut
                             </Avatar>
                             <div className="flex flex-col">
                                 <span className="text-sm font-bold">@{author.nickname}</span>
-                                <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">Комментарии</span>
+                                <span className="text-[10px] text-muted-foreground uppercase font-bold">Подробности</span>
                             </div>
                         </div>
                     )}
                 </div>
 
-                {/* Comments List */}
+                {/* Scrollable: Caption + Comments */}
                 <div className="flex-1 overflow-y-auto min-h-0 p-4 custom-scrollbar bg-background">
-                    {commentsLoading ? (
-                        <div className="flex justify-center p-10"><Loader2 className="animate-spin text-primary" /></div>
-                    ) : comments.length === 0 ? (
-                        <div className="text-center p-10 text-muted-foreground text-sm flex flex-col items-center gap-2 mt-10">
-                            <MessageCircle className="h-10 w-10 opacity-20" />
-                            <p>Комментариев пока нет</p>
+                    {/* Описание поста (Caption) перемещено сюда */}
+                    {!isTextOnly && post.caption && (
+                        <div className="mb-6 pb-6 border-b border-border/50">
+                            <p className="text-sm md:text-base leading-relaxed text-foreground whitespace-pre-wrap break-words">
+                                {post.caption}
+                            </p>
                         </div>
-                    ) : (
-                        <div className="space-y-4 pb-2">
-                            {comments.map((comment) => (
-                                <div key={comment.id} className="flex gap-3 animate-in fade-in slide-in-from-bottom-1">
+                    )}
+
+                    {/* Комментарии */}
+                    <div className="space-y-4">
+                        <h4 className="text-[10px] uppercase font-bold text-muted-foreground mb-4">Комментарии</h4>
+                        {commentsLoading ? (
+                            <div className="flex justify-center p-10"><Loader2 className="animate-spin text-primary" /></div>
+                        ) : comments.length === 0 ? (
+                            <div className="text-center p-10 text-muted-foreground text-sm flex flex-col items-center gap-2">
+                                <MessageCircle className="h-8 w-8 opacity-10" />
+                                <p>Комментариев пока нет</p>
+                            </div>
+                        ) : (
+                            comments.map((comment) => (
+                                <div key={comment.id} className="flex gap-3">
                                     <Avatar className="h-8 w-8 flex-shrink-0 mt-0.5">
                                         <AvatarImage src={comment.author?.profilePictureUrl || undefined} />
                                         <AvatarFallback className="text-[10px]">{comment.author?.nickname?.[0]}</AvatarFallback>
                                     </Avatar>
                                     <div className="flex flex-col bg-muted/30 rounded-2xl px-3.5 py-2.5 max-w-[85%]">
                                         <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-xs font-bold text-foreground">@{comment.author?.nickname}</span>
-                                            <span className="text-[9px] text-muted-foreground font-medium">{formatDistanceToNow(new Date(comment.createdAt), { locale: ru })}</span>
+                                            <span className="text-xs font-bold">@{comment.author?.nickname}</span>
+                                            <span className="text-[9px] text-muted-foreground">{formatDistanceToNow(new Date(comment.createdAt), { locale: ru })}</span>
                                         </div>
                                         <p className="text-sm break-words leading-snug">{comment.text}</p>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                            ))
+                        )}
+                    </div>
                 </div>
 
-                {/* Footer (Stats + Input) */}
-                <div className="flex-shrink-0 p-4 border-t border-border bg-background z-50 pb-safe">
-                    {/* Статистика: только здесь на ПК */}
+                {/* Footer (Взаимодействие) */}
+                <div className="flex-shrink-0 p-4 border-t border-border bg-background z-50">
                     <div className="flex items-center gap-6 mb-4">
-                        <button onClick={handleLike} className={cn("flex items-center gap-2 group transition-colors", isLiked ? "text-primary" : "text-muted-foreground hover:text-foreground")}>
+                        <button onClick={handleLike} className={cn("flex items-center gap-2 group", isLiked ? "text-primary" : "text-muted-foreground hover:text-foreground")}>
                             <Heart className={cn("h-7 w-7 transition-transform group-active:scale-90", isLiked && "fill-current")} />
                             <span className="text-lg font-bold">{likeCount}</span>
                         </button>
@@ -315,7 +308,7 @@ export function PostView({ post, author, isTextOnly = false }: { post: Post, aut
                                 <button
                                     type="submit"
                                     disabled={!newComment.trim() || isSubmittingComment}
-                                    className="absolute right-1.5 bottom-1.5 p-2 bg-primary text-primary-foreground rounded-xl disabled:opacity-50 transition-all active:scale-90"
+                                    className="absolute right-1.5 bottom-1.5 p-2 bg-primary text-primary-foreground rounded-xl disabled:opacity-50"
                                 >
                                     {isSubmittingComment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                                 </button>
