@@ -33,6 +33,7 @@ export function PostCard({ post }: { post: Post }) {
 
     const [isOpen, setIsOpen] = React.useState(false);
 
+    // Синхронизация лайков при изменении пропсов или пользователя
     React.useEffect(() => {
         if (user && post.likedBy) {
             setIsLiked(post.likedBy.includes(user.uid));
@@ -40,6 +41,7 @@ export function PostCard({ post }: { post: Post }) {
         setLikeCount(post.likedBy?.length ?? 0);
     }, [post, user]);
 
+    // Загрузка данных автора поста
     React.useEffect(() => {
         const fetchAuthor = async () => {
             if (post.userId && firestore) {
@@ -67,41 +69,38 @@ export function PostCard({ post }: { post: Post }) {
         fetchAuthor();
     }, [post.userId, firestore]);
     
+    // Обработка клика по кнопке лайка
     const handleLike = async (e: React.MouseEvent) => {
         e.stopPropagation();
 
         if (!user || !firestore) {
-            toast({ title: "Чтобы поставить лайк, необходимо войти.", variant: "destructive" });
+            toast({ title: "Вход не выполнен", description: "Чтобы поставить лайк, необходимо войти.", variant: "destructive" });
             return;
         }
 
         const postRef = doc(firestore, 'posts', post.id);
         const newLikeStatus = !isLiked;
 
+        // Оптимистичное обновление UI
         setIsLiked(newLikeStatus);
         setLikeCount(currentCount => newLikeStatus ? currentCount + 1 : currentCount - 1);
 
         try {
             if (newLikeStatus) {
-                await updateDoc(postRef, {
-                    likedBy: arrayUnion(user.uid)
-                });
+                await updateDoc(postRef, { likedBy: arrayUnion(user.uid) });
             } else {
-                await updateDoc(postRef, {
-                    likedBy: arrayRemove(user.uid)
-                });
+                await updateDoc(postRef, { likedBy: arrayRemove(user.uid) });
             }
         } catch (error: any) {
+            // Откат изменений при ошибке
             setIsLiked(!newLikeStatus);
             setLikeCount(currentCount => newLikeStatus ? currentCount - 1 : currentCount + 1);
-            toast({ title: "Не удалось обновить статус лайка.", description: error.message, variant: "destructive" });
-            console.error("Error updating like status:", error);
+            toast({ title: "Ошибка", description: "Не удалось обновить статус лайка.", variant: "destructive" });
         }
     };
 
     const mediaUrl = post.mediaUrls && post.mediaUrls[0];
     const mediaType = post.mediaTypes && post.mediaTypes[0];
-
     const isTextOnly = !mediaUrl && !!post.caption;
 
     if (!post.caption && !mediaUrl) {
@@ -111,45 +110,47 @@ export function PostCard({ post }: { post: Post }) {
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-                <div className="flex flex-col h-full bg-card rounded-lg overflow-hidden border cursor-pointer transition-transform hover:scale-[1.02]">
+                <div className="flex flex-col h-full bg-card rounded-lg overflow-hidden border cursor-pointer transition-transform hover:scale-[1.01] active:scale-[0.98]">
+                    {/* ВЕРХНЯЯ ЧАСТЬ: МЕДИА ИЛИ ТЕКСТ */}
                     <div className={cn(
                         "relative aspect-square w-full bg-muted overflow-hidden", 
-                        (mediaType !== 'image' && !isTextOnly) && 'flex items-center justify-center' 
+                        (mediaType !== 'image' && !isTextOnly) && 'flex items-center justify-center'
                     )}>
                         {mediaType === 'image' && mediaUrl ? (
-                            <Image src={mediaUrl} alt={post.caption || "Изображение записи"} fill className="object-contain" />
+                            <Image src={mediaUrl} alt={post.caption || "Изображение"} fill className="object-contain" />
                         ) : mediaType === 'video' && mediaUrl ? (
                             <video src={mediaUrl} className="w-full h-full object-cover" muted loop playsInline />
                         ) : (
-                             // --- ИЗМЕНЕНИЯ ЗДЕСЬ ---
+                             // ТЕКСТОВАЯ КАРТОЧКА: Занимает всё пространство, выровнена по левому верхнему углу
                              <div className="p-4 h-full w-full overflow-hidden flex flex-col items-start justify-start bg-secondary/30">
-                                {/* line-clamp-[12] позволяет тексту занимать почти всю высоту квадрата (около 12 строк) 
-                                    перед тем как обрезаться троеточием. whitespace-pre-wrap сохраняет абзацы. */}
-                                <p className="text-sm text-foreground whitespace-pre-wrap break-words line-clamp-[12] text-left">
+                                <p className="text-sm text-foreground whitespace-pre-wrap break-words line-clamp-[12] text-left leading-relaxed">
                                     {post.caption}
                                 </p>
                             </div>
                         )}
                     </div>
 
-                    <div className="p-3 flex flex-col flex-grow">
+                    {/* НИЖНЯЯ ЧАСТЬ: ИНФОРМАЦИЯ */}
+                    <div className="p-3 flex flex-col flex-grow min-h-0">
+                        {/* Если есть медиа, показываем краткое превью текста снизу */}
                         {mediaUrl && post.caption && (
-                            <p className="font-semibold leading-snug line-clamp-2 text-foreground mb-2 flex-grow text-sm">
+                            <p className="font-semibold leading-snug line-clamp-2 text-foreground mb-3 flex-grow text-sm">
                                 {post.caption}
                             </p>
                         )}
+                        
                         {author && (
                             <div className="flex items-center justify-between gap-3 mt-auto">
                                 <div className="flex items-center gap-3 min-w-0">
-                                    <Link href={`/profile?nickname=${author.nickname}`} className="flex-shrink-0">
-                                         <Avatar className="h-8 w-8">
+                                    <Link href={`/profile?nickname=${author.nickname}`} className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                         <Avatar className="h-8 w-8 ring-1 ring-border/50">
                                             <AvatarImage src={author.profilePictureUrl ?? undefined} alt={author.nickname} />
                                             <AvatarFallback>{author.nickname[0].toUpperCase()}</AvatarFallback>
                                         </Avatar>
                                     </Link>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-semibold text-foreground truncate">{author.nickname}</p>
-                                        <p className="text-xs text-muted-foreground">
+                                        <p className="text-sm font-bold text-foreground truncate">@{author.nickname}</p>
+                                        <p className="text-[10px] text-muted-foreground">
                                             {post.createdAt ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: ru }) : 'только что'}
                                         </p>
                                     </div>
@@ -158,19 +159,19 @@ export function PostCard({ post }: { post: Post }) {
                                 <button
                                   onClick={handleLike}
                                   className={cn(
-                                    "flex items-center gap-1.5 p-1.5 rounded-md transition-colors flex-shrink-0",
+                                    "flex items-center gap-1.5 p-1.5 rounded-md transition-all",
                                     isLiked
-                                      ? "text-primary"
-                                      : "text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                      ? "text-primary bg-primary/10"
+                                      : "text-muted-foreground hover:text-primary hover:bg-primary/5"
                                   )}
                                 >
                                   <Heart
                                     className={cn(
-                                      "h-4 w-4",
-                                      isLiked && "fill-current"
+                                      "h-4 w-4 transition-transform",
+                                      isLiked && "fill-current scale-110"
                                     )}
                                   />
-                                  <span className="text-xs font-semibold">
+                                  <span className="text-xs font-bold">
                                     {likeCount}
                                   </span>
                                 </button>
@@ -179,11 +180,17 @@ export function PostCard({ post }: { post: Post }) {
                     </div>
                 </div>
             </DialogTrigger>
-            <DialogContent className="p-0 border-0 max-w-5xl bg-card w-full h-[80vh] md:h-auto md:aspect-video overflow-hidden">
-                 <DialogTitle className="sr-only">Просмотр записи</DialogTitle>
+
+            {/* КОНТЕНТ ОТКРЫТОГО ПОСТА */}
+            <DialogContent 
+                className="p-0 border-none max-w-5xl bg-background w-[95vw] md:w-full h-[85vh] md:h-auto overflow-hidden shadow-2xl rounded-xl"
+            >
+                 <DialogTitle className="sr-only">Просмотр записи от {author?.nickname}</DialogTitle>
                  <DialogDescription className="sr-only">
-                    {`Подробный вид записи от пользователя ${author?.nickname || '...'} с подписью: ${post.caption || 'изображение'}`}
+                    {post.caption || "Изображение записи"}
                  </DialogDescription>
+                 
+                 {/* Компонент отображения самого поста */}
                  <PostView post={post} author={author} isTextOnly={isTextOnly} />
             </DialogContent>
         </Dialog>
