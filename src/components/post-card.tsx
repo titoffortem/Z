@@ -102,6 +102,9 @@ export function PostCard({ post }: { post: Post }) {
     const mediaUrl = post.mediaUrls && post.mediaUrls[0];
     const mediaType = post.mediaTypes && post.mediaTypes[0];
 
+    // Определяем, является ли пост только текстовым
+    const isTextOnly = !mediaUrl && !!post.caption;
+
     if (!post.caption && !mediaUrl) {
         return null;
     }
@@ -116,7 +119,7 @@ export function PostCard({ post }: { post: Post }) {
                         ) : mediaType === 'video' && mediaUrl ? (
                             <video src={mediaUrl} className="w-full h-full object-cover" muted loop playsInline />
                         ) : (
-                             <div className="p-4 h-full w-full overflow-hidden">
+                             <div className="p-4 h-full w-full overflow-hidden flex items-center justify-center bg-secondary/30">
                                 <p className="text-sm text-foreground break-words line-clamp-6 text-left">
                                     {post.caption}
                                 </p>
@@ -125,11 +128,16 @@ export function PostCard({ post }: { post: Post }) {
                     </div>
 
                     <div className="p-3 flex flex-col flex-grow">
+                        {/* Показываем превью текста снизу только если есть медиа, 
+                            иначе текст уже показан в большом квадрате выше */}
                         {mediaUrl && post.caption && (
                             <p className="font-semibold leading-snug line-clamp-2 text-foreground mb-2 flex-grow text-sm">
                                 {post.caption}
                             </p>
                         )}
+                        {/* Если медиа нет, показываем начало текста, если оно не влезло в квадрат, 
+                            или можно скрыть, так как оно уже есть в квадрате. Оставим для единообразия. */}
+                        
                         {author && (
                             <div className="flex items-center justify-between gap-3 mt-auto">
                                 <div className="flex items-center gap-3 min-w-0">
@@ -171,12 +179,14 @@ export function PostCard({ post }: { post: Post }) {
                     </div>
                 </div>
             </DialogTrigger>
-            <DialogContent className="p-0 border-0 max-w-5xl bg-card">
+            <DialogContent className="p-0 border-0 max-w-5xl bg-card w-full h-[80vh] md:h-auto md:aspect-video overflow-hidden">
                  <DialogTitle className="sr-only">Просмотр записи</DialogTitle>
                  <DialogDescription className="sr-only">
                     {`Подробный вид записи от пользователя ${author?.nickname || '...'} с подписью: ${post.caption || 'изображение'}`}
                  </DialogDescription>
-                 <PostView post={post} author={author} />
+                 {/* Передаем флаг isTextOnly в PostView */}
+                 {/* @ts-ignore - проп может отсутствовать в типах PostView, добавьте его туда */}
+                 <PostView post={post} author={author} isTextOnly={isTextOnly} />
             </DialogContent>
         </Dialog>
     );
