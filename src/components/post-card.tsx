@@ -33,6 +33,56 @@ export function PostCard({ post }: { post: Post }) {
 
     const [isOpen, setIsOpen] = React.useState(false);
 
+    // --- НАЧАЛО ИЗМЕНЕНИЙ ---
+    // 1. Ссылка на контейнер, в котором лежит текст
+    const textContainerRef = React.useRef<HTMLDivElement>(null);
+    // 2. Состояние для количества строк (по умолчанию 14)
+    const [dynamicLineClamp, setDynamicLineClamp] = React.useState(14);
+
+    React.useEffect(() => {
+        // Функция расчета строк
+        const calculateLines = () => {
+            if (!textContainerRef.current) return;
+
+            const element = textContainerRef.current;
+            // Получаем полную высоту контейнера
+            const height = element.clientHeight;
+            
+            // Получаем стили, чтобы узнать padding
+            const styles = window.getComputedStyle(element);
+            const paddingTop = parseFloat(styles.paddingTop);
+            const paddingBottom = parseFloat(styles.paddingBottom);
+            
+            // Доступная высота для текста = Высота - отступы
+            const availableHeight = height - paddingTop - paddingBottom;
+
+            // Высота строки для text-sm (14px) * leading-tight (1.25) ≈ 17.5px.
+            // Можно округлить до 18 для безопасности или вычислить динамически, 
+            // но для text-sm leading-tight значение 17.5px является стандартом в Tailwind.
+            const lineHeight = 17.5; 
+
+            // Считаем сколько строк влезет
+            const lines = Math.floor(availableHeight / lineHeight);
+            
+            // Устанавливаем минимум 1 строку, чтобы не было ошибок
+            setDynamicLineClamp(Math.max(1, lines));
+        };
+
+        // 3. Запускаем ResizeObserver
+        const observer = new ResizeObserver(() => {
+            calculateLines();
+        });
+
+        if (textContainerRef.current) {
+            // Сначала считаем один раз сразу
+            calculateLines();
+            observer.observe(textContainerRef.current);
+        }
+
+        return () => observer.disconnect();
+    }, [post.mediaTypes]); // Пересчитываем если меняется тип медиа
+    // --- КОНЕЦ ИЗМЕНЕНИЙ (Логика) ---
+
     React.useEffect(() => {
         if (user && post.likedBy) {
             setIsLiked(post.likedBy.includes(user.uid));
@@ -42,6 +92,7 @@ export function PostCard({ post }: { post: Post }) {
 
     React.useEffect(() => {
         const fetchAuthor = async () => {
+            // ... (код загрузки автора без изменений)
             if (post.userId && firestore) {
                 try {
                     const userDoc = await getDoc(doc(firestore, 'users', post.userId));
@@ -68,6 +119,7 @@ export function PostCard({ post }: { post: Post }) {
     }, [post.userId, firestore]);
     
     const handleLike = async (e: React.MouseEvent) => {
+       // ... (код лайка без изменений)
         e.stopPropagation();
 
         if (!user || !firestore) {
@@ -116,15 +168,30 @@ export function PostCard({ post }: { post: Post }) {
                         ) : mediaType === 'video' && mediaUrl ? (
                             <video src={mediaUrl} className="w-full h-full object-cover" muted loop playsInline />
                         ) : (
-                             <div className="p-4 h-full w-full overflow-hidden">
-                                <p className="text-sm text-foreground break-words line-clamp-6 text-left">
+                             // --- НАЧАЛО ИЗМЕНЕНИЙ (JSX) ---
+                             <div 
+                                ref={textContainerRef} // Привязываем ref к контейнеру
+                                className="p-3 h-full w-full overflow-hidden flex flex-col justify-start"
+                             >
+                                <p 
+                                    className="text-sm leading-tight break-words text-left"
+                                    style={{
+                                        // Применяем стили WebkitLineClamp вручную
+                                        display: '-webkit-box',
+                                        WebkitBoxOrient: 'vertical',
+                                        overflow: 'hidden',
+                                        WebkitLineClamp: dynamicLineClamp
+                                    }}
+                                >
                                     {post.caption}
                                 </p>
                             </div>
+                            // --- КОНЕЦ ИЗМЕНЕНИЙ ---
                         )}
                     </div>
 
                     <div className="p-3 flex flex-col flex-grow">
+                        {/* ... остальная часть компонента без изменений ... */}
                         {mediaUrl && post.caption && (
                             <p className="font-semibold leading-snug line-clamp-2 text-foreground mb-2 flex-grow text-sm">
                                 {post.caption}

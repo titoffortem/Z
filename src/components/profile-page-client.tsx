@@ -22,7 +22,6 @@ export default function ProfilePageClient() {
     const { user: authUser } = useUser();
 
     useEffect(() => {
-        // Проверка остается той же (если nickname null, сработает !nickname)
         if (!nickname || !firestore || !authUser) {
             setLoading(false);
             if (!nickname) setUserFound(false);
@@ -77,7 +76,6 @@ export default function ProfilePageClient() {
         const fetchData = async () => {
             setLoading(true);
             setUserFound(true);
-            // TypeScript знает, что здесь nickname не null благодаря проверке в начале useEffect
             const userData = await getUserByNickname(nickname);
             if (userData) {
                 setUser(userData);
@@ -98,17 +96,19 @@ export default function ProfilePageClient() {
         return (
             <div className="overflow-y-auto h-screen">
                 <header className="p-4 border-b border-border/50">
-                    <div className="flex items-center gap-4">
-                        <Skeleton className="h-20 w-20 rounded-full" />
-                        <div className="flex-grow">
-                            <Skeleton className="h-8 w-48 mb-2" />
-                             <div className="flex gap-4 text-muted-foreground mt-2">
-                                <Skeleton className="h-6 w-24" />
-                                <Skeleton className="h-6 w-24" />
-                                <Skeleton className="h-6 w-24" />
+                    <div className="flex flex-col md:flex-row gap-4 md:items-center">
+                        <div className="flex items-center gap-4 flex-grow">
+                            <Skeleton className="h-20 w-20 rounded-full shrink-0" />
+                            <div className="flex-grow space-y-2">
+                                <Skeleton className="h-8 w-32 md:w-48" />
+                                <div className="flex flex-wrap gap-3 mt-2">
+                                    <Skeleton className="h-5 w-20" />
+                                    <Skeleton className="h-5 w-20" />
+                                    <Skeleton className="h-5 w-20" />
+                                </div>
                             </div>
                         </div>
-                         <Skeleton className="h-10 w-24" />
+                         <Skeleton className="h-10 w-full md:w-32" />
                     </div>
                 </header>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1 p-1 mt-4">
@@ -139,22 +139,36 @@ export default function ProfilePageClient() {
     return (
         <div className="overflow-y-auto h-screen">
             <header className="p-4 border-b border-border/50">
-                <div className="flex items-center gap-4">
-                    <Avatar className="h-20 w-20">
-                        <AvatarImage src={user.profilePictureUrl ?? undefined} alt={user.nickname} />
-                        <AvatarFallback>{user.nickname[0].toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-grow">
-                        <h1 className="text-2xl font-bold">{user.nickname}</h1>
-                        <div className="flex flex-wrap items-center gap-4 text-muted-foreground mt-2">
-                            <span><span className="font-bold text-foreground">{posts.length}</span> Публикации</span>
-                            <span><span className="font-bold text-foreground">{followerCount}</span> Подписчики</span>
-                            <span><span className="font-bold text-foreground">{followingCount}</span> Подписки</span>
+                {/* 
+                   ИЗМЕНЕНИЯ ЗДЕСЬ:
+                   1. flex-col для мобильных, md:flex-row для десктопа
+                   2. Аватар и Инфо обернуты в div, чтобы быть рядом на мобильном
+                   3. Кнопка вынесена и растягивается на мобильном
+                */}
+                <div className="flex flex-col md:flex-row gap-4 md:items-center">
+                    
+                    {/* Верхняя часть (Аватар + Ник/Статистика) */}
+                    <div className="flex items-center gap-4 flex-grow">
+                        <Avatar className="h-20 w-20 shrink-0 border border-border">
+                            <AvatarImage src={user.profilePictureUrl ?? undefined} alt={user.nickname} />
+                            <AvatarFallback>{user.nickname[0].toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        
+                        <div className="flex flex-col">
+                            <h1 className="text-2xl font-bold break-all">{user.nickname}</h1>
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground mt-1 text-sm sm:text-base">
+                                <span className="whitespace-nowrap"><span className="font-bold text-foreground">{posts.length}</span> Публикации</span>
+                                <span className="whitespace-nowrap"><span className="font-bold text-foreground">{followerCount}</span> Подписчики</span>
+                                <span className="whitespace-nowrap"><span className="font-bold text-foreground">{followingCount}</span> Подписки</span>
+                            </div>
                         </div>
                     </div>
-                    <Button variant="outline">Подписаться</Button>
+
+                    {/* Кнопка (Внизу на моб, справа на десктопе) */}
+                    <Button variant="outline" className="w-full md:w-auto shrink-0">Подписаться</Button>
                 </div>
             </header>
+            
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1 p-1 mt-4">
                 {posts.length > 0 ? (
                     posts.map(post => (

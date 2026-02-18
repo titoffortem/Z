@@ -19,6 +19,23 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     const mediaUrls = post.mediaUrls && post.mediaUrls.length > 0 ? post.mediaUrls : [];
     const mediaTypes = post.mediaTypes && post.mediaTypes.length > 0 ? post.mediaTypes : [];
 
+    // --- ЛОГИКА ОПРЕДЕЛЕНИЯ КОНТЕНТА ---
+    const hasMedia = mediaUrls.length > 0;
+    const hasText = !!post.caption && post.caption.trim().length > 0;
+    
+    // Условие: ТОЛЬКО текст ИЛИ ТОЛЬКО изображение (без текста)
+    const isSingleContent = (hasMedia && !hasText) || (!hasMedia && hasText);
+    
+    // --- Логика размера шрифта для текстовых постов ---
+    const textLength = post.caption ? post.caption.length : 0;
+    
+    const textSizeClass = React.useMemo(() => {
+        if (textLength < 80) return "text-3xl md:text-5xl font-bold text-center leading-tight";
+        if (textLength < 200) return "text-2xl md:text-3xl font-semibold text-center leading-snug";
+        if (textLength < 500) return "text-xl md:text-2xl font-medium text-center leading-normal";
+        return "text-lg md:text-xl text-left leading-relaxed";
+    }, [textLength]);
+
     const { user, userProfile } = useAuth();
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -33,6 +50,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     // UI State
     const [isImageExpanded, setIsImageExpanded] = React.useState(false);
     const [currentIndex, setCurrentIndex] = React.useState(0);
+    
     const [showComments, setShowComments] = React.useState(false);
 
     const currentUrl = mediaUrls[currentIndex];
@@ -115,6 +133,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                 postId: post.id, userId: user.uid, text: newComment.trim(), createdAt: serverTimestamp(),
             });
             setNewComment('');
+            if (!showComments) setShowComments(true);
         } catch (error: any) {
             toast({ title: 'Ошибка', description: error.message, variant: "destructive" });
         } finally {
@@ -132,63 +151,92 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
         setCurrentIndex((prev) => (prev - 1 + mediaUrls.length) % mediaUrls.length);
     };
 
+    const shouldDisplayComments = showComments || isSingleContent;
+
     return (
         <div className={cn(
             "flex w-full max-w-7xl mx-auto rounded-xl overflow-hidden relative bg-background border border-border shadow-2xl",
-            // ИСПРАВЛЕНИЕ 1: Если expanded, всегда flex-col (даже на desktop), чтобы картинка была одна
             isImageExpanded ? "flex-col h-[90vh]" : "flex-col h-[85vh] md:flex-row md:h-[90vh]"
         )}>
             
-            {/* ================= ЛЕВАЯ КОЛОНКА (МЕДИА) ================= */}
+            {/* ================= ЛЕВАЯ КОЛОНКА ================= */}
             <div className={cn(
-                "relative bg-background transition-all duration-300 overflow-y-auto scrollbar-hide flex flex-col",
-                // ИСПРАВЛЕНИЕ 2: Если expanded, width всегда 100%. Иначе 60% на десктопе.
+                // ИЗМЕНЕНИЕ: flex flex-col и overflow-hidden здесь, чтобы управлять дочерними элементами
+                "relative bg-background transition-all duration-300 flex flex-col overflow-hidden",
                 isImageExpanded 
                     ? "w-full h-full" 
                     : "w-full h-full md:w-[60%] md:h-full md:border-r border-border"
             )}>
-                {currentUrl && (
-                    <div 
-                        className={cn(
-                            "relative w-full bg-muted/30 flex-shrink-0 group select-none flex items-center justify-center", 
-                             currentType === 'image' && "cursor-zoom-in",
-                             isImageExpanded ? "h-full cursor-zoom-out" : "min-h-[300px] md:h-full"
-                        )}
-                         onClick={currentType === 'image' ? () => setIsImageExpanded(!isImageExpanded) : undefined}
-                    >
-                        {currentType === 'image' && (
-                            <Image src={currentUrl} alt={`Slide ${currentIndex}`} fill className="object-contain" priority />
-                        )}
-                        {currentType === 'video' && (
-                            <video key={currentUrl} src={currentUrl} className="w-full h-full object-contain" controls autoPlay loop playsInline />
-                        )}
+                
+                {/* 
+                    СКРОЛЛИРУЕМАЯ ОБЛАСТЬ КОНТЕНТА
+                    Занимает все доступное место (flex-1), скроллится внутри.
+                */}
+                <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col relative w-full">
+                    
+                    {/* МЕДИА */}
+                    {hasMedia && currentUrl && (
+                        <div 
+                            className={cn(
+                                // ИЗМЕНЕНИЕ: flex-1 flex items-center justify-center - чтобы картинка центрировалась по высоте
+                                "relative w-full flex-1 bg-muted/30 group select-none flex items-center justify-center min-h-[50vh]", 
+                                 currentType === 'image' && "cursor-zoom-in",
+                                 isImageExpanded && "cursor-zoom-out"
+                            )}
+                             onClick={currentType === 'image' ? () => setIsImageExpanded(!isImageExpanded) : undefined}
+                        >
+                            {currentType === 'image' && (
+                                <Image src={currentUrl} alt={`Slide ${currentIndex}`} fill className="object-contain" priority />
+                            )}
+                            {currentType === 'video' && (
+                                <video key={currentUrl} src={currentUrl} className="w-full h-full object-contain" controls autoPlay loop playsInline />
+                            )}
 
-                        {mediaUrls.length > 1 && (
-                            <>
-                                <button onClick={prevSlide} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/90 hover:text-white transition-transform hover:scale-110 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] z-20">
-                                    <ChevronLeft className="h-12 w-12" strokeWidth={1.5} />
-                                </button>
-                                <button onClick={nextSlide} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/90 hover:text-white transition-transform hover:scale-110 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] z-20">
-                                    <ChevronRight className="h-12 w-12" strokeWidth={1.5} />
-                                </button>
-                                <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-20 pointer-events-none">
-                                    {mediaUrls.map((_, idx) => (
-                                        <div key={idx} className={cn("h-2 rounded-full transition-all shadow-sm drop-shadow-md", idx === currentIndex ? "bg-white w-6" : "bg-white/60 w-2")} />
-                                    ))}
-                                </div>
-                            </>
-                        )}
-                    </div>
-                )}
+                            {mediaUrls.length > 1 && (
+                                <>
+                                    <button onClick={prevSlide} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/90 hover:text-white transition-transform hover:scale-110 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] z-20">
+                                        <ChevronLeft className="h-12 w-12" strokeWidth={1.5} />
+                                    </button>
+                                    <button onClick={nextSlide} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/90 hover:text-white transition-transform hover:scale-110 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] z-20">
+                                        <ChevronRight className="h-12 w-12" strokeWidth={1.5} />
+                                    </button>
+                                    <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-20 pointer-events-none">
+                                        {mediaUrls.map((_, idx) => (
+                                            <div key={idx} className={cn("h-2 rounded-full transition-all shadow-sm drop-shadow-md", idx === currentIndex ? "bg-white w-6" : "bg-white/60 w-2")} />
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
 
-                {post.caption && !isImageExpanded && (
-                    <div className="md:hidden p-4 pb-20">
-                        <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap break-words">{post.caption}</p>
-                    </div>
-                )}
+                    {/* ТОЛЬКО ТЕКСТ */}
+                    {!hasMedia && hasText && (
+                        <div className="flex-grow flex flex-col p-6 md:p-10 bg-muted/5 min-h-[300px]">
+                            {/* m-auto здесь центрирует текст по вертикали, если он маленький, и позволяет скроллить, если большой */}
+                            <p className={cn(
+                                "whitespace-pre-wrap break-words text-foreground m-auto max-w-full",
+                                textSizeClass
+                            )}>
+                                {post.caption}
+                            </p>
+                        </div>
+                    )}
 
+                    {/* Описание под картинкой (мобилка, смешанный пост) */}
+                    {hasMedia && hasText && !isImageExpanded && (
+                        <div className="md:hidden p-4 pb-4">
+                            <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap break-words">{post.caption}</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* 
+                    НИЖНЯЯ ПАНЕЛЬ (МОБИЛЬНАЯ)
+                    Находится вне скроллируемой области (flex-shrink-0), всегда прибита к низу.
+                */}
                 {!isImageExpanded && (
-                    <div className="md:hidden sticky bottom-0 left-0 right-0 p-3 bg-background/95 backdrop-blur border-t border-border flex items-center justify-between mt-auto z-10">
+                    <div className="flex-shrink-0 md:hidden p-3 bg-background/95 backdrop-blur border-t border-border flex items-center justify-between z-10 w-full">
                         {author ? (
                             <div className="flex items-center gap-2 opacity-90">
                                 <Avatar className="h-7 w-7 ring-1 ring-border/50">
@@ -215,34 +263,34 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
 
             {/* ================= ПРАВАЯ КОЛОНКА ================= */}
             <div className={cn(
-                "flex flex-col bg-background", // <--- ДОБАВЛЕНО 'flex' перед 'flex-col'
-                // ИСПРАВЛЕНИЕ 3: Полная изоляция логики классов.
+                "flex flex-col bg-background", 
                 isImageExpanded 
-                    ? "hidden" // Если expanded -> ВСЕГДА скрыто (display: none)
+                    ? "hidden" 
                     : cn(
-                        // Иначе применяем стандартную логику:
-                        "absolute inset-0 z-50 h-full w-full", // Mobile Overlay
-                        "md:static md:inset-auto md:h-full md:w-[40%] md:flex", // Desktop Static
-                        !showComments && "hidden md:flex" // Mobile visibility toggle
+                        "absolute inset-0 z-50 h-full w-full",
+                        !showComments && "hidden", 
+                        "md:static md:inset-auto md:h-full md:w-[40%] md:flex" 
                       )
             )}>
                  
                  {/* 1. HEADER */}
-                 <div className="p-3 md:p-4 border-b border-border flex items-center justify-between bg-muted/20 flex-shrink-0">
-                    {showComments && (
-                        <button onClick={() => setShowComments(false)} className="md:hidden p-2 -ml-2 text-muted-foreground hover:text-foreground">
-                            <X className="h-6 w-6" />
-                        </button>
-                    )}
-                    {showComments && (
+                 <div className="p-3 md:p-4 border-b border-border flex items-center justify-between bg-muted/20 flex-shrink-0 min-h-[60px]">
+                    {/* Кнопка слева УДАЛЕНА, теперь она будет внизу блока */}
+                    
+                    {showComments && !isSingleContent && (
                         <button onClick={() => setShowComments(false)} className="hidden md:flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mr-auto">
                             <ArrowLeft className="h-4 w-4" />
                             Назад к описанию
                         </button>
                     )}
 
-                    {(!showComments || (!showComments && author)) && author && (
-                        <div className={cn("flex items-center gap-3 min-w-0", showComments && "hidden md:hidden")}> 
+                    {( !showComments || (showComments && author) || isSingleContent ) && author && (
+                        <div className={cn(
+                            "flex items-center gap-3 min-w-0", 
+                            showComments && !isSingleContent && "hidden md:hidden", 
+                            // Логика скрытия автора из предыдущего шага:
+                            showComments && isSingleContent && "hidden md:flex" 
+                        )}> 
                             <Avatar className="h-10 w-10 ring-1 ring-border flex-shrink-0">
                                 <AvatarImage src={author.profilePictureUrl || undefined} />
                                 <AvatarFallback>{author.nickname?.[0].toUpperCase()}</AvatarFallback>
@@ -257,13 +305,39 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                             </div>
                         </div>
                     )}
+
+                    {/* Заголовок "Комментарии" (Мобилка) 
+                        Добавлено: flex-1 text-center (чтобы занять центр) 
+                        и pl-10 (отступ слева, чтобы визуально компенсировать кнопку справа и текст был ровно по центру экрана) 
+                    */}
+                    <span className="md:hidden font-semibold text-sm flex-1 text-center pl-10">Комментарии</span>
+
+                    {/* ПРАВЫЙ БЛОК: Кнопки действий (ПК) */}
+                    <div className="hidden md:flex items-center gap-4 ml-auto pl-4">
+                        { (isSingleContent || (!showComments && !isSingleContent)) && (
+                            <button onClick={handleLike} className={cn("flex items-center gap-1.5 group", isLiked ? "text-primary" : "text-muted-foreground hover:text-primary transition-colors")}>
+                                <Heart className={cn("h-5 w-5 transition-transform group-active:scale-90", isLiked && "fill-current")} />
+                                <span className="text-sm font-semibold">{likeCount}</span>
+                            </button>
+                        )}
+                        
+                        { (!isSingleContent && !showComments) && (
+                            <button onClick={() => setShowComments(true)} className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors group">
+                                <MessageCircle className="h-5 w-5 transition-transform group-active:scale-90" />
+                                <span className="text-sm font-semibold">{comments.length}</span>
+                            </button>
+                        )}
+                    </div>
                     
-                    {showComments && <span className="md:hidden font-semibold text-sm mx-auto">Комментарии</span>}
+                    {/* Кнопка закрытия (Мобилка) - ПЕРЕНЕСЕНА СЮДА (ВПРАВО) */}
+                    <button onClick={() => setShowComments(false)} className="md:hidden p-2 -mr-2 text-muted-foreground hover:text-foreground">
+                        <X className="h-6 w-6" />
+                    </button>
                 </div>
 
                 {/* 2. CONTENT */}
                 <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar relative min-h-0 bg-background">
-                    {!showComments && (
+                    {!shouldDisplayComments && !isSingleContent && (
                         <div className="hidden md:block h-full">
                             {post.caption ? (
                                 <p className="text-lg leading-relaxed text-foreground whitespace-pre-wrap break-words">
@@ -277,7 +351,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                         </div>
                     )}
 
-                    {showComments && (
+                    {shouldDisplayComments && (
                         <div className="space-y-4 pb-4">
                             {commentsLoading ? (
                                 <div className="flex justify-center py-10"><Loader2 className="animate-spin text-primary" /></div>
@@ -312,26 +386,13 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                 </div>
 
                 {/* 3. FOOTER */}
-                <div className="flex-shrink-0 p-3 md:p-4 border-t border-border bg-background/95 backdrop-blur-sm mt-auto pb-safe">
-                    {!showComments && (
-                        <div className="hidden md:flex items-center justify-between">
-                             <div className="flex items-center gap-6">
-                                <button onClick={handleLike} className={cn("flex items-center gap-2 group", isLiked ? "text-primary" : "text-foreground hover:text-primary transition-colors")}>
-                                    <Heart className={cn("h-7 w-7 transition-transform group-active:scale-90", isLiked && "fill-current")} />
-                                    <span className="text-lg font-medium">{likeCount}</span>
-                                </button>
-                                
-                                <button onClick={() => setShowComments(true)} className="flex items-center gap-2 text-foreground hover:text-primary transition-colors group">
-                                    <MessageCircle className="h-7 w-7 transition-transform group-active:scale-90" />
-                                    <span className="text-lg font-medium">{comments.length}</span>
-                                </button>
-                             </div>
-                        </div>
-                    )}
-
-                    {showComments && userProfile && (
+                <div className={cn(
+                    "flex-shrink-0 p-3 md:p-4 border-t border-border bg-background/95 backdrop-blur-sm mt-auto pb-safe", 
+                    !shouldDisplayComments && "hidden"
+                )}>
+                    {userProfile && (
                         <form onSubmit={handleCommentSubmit} className="flex items-end gap-2 relative">
-                             <Avatar className="h-8 w-8 self-center flex-shrink-0 hidden md:block">
+                            <Avatar className="h-8 w-8 self-center flex-shrink-0 hidden md:block">
                                 <AvatarImage src={userProfile.profilePictureUrl ?? undefined} />
                             </Avatar>
                             <div className="relative flex-1">
@@ -340,12 +401,12 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                     onChange={(e) => setNewComment(e.target.value)}
                                     placeholder="Написать..."
                                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleCommentSubmit(e as any); } }}
-                                    className="min-h-[40px] max-h-[100px] resize-none bg-muted/50 border-transparent focus:border-primary pr-12 py-2.5 rounded-2xl custom-scrollbar text-sm"
+                                    className="min-h-[40px] max-h-[100px] resize-none bg-muted/50 border-transparent focus:border-primary pr-10 py-2.5 rounded-2xl custom-scrollbar text-sm"
                                     rows={1}
                                 />
                                 <button
                                     type="submit" 
-                                    className="absolute right-1 bottom-1 p-1.5 rounded-xl bg-primary text-primary-foreground disabled:opacity-50 hover:bg-primary/90 transition-colors"
+                                    className="absolute right-2 bottom-2 p-1.5 rounded-xl bg-primary text-primary-foreground disabled:opacity-50 hover:bg-primary/90 transition-colors"
                                     disabled={!newComment.trim() || isSubmittingComment}
                                 >
                                     {isSubmittingComment ? <Loader2 className="animate-spin h-4 w-4"/> : <Send className="h-4 w-4" />}
