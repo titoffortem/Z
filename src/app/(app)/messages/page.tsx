@@ -81,24 +81,28 @@ export default function MessagesPage() {
 
   useEffect(() => {
     if (!user || !firestore) {
+      setChats([]);
+      setChatLoading(false);
       return;
     }
 
     const chatsRef = collection(firestore, 'chats');
-    const chatsQuery = query(chatsRef, where('participantIds', 'array-contains', user.uid), orderBy('updatedAt', 'desc'));
+    const chatsQuery = query(chatsRef, where('participantIds', 'array-contains', user.uid));
 
     const unsubscribe = onSnapshot(
       chatsQuery,
       (snapshot) => {
-        const nextChats: ChatItem[] = snapshot.docs.map((chatDoc) => {
-          const data = chatDoc.data();
-          return {
-            id: chatDoc.id,
-            participantIds: data.participantIds || [],
-            lastMessageText: data.lastMessageText || '',
-            updatedAt: toIsoDate(data.updatedAt),
-          };
-        });
+        const nextChats: ChatItem[] = snapshot.docs
+          .map((chatDoc) => {
+            const data = chatDoc.data();
+            return {
+              id: chatDoc.id,
+              participantIds: data.participantIds || [],
+              lastMessageText: data.lastMessageText || '',
+              updatedAt: toIsoDate(data.updatedAt),
+            };
+          })
+          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
         setChats(nextChats);
 
@@ -115,6 +119,22 @@ export default function MessagesPage() {
 
     return () => unsubscribe();
   }, [firestore, user, selectedChatId]);
+
+
+  useEffect(() => {
+    if (chats.length === 0) {
+      if (selectedChatId !== null) {
+        setSelectedChatId(null);
+      }
+      return;
+    }
+
+    if (selectedChatId && chats.some((chat) => chat.id === selectedChatId)) {
+      return;
+    }
+
+    setSelectedChatId(chats[0].id);
+  }, [chats, selectedChatId]);
 
   useEffect(() => {
     if (!firestore || !user || chats.length === 0) {
@@ -260,15 +280,15 @@ export default function MessagesPage() {
     const chatId = getChatId(user.uid, targetUser.id);
     const chatRef = doc(firestore, 'chats', chatId);
 
-    await setDoc(
-      chatRef,
-      {
+    const existingChat = await getDoc(chatRef);
+
+    if (!existingChat.exists()) {
+      await setDoc(chatRef, {
         participantIds: [user.uid, targetUser.id],
         updatedAt: serverTimestamp(),
         lastMessageText: '',
-      },
-      { merge: true }
-    );
+      });
+    }
 
     setProfilesById((prev) => ({ ...prev, [targetUser.id]: targetUser }));
     setSelectedChatId(chatId);
