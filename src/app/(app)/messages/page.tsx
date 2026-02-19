@@ -57,6 +57,13 @@ type ChatMessage = {
     imageUrls: string[];
     createdAt: string;
   };
+  forwardedPost?: {
+    postId: string;
+    caption: string;
+    mediaUrls: string[];
+    mediaTypes: string[];
+    authorId: string;
+  };
 };
 
 async function uploadToImgBB(file: File): Promise<string | null> {
@@ -408,6 +415,7 @@ export default function MessagesPage() {
             imageUrls: data.imageUrls || [],
             forwardedMessages: data.forwardedMessages || undefined,
             forwardedMessage: data.forwardedMessage || undefined,
+            forwardedPost: data.forwardedPost || undefined,
           };
         });
         setMessages(nextMessages);
@@ -811,8 +819,9 @@ export default function MessagesPage() {
                   ? [message.forwardedMessage]
                   : [];
               const hasForwardedContent = normalizedForwarded.length > 0;
+              const hasForwardedPost = Boolean(message.forwardedPost);
               const hasImages = message.imageUrls.length > 0;
-              const isImageOnlyMessage = !hasForwardedContent && !hasMessageText && hasImages;
+              const isImageOnlyMessage = !hasForwardedContent && !hasForwardedPost && !hasMessageText && hasImages;
               const isSelectedForForward = selectedForwardMessageIds.includes(message.id);
               return (
                 <div
@@ -867,6 +876,34 @@ export default function MessagesPage() {
                             );
                           })}
                         </div>
+                      </div>
+                    )}
+
+                    {message.forwardedPost && (
+                      <div className="mb-2 rounded-md border border-border/60 bg-background/40 p-2 text-xs">
+                        <p className="mb-1 text-[11px] opacity-70">Переслан пост</p>
+                        {profilesById[message.forwardedPost.authorId]?.nickname && (
+                          <p className="mb-1 text-[11px] opacity-70">От {profilesById[message.forwardedPost.authorId]?.nickname}</p>
+                        )}
+                        {message.forwardedPost.caption && (
+                          <p className="line-clamp-3 whitespace-pre-wrap break-words">{message.forwardedPost.caption}</p>
+                        )}
+                        {message.forwardedPost.mediaUrls?.length > 0 && (
+                          <button
+                            type="button"
+                            className="mt-2 block w-fit"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openImageViewer(message.forwardedPost?.mediaUrls || [], 0);
+                            }}
+                          >
+                            <img
+                              src={message.forwardedPost.mediaUrls[0]}
+                              alt="forwarded post"
+                              className="h-28 w-28 rounded-md object-cover"
+                            />
+                          </button>
+                        )}
                       </div>
                     )}
 
