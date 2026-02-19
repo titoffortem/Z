@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { firebaseConfig } from '@/firebase/config';
-import { ChevronDown, ChevronLeft, ChevronRight, Loader2, MessageSquare, Paperclip, Search, SendHorizontal, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Loader2, MessageSquare, Paperclip, Search, Send, X } from 'lucide-react';
 import {
   addDoc,
   arrayUnion,
@@ -200,9 +200,12 @@ export default function MessagesPage() {
   const [expandedImageIndex, setExpandedImageIndex] = useState(0);
 
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const messageElementRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const isAtBottomRef = useRef(true);
   const previousMessageCountRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
 
   const openImageViewer = (images: string[], index: number) => {
     setExpandedImages(images);
@@ -227,6 +230,32 @@ export default function MessagesPage() {
     }
     setExpandedImageIndex((prev) => (prev - 1 + expandedImages.length) % expandedImages.length);
   };
+
+  const scrollToOriginalMessage = (messageId: string) => {
+    const target = messageElementRefs.current[messageId];
+    if (!target) {
+      return;
+    }
+
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setHighlightedMessageId(messageId);
+
+    if (highlightTimeoutRef.current) {
+      clearTimeout(highlightTimeoutRef.current);
+    }
+
+    highlightTimeoutRef.current = setTimeout(() => {
+      setHighlightedMessageId(null);
+    }, 1200);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const updateBottomState = useCallback(() => {
     const container = messagesContainerRef.current;
@@ -784,6 +813,7 @@ export default function MessagesPage() {
               const hasForwardedContent = normalizedForwarded.length > 0;
               const hasImages = message.imageUrls.length > 0;
               const isImageOnlyMessage = !hasForwardedContent && !hasMessageText && hasImages;
+              const isSelectedForForward = selectedForwardMessageIds.includes(message.id);
               const forwardedSenderIds = Array.from(new Set(normalizedForwarded.map((item) => item.senderId).filter(Boolean)));
               const forwardedFromLabel =
                 forwardedSenderIds.length === 1
@@ -795,18 +825,26 @@ export default function MessagesPage() {
               return (
                 <div
                   key={message.id}
+                  ref={(element) => {
+                    messageElementRefs.current[message.id] = element;
+                  }}
                   className={`flex cursor-pointer ${isMine ? 'justify-end' : 'justify-start'}`}
                   onClick={() => toggleForwardMessageSelection(message.id)}
                 >
                   <div
                     className={`rounded-2xl ${isImageOnlyMessage ? 'w-fit p-1' : 'max-w-[75%] px-3 py-2'} ${
-                      isMine ? 'rounded-br-sm bg-primary text-primary-foreground' : 'rounded-bl-sm bg-muted'
-                    } ${
-                      selectedForwardMessageIds.includes(message.id)
+                      isSelectedForForward
                         ? isMine
-                          ? 'ring-2 ring-[#40594D]'
-                          : 'ring-2 ring-[#577F59]'
+                          ? 'rounded-br-sm bg-[#A7BBA9] text-[#1f2a23]'
+                          : 'rounded-bl-sm bg-[#A7BBA9] text-[#1f2a23]'
+                        : isMine
+                          ? 'rounded-br-sm bg-primary text-primary-foreground'
+                          : 'rounded-bl-sm bg-muted'
+                    } ${
+                      isSelectedForForward
+                        ? 'ring-2 ring-[#A7BBA9]'
                         : ''
+                    } ${highlightedMessageId === message.id ? 'ring-2 ring-primary' : ''
                     }`}
                   >
                     {normalizedForwarded.length > 0 && (
@@ -818,7 +856,15 @@ export default function MessagesPage() {
                             const showSenderLabel = idx === 0 || prevSenderId !== forwarded.senderId;
 
                             return (
-                            <div key={`${forwarded.id}-${forwarded.createdAt}`} className="rounded-sm border border-border/40 p-1">
+                            <button
+                              key={`${forwarded.id}-${forwarded.createdAt}`}
+                              type="button"
+                              className="block w-full rounded-sm border border-border/40 p-1 text-left transition hover:bg-background/40"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                scrollToOriginalMessage(forwarded.id);
+                              }}
+                            >
                               {showSenderLabel && (
                                 <p className="mb-0.5 text-[11px] opacity-70">
                                   От {profilesById[forwarded.senderId]?.nickname || 'пользователя'}
@@ -826,7 +872,7 @@ export default function MessagesPage() {
                               )}
                               {forwarded.text && <p className="line-clamp-2">{forwarded.text}</p>}
                               {forwarded.imageUrls?.length > 0 && <p className="mt-1 opacity-80">📷 {forwarded.imageUrls.length}</p>}
-                            </div>
+                            </button>
                             );
                           })}
                         </div>
@@ -884,38 +930,6 @@ export default function MessagesPage() {
           </Button>
         )}
 
-        {selectedForwardMessageIds.length > 0 && (
-          <div className="mx-3 mb-2 rounded-md border border-border/60 bg-muted/30 p-2 text-xs">
-            <div className="mb-1 flex items-center justify-between">
-              <span>Выбрано для пересылки: {selectedForwardMessageIds.length}</span>
-              <button
-                type="button"
-                className="opacity-70 hover:opacity-100"
-                onClick={() => {
-                  setSelectedForwardMessageIds([]);
-                  setForwardComment('');
-                }}
-              >
-                ✕
-              </button>
-            </div>
-            <Textarea
-              value={forwardComment}
-              onChange={(event) => setForwardComment(event.target.value)}
-              placeholder="Подпись к пересланному сообщению (необязательно)"
-              className="min-h-[40px] resize-none bg-background/70"
-            />
-            <div className="mt-2 flex gap-2">
-              <Button type="button" size="sm" onClick={() => selectedChatId && void forwardSelectedMessages(selectedChatId)}>
-                Переслать сюда
-              </Button>
-              <Button type="button" size="sm" variant="outline" onClick={() => setForwardPickerOpen(true)}>
-                Переслать
-              </Button>
-            </div>
-          </div>
-        )}
-
         {selectedImages.length > 0 && (
           <div className="mx-3 mb-2 flex gap-2 overflow-x-auto pb-1">
             {selectedImagePreviews.map((item) => (
@@ -927,43 +941,75 @@ export default function MessagesPage() {
         )}
 
         <div className="border-t border-border/50 p-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}>
-          <div className="rounded-2xl bg-muted/50 p-2">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={(event) => setSelectedImages(Array.from(event.target.files || []))}
-            />
-            <div className="flex items-center gap-2">
+          {selectedForwardMessageIds.length > 0 ? (
+            <div className="rounded-2xl border border-border/60 bg-muted/30 p-2 text-xs">
+              <div className="mb-1 flex items-center justify-between">
+                <span>Выбрано для пересылки: {selectedForwardMessageIds.length}</span>
+                <button
+                  type="button"
+                  className="opacity-70 hover:opacity-100"
+                  onClick={() => {
+                    setSelectedForwardMessageIds([]);
+                    setForwardComment('');
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
               <Textarea
-                value={newMessage}
-                onChange={(event) => setNewMessage(event.target.value)}
-                placeholder={selectedChatId ? 'Написать...' : 'Сначала выберите диалог'}
-                disabled={!selectedChatId || sending}
-                className="max-h-32 min-h-[40px] flex-1 resize-none border-none bg-transparent px-2 py-2 shadow-none focus-visible:ring-0"
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault();
-                    void handleSend();
-                  }
-                }}
+                value={forwardComment}
+                onChange={(event) => setForwardComment(event.target.value)}
+                placeholder="Подпись к пересланному сообщению (необязательно)"
+                className="min-h-[40px] resize-none bg-background/70"
               />
-              <Button type="button" variant="ghost" size="icon" className="h-9 w-9 self-center rounded-full" onClick={() => fileInputRef.current?.click()}>
-                <Paperclip className="h-4 w-4" />
-              </Button>
-              <Button
-                type="button"
-                size="icon"
-                className="h-9 w-9 self-center rounded-full"
-                onClick={() => void handleSend()}
-                disabled={!selectedChatId || sending || (!newMessage.trim() && selectedImages.length === 0)}
-              >
-                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizontal className="h-4 w-4" />}
-              </Button>
+              <div className="mt-2 flex gap-2">
+                <Button type="button" size="sm" onClick={() => selectedChatId && void forwardSelectedMessages(selectedChatId)}>
+                  Переслать сюда
+                </Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => setForwardPickerOpen(true)}>
+                  Переслать
+                </Button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="rounded-2xl bg-muted/50 p-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(event) => setSelectedImages(Array.from(event.target.files || []))}
+              />
+              <div className="flex items-center gap-2">
+                <Textarea
+                  value={newMessage}
+                  onChange={(event) => setNewMessage(event.target.value)}
+                  placeholder={selectedChatId ? 'Написать...' : 'Сначала выберите диалог'}
+                  disabled={!selectedChatId || sending}
+                  className="max-h-32 min-h-[40px] flex-1 resize-none border-none bg-transparent px-2 py-2 shadow-none focus-visible:ring-0"
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                      event.preventDefault();
+                      void handleSend();
+                    }
+                  }}
+                />
+                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 self-center rounded-full" onClick={() => fileInputRef.current?.click()}>
+                  <Paperclip className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  className="h-9 w-9 self-center rounded-full"
+                  onClick={() => void handleSend()}
+                  disabled={!selectedChatId || sending || (!newMessage.trim() && selectedImages.length === 0)}
+                >
+                  {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
