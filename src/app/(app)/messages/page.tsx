@@ -7,7 +7,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, MessageSquare, Search, SendHorizontal } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { ChevronLeft, Loader2, MessageSquare, Search, SendHorizontal } from 'lucide-react';
 import {
   addDoc,
   collection,
@@ -78,6 +79,8 @@ export default function MessagesPage() {
 
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const isMobile = useIsMobile();
+  const [isMobileDialogOpen, setMobileDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!user || !firestore) {
@@ -105,11 +108,6 @@ export default function MessagesPage() {
           .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
         setChats(nextChats);
-
-        if (!selectedChatId && nextChats.length > 0) {
-          setSelectedChatId(nextChats[0].id);
-        }
-
         setChatLoading(false);
       },
       () => {
@@ -118,7 +116,7 @@ export default function MessagesPage() {
     );
 
     return () => unsubscribe();
-  }, [firestore, user, selectedChatId]);
+  }, [firestore, user]);
 
 
   useEffect(() => {
@@ -126,14 +124,14 @@ export default function MessagesPage() {
       if (selectedChatId !== null) {
         setSelectedChatId(null);
       }
+      setMobileDialogOpen(false);
       return;
     }
 
-    if (selectedChatId && chats.some((chat) => chat.id === selectedChatId)) {
-      return;
+    if (selectedChatId && !chats.some((chat) => chat.id === selectedChatId)) {
+      setSelectedChatId(null);
+      setMobileDialogOpen(false);
     }
-
-    setSelectedChatId(chats[0].id);
   }, [chats, selectedChatId]);
 
   useEffect(() => {
@@ -292,6 +290,7 @@ export default function MessagesPage() {
 
     setProfilesById((prev) => ({ ...prev, [targetUser.id]: targetUser }));
     setSelectedChatId(chatId);
+    setMobileDialogOpen(true);
     setSearchTerm('');
     setUserSearchResults([]);
   };
@@ -329,8 +328,8 @@ export default function MessagesPage() {
   };
 
   return (
-    <div className="mx-auto flex h-full max-w-5xl">
-      <section className="w-full max-w-sm border-r border-border/50">
+    <div className="mx-auto flex h-full max-w-5xl relative">
+      <section className={`w-full md:max-w-sm border-r border-border/50 ${isMobile && isMobileDialogOpen ? 'hidden' : 'block'}`}>
         <header className="border-b border-border/50 p-4 sticky top-0 bg-background/80 backdrop-blur-sm z-10">
           <h1 className="text-xl font-bold">Сообщения</h1>
           <div className="relative mt-3">
@@ -387,9 +386,12 @@ export default function MessagesPage() {
                 <button
                   key={chat.id}
                   type="button"
-                  onClick={() => setSelectedChatId(chat.id)}
+                  onClick={() => {
+                    setSelectedChatId(chat.id);
+                    setMobileDialogOpen(true);
+                  }}
                   className={`mb-1 flex w-full items-center gap-3 rounded-lg p-2 text-left transition ${
-                    selectedChatId === chat.id ? 'bg-accent' : 'hover:bg-accent/50'
+                    selectedChatId === chat.id ? 'bg-[#577F59] text-white' : 'hover:bg-accent/50'
                   }`}
                 >
                   <Avatar className="h-11 w-11">
@@ -398,7 +400,7 @@ export default function MessagesPage() {
                   </Avatar>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold">{partner?.nickname || 'Пользователь'}</p>
-                    <p className="truncate text-sm text-muted-foreground">{chat.lastMessageText || 'Сообщений пока нет'}</p>
+                    <p className={`truncate text-sm ${selectedChatId === chat.id ? 'text-white/80' : 'text-muted-foreground'}`}>{chat.lastMessageText || 'Сообщений пока нет'}</p>
                   </div>
                 </button>
               );
@@ -407,10 +409,15 @@ export default function MessagesPage() {
         </div>
       </section>
 
-      <section className="flex-1 flex flex-col">
+      <section className={`flex-1 flex-col bg-background ${isMobile ? 'fixed inset-0 z-30' : 'flex'} ${isMobile && !isMobileDialogOpen ? 'hidden' : 'flex'}`}>
         <header className="border-b border-border/50 p-4 sticky top-0 bg-background/80 backdrop-blur-sm z-10 min-h-[73px]">
           {selectedPartnerProfile ? (
             <div className="flex items-center gap-3">
+              {isMobile && (
+                <Button variant="ghost" size="icon" onClick={() => setMobileDialogOpen(false)} className="mr-1">
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+              )}
               <Avatar>
                 <AvatarImage src={selectedPartnerProfile.profilePictureUrl ?? undefined} alt={selectedPartnerProfile.nickname} />
                 <AvatarFallback>{selectedPartnerProfile.nickname[0]?.toUpperCase() || '?'}</AvatarFallback>
@@ -421,7 +428,14 @@ export default function MessagesPage() {
               </div>
             </div>
           ) : (
-            <p className="text-muted-foreground">Выберите диалог</p>
+            <div className="flex items-center gap-2">
+              {isMobile && (
+                <Button variant="ghost" size="icon" onClick={() => setMobileDialogOpen(false)}>
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+              )}
+              <p className="text-muted-foreground">Выберите диалог</p>
+            </div>
           )}
         </header>
 
@@ -454,7 +468,7 @@ export default function MessagesPage() {
         </div>
 
         <div className="border-t border-border/50 p-3">
-          <div className="flex items-end gap-2">
+          <div className="flex items-center gap-2">
             <Textarea
               value={newMessage}
               onChange={(event) => setNewMessage(event.target.value)}
