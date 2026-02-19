@@ -828,16 +828,25 @@ export default function MessagesPage() {
                     {hasMessageText && <p className="break-words whitespace-pre-wrap">{message.text}</p>}
 
                     {hasImages && (
-                      <div className={`${hasMessageText ? 'mt-2' : ''} grid grid-cols-2 gap-2`}>
+                      <div
+                        className={`${hasMessageText ? 'mt-2' : ''} grid gap-2 ${
+                          message.imageUrls.length === 1 ? 'grid-cols-1 justify-items-start' : 'grid-cols-2'
+                        }`}
+                      >
                         {message.imageUrls.map((url, idx) => (
-                          <button key={`${url}-${idx}`} type="button" onClick={(event) => {
-                            event.stopPropagation();
-                            openImageViewer(message.imageUrls, idx);
-                          }}>
+                          <button
+                            key={`${url}-${idx}`}
+                            type="button"
+                            className={message.imageUrls.length === 1 ? 'w-fit' : ''}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openImageViewer(message.imageUrls, idx);
+                            }}
+                          >
                             <img
                               src={url}
                               alt="message"
-                              className={`${message.imageUrls.length === 1 ? 'h-48 w-auto max-w-[260px]' : 'h-28 w-28'} rounded-md object-cover`}
+                              className={`${message.imageUrls.length === 1 ? 'block h-48 w-auto max-w-[260px]' : 'h-28 w-28'} rounded-md object-cover`}
                             />
                           </button>
                         ))}
