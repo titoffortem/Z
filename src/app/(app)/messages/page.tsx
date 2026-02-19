@@ -713,6 +713,9 @@ export default function MessagesPage() {
                         <div className="space-y-1">
                           {normalizedForwarded.map((forwarded) => (
                             <div key={`${forwarded.id}-${forwarded.createdAt}`} className="rounded-sm border border-border/40 p-1">
+                              <p className="mb-0.5 text-[11px] opacity-70">
+                                От {profilesById[forwarded.senderId]?.nickname || 'пользователя'}
+                              </p>
                               {forwarded.text && <p className="line-clamp-2">{forwarded.text}</p>}
                               {forwarded.imageUrls?.length > 0 && <p className="mt-1 opacity-80">📷 {forwarded.imageUrls.length}</p>}
                             </div>
@@ -786,7 +789,7 @@ export default function MessagesPage() {
         )}
 
         <div className="border-t border-border/50 p-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}>
-          <div className="flex items-end gap-2">
+          <div className="rounded-2xl bg-muted/50 p-2">
             <input
               ref={fileInputRef}
               type="file"
@@ -795,13 +798,13 @@ export default function MessagesPage() {
               className="hidden"
               onChange={(event) => setSelectedImages(Array.from(event.target.files || []))}
             />
-            <div className="relative flex-1">
+            <div className="flex items-end gap-2">
               <Textarea
                 value={newMessage}
                 onChange={(event) => setNewMessage(event.target.value)}
-                placeholder={selectedChatId ? 'Напишите сообщение...' : 'Сначала выберите диалог'}
+                placeholder={selectedChatId ? 'Написать...' : 'Сначала выберите диалог'}
                 disabled={!selectedChatId || sending}
-                className="max-h-32 min-h-[44px] resize-none rounded-2xl border-transparent bg-muted/50 py-2.5 pr-10"
+                className="max-h-32 min-h-[40px] flex-1 resize-none border-none bg-transparent px-2 py-2 shadow-none focus-visible:ring-0"
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' && !event.shiftKey) {
                     event.preventDefault();
@@ -809,17 +812,19 @@ export default function MessagesPage() {
                   }
                 }}
               />
+              <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => fileInputRef.current?.click()}>
+                <Paperclip className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                size="icon"
+                className="h-9 w-9 rounded-full"
+                onClick={() => void handleSend()}
+                disabled={!selectedChatId || sending || (!newMessage.trim() && selectedImages.length === 0)}
+              >
+                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizontal className="h-4 w-4" />}
+              </Button>
             </div>
-            <Button
-              type="button"
-              onClick={() => void handleSend()}
-              disabled={!selectedChatId || sending || (!newMessage.trim() && selectedImages.length === 0)}
-            >
-              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizontal className="h-4 w-4" />}
-            </Button>
-            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-              <Paperclip className="h-4 w-4" />
-            </Button>
           </div>
         </div>
       </section>
