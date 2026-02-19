@@ -902,6 +902,8 @@ export default function MessagesPage() {
               const hasImages = message.imageUrls.length > 0;
               const isImageOnlyMessage = !hasForwardedContent && !hasForwardedPost && !hasMessageText && hasImages;
               const isSelectedForForward = selectedForwardMessageIds.includes(message.id);
+              const isLikedByMe = message.likedBy.includes(user?.uid || '');
+              const likedColorClass = isMine ? 'text-[#40594D]' : 'text-[#577F59]';
               return (
                 <div
                   key={message.id}
@@ -1015,13 +1017,13 @@ export default function MessagesPage() {
                     <div className="mt-1 flex items-center justify-end gap-2 text-[11px] opacity-70">
                       <button
                         type="button"
-                        className={`inline-flex items-center gap-1 ${message.likedBy.includes(user?.uid || '') ? 'text-[#577F59]' : ''}`}
+                        className={`inline-flex items-center gap-1 ${isLikedByMe ? likedColorClass : ''}`}
                         onClick={(event) => {
                           event.stopPropagation();
-                          void toggleMessageLike(message.id, message.likedBy.includes(user?.uid || ''));
+                          void toggleMessageLike(message.id, isLikedByMe);
                         }}
                       >
-                        <Heart className={`h-3.5 w-3.5 ${message.likedBy.includes(user?.uid || '') ? 'fill-current' : ''}`} />
+                        <Heart className={`h-3.5 w-3.5 ${isLikedByMe ? 'fill-current' : ''}`} />
                         {message.likedBy.length > 0 && <span>{message.likedBy.length}</span>}
                       </button>
                       <span>{formatTime(message.createdAt)}</span>
