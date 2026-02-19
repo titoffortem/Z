@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
+import { PostView } from '@/components/post-view';
 import { useFirestore } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { firebaseConfig } from '@/firebase/config';
 import { ChevronDown, ChevronLeft, ChevronRight, Loader2, MessageSquare, Paperclip, Search, Send, X } from 'lucide-react';
@@ -27,7 +29,7 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
-import type { UserProfile } from '@/types';
+import type { Post, UserProfile } from '@/types';
 
 type ChatItem = {
   id: string;
@@ -205,6 +207,8 @@ export default function MessagesPage() {
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [expandedImages, setExpandedImages] = useState<string[] | null>(null);
   const [expandedImageIndex, setExpandedImageIndex] = useState(0);
+  const [expandedPost, setExpandedPost] = useState<Post | null>(null);
+  const [expandedPostAuthor, setExpandedPostAuthor] = useState<UserProfile | null>(null);
 
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const messageElementRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -222,6 +226,65 @@ export default function MessagesPage() {
   const closeImageViewer = () => {
     setExpandedImages(null);
     setExpandedImageIndex(0);
+  };
+
+  const openForwardedPost = async (forwardedPost: NonNullable<ChatMessage['forwardedPost']>, fallbackCreatedAt: string) => {
+    if (!firestore) {
+      return;
+    }
+
+    const postRef = doc(firestore, 'posts', forwardedPost.postId);
+    const postDoc = await getDoc(postRef);
+
+    let nextPost: Post;
+    if (postDoc.exists()) {
+      const data = postDoc.data();
+      nextPost = {
+        id: postDoc.id,
+        userId: data.userId || forwardedPost.authorId,
+        caption: data.caption || forwardedPost.caption || '',
+        mediaUrls: data.mediaUrls || forwardedPost.mediaUrls || [],
+        mediaTypes: data.mediaTypes || forwardedPost.mediaTypes || [],
+        createdAt: toIsoDate(data.createdAt),
+        updatedAt: toIsoDate(data.updatedAt),
+        likedBy: data.likedBy || [],
+      };
+    } else {
+      nextPost = {
+        id: forwardedPost.postId,
+        userId: forwardedPost.authorId,
+        caption: forwardedPost.caption || '',
+        mediaUrls: forwardedPost.mediaUrls || [],
+        mediaTypes: forwardedPost.mediaTypes || [],
+        createdAt: fallbackCreatedAt,
+        updatedAt: fallbackCreatedAt,
+        likedBy: [],
+      };
+    }
+
+    setExpandedPost(nextPost);
+
+    const knownAuthor = profilesById[nextPost.userId] || null;
+    if (knownAuthor) {
+      setExpandedPostAuthor(knownAuthor);
+      return;
+    }
+
+    const authorDoc = await getDoc(doc(firestore, 'users', nextPost.userId));
+    if (!authorDoc.exists()) {
+      setExpandedPostAuthor(null);
+      return;
+    }
+
+    const data = authorDoc.data();
+    setExpandedPostAuthor({
+      id: authorDoc.id,
+      nickname: data.nickname || 'Пользователь',
+      profilePictureUrl: data.profilePictureUrl ?? null,
+      createdAt: toIsoDate(data.createdAt),
+      followingUserIds: data.followingUserIds || [],
+      followerUserIds: data.followerUserIds || [],
+    });
   };
 
   const showNextExpandedImage = () => {
@@ -880,7 +943,14 @@ export default function MessagesPage() {
                     )}
 
                     {message.forwardedPost && (
-                      <div className="mb-2 rounded-md border border-border/60 bg-background/40 p-2 text-xs">
+                      <button
+                        type="button"
+                        className="mb-2 block w-full rounded-md border border-border/60 bg-background/40 p-2 text-left text-xs transition hover:bg-background/60"
+                        onClick={async (event) => {
+                          event.stopPropagation();
+                          await openForwardedPost(message.forwardedPost!, message.createdAt);
+                        }}
+                      >
                         <p className="mb-1 text-[11px] opacity-70">Переслан пост</p>
                         {profilesById[message.forwardedPost.authorId]?.nickname && (
                           <p className="mb-1 text-[11px] opacity-70">От {profilesById[message.forwardedPost.authorId]?.nickname}</p>
@@ -889,22 +959,13 @@ export default function MessagesPage() {
                           <p className="line-clamp-3 whitespace-pre-wrap break-words">{message.forwardedPost.caption}</p>
                         )}
                         {message.forwardedPost.mediaUrls?.length > 0 && (
-                          <button
-                            type="button"
-                            className="mt-2 block w-fit"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              openImageViewer(message.forwardedPost?.mediaUrls || [], 0);
-                            }}
-                          >
-                            <img
-                              src={message.forwardedPost.mediaUrls[0]}
-                              alt="forwarded post"
-                              className="h-28 w-28 rounded-md object-cover"
-                            />
-                          </button>
+                          <img
+                            src={message.forwardedPost.mediaUrls[0]}
+                            alt="forwarded post"
+                            className="mt-2 h-28 w-28 rounded-md object-cover"
+                          />
                         )}
-                      </div>
+                      </button>
                     )}
 
                     {hasMessageText && <p className="break-words whitespace-pre-wrap">{message.text}</p>}
@@ -1040,6 +1101,22 @@ export default function MessagesPage() {
           )}
         </div>
       </section>
+
+      <Dialog
+        open={Boolean(expandedPost)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setExpandedPost(null);
+            setExpandedPostAuthor(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-5xl border-0 bg-card p-0">
+          <DialogTitle className="sr-only">Просмотр пересланного поста</DialogTitle>
+          <DialogDescription className="sr-only">Полный просмотр пересланного поста как в ленте.</DialogDescription>
+          {expandedPost && <PostView post={expandedPost} author={expandedPostAuthor} />}
+        </DialogContent>
+      </Dialog>
 
       {expandedImages && expandedImages.length > 0 && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-background/95 p-4 backdrop-blur-sm">

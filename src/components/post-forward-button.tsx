@@ -184,7 +184,6 @@ export function PostForwardButton({
           onClick={(event) => {
             if (stopPropagation) {
               event.stopPropagation();
-              event.preventDefault();
             }
           }}
           aria-label="Переслать пост"
