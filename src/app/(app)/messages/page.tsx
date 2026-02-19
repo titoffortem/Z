@@ -14,6 +14,7 @@ import { firebaseConfig } from '@/firebase/config';
 import { ChevronDown, ChevronLeft, ChevronRight, Loader2, MessageSquare, Paperclip, Search, Send, X } from 'lucide-react';
 import {
   addDoc,
+  arrayRemove,
   arrayUnion,
   collection,
   doc,
@@ -44,6 +45,7 @@ type ChatMessage = {
   text: string;
   createdAt: string;
   readBy: string[];
+  likedBy: string[];
   imageUrls: string[];
   forwardedMessages?: Array<{
     id: string;
@@ -475,6 +477,7 @@ export default function MessagesPage() {
             text: data.text || '',
             createdAt: toIsoDate(data.createdAt),
             readBy: data.readBy || [],
+            likedBy: data.likedBy || [],
             imageUrls: data.imageUrls || [],
             forwardedMessages: data.forwardedMessages || undefined,
             forwardedMessage: data.forwardedMessage || undefined,
@@ -683,6 +686,7 @@ export default function MessagesPage() {
       forwardedMessage: null,
       createdAt: serverTimestamp(),
       readBy: [user.uid],
+      likedBy: [],
     });
 
     await updateDoc(doc(firestore, 'chats', targetChatId), {
@@ -726,6 +730,7 @@ export default function MessagesPage() {
         forwardedMessage: null,
         createdAt: serverTimestamp(),
         readBy: [user.uid],
+        likedBy: [],
       });
 
       await updateDoc(doc(firestore, 'chats', targetChatId), {
@@ -742,6 +747,17 @@ export default function MessagesPage() {
     } finally {
       setSending(false);
     }
+  };
+
+  const toggleMessageLike = async (messageId: string, isLiked: boolean) => {
+    if (!firestore || !user || !selectedChatId) {
+      return;
+    }
+
+    const messageRef = doc(firestore, 'chats', selectedChatId, 'messages', messageId);
+    await updateDoc(messageRef, {
+      likedBy: isLiked ? arrayRemove(user.uid) : arrayUnion(user.uid),
+    });
   };
 
   return (
@@ -997,6 +1013,17 @@ export default function MessagesPage() {
                     )}
 
                     <div className="mt-1 flex items-center justify-end gap-2 text-[11px] opacity-70">
+                      <button
+                        type="button"
+                        className={`inline-flex items-center gap-1 ${message.likedBy.includes(user?.uid || '') ? 'text-primary' : ''}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void toggleMessageLike(message.id, message.likedBy.includes(user?.uid || ''));
+                        }}
+                      >
+                        <span>❤</span>
+                        <span>{message.likedBy.length}</span>
+                      </button>
                       <span>{formatTime(message.createdAt)}</span>
                       {isMine && (isReadByPartner ? <DoubleCheckIcon /> : <SingleCheckIcon />)}
                     </div>
@@ -1184,3 +1211,4 @@ export default function MessagesPage() {
     </div>
   );
 }
+

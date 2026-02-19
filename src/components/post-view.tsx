@@ -75,7 +75,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                 const createdAt = data.createdAt instanceof Timestamp 
                     ? data.createdAt.toDate().toISOString() 
                     : new Date().toISOString();
-                return { id: doc.id, ...data, createdAt } as Comment;
+                return { id: doc.id, ...data, likedBy: data.likedBy || [], createdAt } as Comment;
             });
             const commentsWithAuthors = await Promise.all(commentsData.map(async (comment) => {
                 if (!comment.userId) return comment;
@@ -139,6 +139,22 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
             toast({ title: 'Ошибка', description: error.message, variant: "destructive" });
         } finally {
             setIsSubmittingComment(false);
+        }
+    };
+
+
+    const toggleCommentLike = async (commentId: string, isLiked: boolean) => {
+        if (!firestore || !user) {
+            toast({ title: 'Войдите, чтобы поставить лайк', variant: 'destructive' });
+            return;
+        }
+
+        try {
+            await updateDoc(doc(firestore, 'posts', post.id, 'comments', commentId), {
+                likedBy: isLiked ? arrayRemove(user.uid) : arrayUnion(user.uid),
+            });
+        } catch (error: any) {
+            toast({ title: 'Ошибка', description: error.message, variant: 'destructive' });
         }
     };
 
@@ -390,6 +406,19 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                                 </div>
                                                 <p className="text-sm text-foreground break-words leading-relaxed">{comment.text}</p>
                                             </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => void toggleCommentLike(comment.id, Boolean(user && (comment.likedBy || []).includes(user.uid)))}
+                                                className={cn(
+                                                    "mt-1 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors",
+                                                    user && (comment.likedBy || []).includes(user.uid)
+                                                        ? "text-primary"
+                                                        : "text-muted-foreground hover:text-primary"
+                                                )}
+                                            >
+                                                <Heart className={cn("h-3.5 w-3.5", user && (comment.likedBy || []).includes(user.uid) && "fill-current")} />
+                                                <span>{(comment.likedBy || []).length}</span>
+                                            </button>
                                         </div>
                                     </div>
                                 ))

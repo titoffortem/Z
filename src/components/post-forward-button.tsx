@@ -7,7 +7,7 @@ import { useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { Post, UserProfile } from '@/types';
 import { addDoc, collection, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
 
@@ -176,21 +176,22 @@ export function PostForwardButton({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <button
-          type="button"
-          className={className || 'p-1.5 text-muted-foreground transition-colors hover:text-primary'}
-          onClick={(event) => {
-            if (stopPropagation) {
-              event.stopPropagation();
-            }
-          }}
-          aria-label="Переслать пост"
-        >
-          <Send className={iconClassName || 'h-4 w-4'} />
-        </button>
-      </DialogTrigger>
+    <>
+      <button
+        type="button"
+        className={className || 'p-1.5 text-muted-foreground transition-colors hover:text-primary'}
+        onClick={(event) => {
+          if (stopPropagation) {
+            event.stopPropagation();
+          }
+          setOpen(true);
+        }}
+        aria-label="Переслать пост"
+      >
+        <Send className={iconClassName || 'h-4 w-4'} />
+      </button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Переслать пост</DialogTitle>
@@ -235,6 +236,7 @@ export function PostForwardButton({
           </Button>
         </div>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+    </>
   );
 }
