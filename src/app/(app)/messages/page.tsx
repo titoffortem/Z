@@ -107,6 +107,70 @@ const toIsoDate = (value: unknown) => {
 
 const getChatId = (userA: string, userB: string) => [userA, userB].sort().join('_');
 
+function SingleCheckIcon() {
+  return (
+    <svg viewBox="0 0 329.14 258.16" className="h-3.5 w-auto" aria-hidden="true">
+      <rect
+        fill="#c9d5ca"
+        x="158.56"
+        y="-24.75"
+        width="83.01"
+        height="307.66"
+        rx="21.84"
+        ry="21.84"
+        transform="translate(149.87 -103.66) rotate(45)"
+      />
+      <rect
+        fill="#c9d5ca"
+        x="43.61"
+        y="81.28"
+        width="83.01"
+        height="183.31"
+        rx="21.84"
+        ry="21.84"
+        transform="translate(-97.35 110.83) rotate(-45)"
+      />
+    </svg>
+  );
+}
+
+function DoubleCheckIcon() {
+  return (
+    <svg viewBox="0 0 505.33 258.61" className="h-3.5 w-auto" aria-hidden="true">
+      <rect
+        fill="#c9d5ca"
+        x="334.74"
+        y="-24.3"
+        width="83.01"
+        height="307.66"
+        rx="21.84"
+        ry="21.84"
+        transform="translate(201.79 -228.11) rotate(45)"
+      />
+      <rect
+        fill="#c9d5ca"
+        x="158.56"
+        y="-24.75"
+        width="83.01"
+        height="307.66"
+        rx="21.84"
+        ry="21.84"
+        transform="translate(149.87 -103.66) rotate(45)"
+      />
+      <rect
+        fill="#c9d5ca"
+        x="43.61"
+        y="81.28"
+        width="83.01"
+        height="183.31"
+        rx="21.84"
+        ry="21.84"
+        transform="translate(-97.35 110.83) rotate(-45)"
+      />
+    </svg>
+  );
+}
+
 export default function MessagesPage() {
   const { user } = useAuth();
   const firestore = useFirestore();
@@ -782,7 +846,7 @@ export default function MessagesPage() {
 
                     <div className="mt-1 flex items-center justify-end gap-2 text-[11px] opacity-70">
                       <span>{formatTime(message.createdAt)}</span>
-                      {isMine && <span>{isReadByPartner ? '✓✓' : '✓'}</span>}
+                      {isMine && (isReadByPartner ? <DoubleCheckIcon /> : <SingleCheckIcon />)}
                     </div>
                   </div>
                 </div>
