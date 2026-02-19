@@ -1005,13 +1005,13 @@ export default function MessagesPage() {
       </section>
 
       {expandedImages && expandedImages.length > 0 && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 p-4">
-          <button type="button" onClick={closeImageViewer} className="absolute right-4 top-4 rounded-full bg-black/40 p-2 text-white">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-background/95 p-4 backdrop-blur-sm">
+          <button type="button" onClick={closeImageViewer} className="absolute right-4 top-4 rounded-full bg-background/70 p-2 text-foreground">
             <X className="h-5 w-5" />
           </button>
 
           {expandedImages.length > 1 && (
-            <button type="button" onClick={showPrevExpandedImage} className="absolute left-4 rounded-full bg-black/40 p-2 text-white">
+            <button type="button" onClick={showPrevExpandedImage} className="absolute left-4 rounded-full bg-background/70 p-2 text-foreground">
               <ChevronLeft className="h-5 w-5" />
             </button>
           )}
@@ -1023,7 +1023,7 @@ export default function MessagesPage() {
           />
 
           {expandedImages.length > 1 && (
-            <button type="button" onClick={showNextExpandedImage} className="absolute right-4 rounded-full bg-black/40 p-2 text-white">
+            <button type="button" onClick={showNextExpandedImage} className="absolute right-4 rounded-full bg-background/70 p-2 text-foreground">
               <ChevronRight className="h-5 w-5" />
             </button>
           )}
