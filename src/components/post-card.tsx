@@ -221,6 +221,7 @@ export function PostCard({ post }: { post: Post }) {
                                     stopPropagation
                                     className="flex items-center p-1.5 rounded-md text-muted-foreground transition-colors hover:text-primary hover:bg-primary/10"
                                     iconClassName="h-4 w-4"
+                                    onForwarded={() => setIsOpen(false)}
                                   />
                                   <button
                                     onClick={handleLike}

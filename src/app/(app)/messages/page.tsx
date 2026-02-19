@@ -1015,7 +1015,7 @@ export default function MessagesPage() {
                     <div className="mt-1 flex items-center justify-end gap-2 text-[11px] opacity-70">
                       <button
                         type="button"
-                        className={`inline-flex items-center gap-1 ${message.likedBy.includes(user?.uid || '') ? 'text-rose-400' : ''}`}
+                        className={`inline-flex items-center gap-1 ${message.likedBy.includes(user?.uid || '') ? 'text-green-500' : ''}`}
                         onClick={(event) => {
                           event.stopPropagation();
                           void toggleMessageLike(message.id, message.likedBy.includes(user?.uid || ''));
