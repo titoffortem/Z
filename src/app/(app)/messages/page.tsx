@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { firebaseConfig } from '@/firebase/config';
-import { ChevronDown, ChevronLeft, Loader2, MessageSquare, Paperclip, Search, SendHorizontal } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Loader2, MessageSquare, Paperclip, Search, SendHorizontal, X } from 'lucide-react';
 import {
   addDoc,
   arrayUnion,
@@ -131,11 +131,37 @@ export default function MessagesPage() {
   const [isForwardPickerOpen, setForwardPickerOpen] = useState(false);
   const [isMobileDialogOpen, setMobileDialogOpen] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const [expandedImages, setExpandedImages] = useState<string[] | null>(null);
+  const [expandedImageIndex, setExpandedImageIndex] = useState(0);
 
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const isAtBottomRef = useRef(true);
   const previousMessageCountRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const openImageViewer = (images: string[], index: number) => {
+    setExpandedImages(images);
+    setExpandedImageIndex(index);
+  };
+
+  const closeImageViewer = () => {
+    setExpandedImages(null);
+    setExpandedImageIndex(0);
+  };
+
+  const showNextExpandedImage = () => {
+    if (!expandedImages || expandedImages.length <= 1) {
+      return;
+    }
+    setExpandedImageIndex((prev) => (prev + 1) % expandedImages.length);
+  };
+
+  const showPrevExpandedImage = () => {
+    if (!expandedImages || expandedImages.length <= 1) {
+      return;
+    }
+    setExpandedImageIndex((prev) => (prev - 1 + expandedImages.length) % expandedImages.length);
+  };
 
   const updateBottomState = useCallback(() => {
     const container = messagesContainerRef.current;
@@ -683,11 +709,15 @@ export default function MessagesPage() {
             messages.map((message) => {
               const isMine = message.senderId === user?.uid;
               const isReadByPartner = Boolean(selectedPartnerId && message.readBy.includes(selectedPartnerId));
+              const hasMessageText = Boolean(message.text?.trim());
               const normalizedForwarded = message.forwardedMessages && message.forwardedMessages.length > 0
                 ? message.forwardedMessages
                 : message.forwardedMessage
                   ? [message.forwardedMessage]
                   : [];
+              const hasForwardedContent = normalizedForwarded.length > 0;
+              const hasImages = message.imageUrls.length > 0;
+              const isImageOnlyMessage = !hasForwardedContent && !hasMessageText && hasImages;
               const forwardedSenderIds = Array.from(new Set(normalizedForwarded.map((item) => item.senderId).filter(Boolean)));
               const forwardedFromLabel =
                 forwardedSenderIds.length === 1
@@ -703,7 +733,7 @@ export default function MessagesPage() {
                   onClick={() => toggleForwardMessageSelection(message.id)}
                 >
                   <div
-                    className={`max-w-[75%] rounded-2xl px-3 py-2 ${
+                    className={`rounded-2xl ${isImageOnlyMessage ? 'w-fit p-1' : 'max-w-[75%] px-3 py-2'} ${
                       isMine ? 'rounded-br-sm bg-primary text-primary-foreground' : 'rounded-bl-sm bg-muted'
                     } ${selectedForwardMessageIds.includes(message.id) ? 'ring-2 ring-[#577F59]' : ''}`}
                   >
@@ -711,27 +741,41 @@ export default function MessagesPage() {
                       <div className="mb-2 rounded-md border border-border/60 bg-background/40 p-2 text-xs">
                         <p className="mb-1 opacity-70">Переслано {forwardedFromLabel ? `от ${forwardedFromLabel}` : ''}</p>
                         <div className="space-y-1">
-                          {normalizedForwarded.map((forwarded) => (
+                          {normalizedForwarded.map((forwarded, idx) => {
+                            const prevSenderId = normalizedForwarded[idx - 1]?.senderId;
+                            const showSenderLabel = idx === 0 || prevSenderId !== forwarded.senderId;
+
+                            return (
                             <div key={`${forwarded.id}-${forwarded.createdAt}`} className="rounded-sm border border-border/40 p-1">
-                              <p className="mb-0.5 text-[11px] opacity-70">
-                                От {profilesById[forwarded.senderId]?.nickname || 'пользователя'}
-                              </p>
+                              {showSenderLabel && (
+                                <p className="mb-0.5 text-[11px] opacity-70">
+                                  От {profilesById[forwarded.senderId]?.nickname || 'пользователя'}
+                                </p>
+                              )}
                               {forwarded.text && <p className="line-clamp-2">{forwarded.text}</p>}
                               {forwarded.imageUrls?.length > 0 && <p className="mt-1 opacity-80">📷 {forwarded.imageUrls.length}</p>}
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     )}
 
-                    <p className="break-words whitespace-pre-wrap">{message.text}</p>
+                    {hasMessageText && <p className="break-words whitespace-pre-wrap">{message.text}</p>}
 
-                    {message.imageUrls.length > 0 && (
-                      <div className="mt-2 grid grid-cols-2 gap-2">
-                        {message.imageUrls.map((url) => (
-                          <a key={url} href={url} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
-                            <img src={url} alt="message" className="h-28 w-full rounded-md object-cover" />
-                          </a>
+                    {hasImages && (
+                      <div className={`${hasMessageText ? 'mt-2' : ''} grid grid-cols-2 gap-2`}>
+                        {message.imageUrls.map((url, idx) => (
+                          <button key={`${url}-${idx}`} type="button" onClick={(event) => {
+                            event.stopPropagation();
+                            openImageViewer(message.imageUrls, idx);
+                          }}>
+                            <img
+                              src={url}
+                              alt="message"
+                              className={`${message.imageUrls.length === 1 ? 'h-48 w-auto max-w-[260px]' : 'h-28 w-28'} rounded-md object-cover`}
+                            />
+                          </button>
                         ))}
                       </div>
                     )}
@@ -798,7 +842,7 @@ export default function MessagesPage() {
               className="hidden"
               onChange={(event) => setSelectedImages(Array.from(event.target.files || []))}
             />
-            <div className="flex items-end gap-2">
+            <div className="flex items-center gap-2">
               <Textarea
                 value={newMessage}
                 onChange={(event) => setNewMessage(event.target.value)}
@@ -812,13 +856,13 @@ export default function MessagesPage() {
                   }
                 }}
               />
-              <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => fileInputRef.current?.click()}>
+              <Button type="button" variant="ghost" size="icon" className="h-9 w-9 self-center rounded-full" onClick={() => fileInputRef.current?.click()}>
                 <Paperclip className="h-4 w-4" />
               </Button>
               <Button
                 type="button"
                 size="icon"
-                className="h-9 w-9 rounded-full"
+                className="h-9 w-9 self-center rounded-full"
                 onClick={() => void handleSend()}
                 disabled={!selectedChatId || sending || (!newMessage.trim() && selectedImages.length === 0)}
               >
@@ -828,6 +872,32 @@ export default function MessagesPage() {
           </div>
         </div>
       </section>
+
+      {expandedImages && expandedImages.length > 0 && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 p-4">
+          <button type="button" onClick={closeImageViewer} className="absolute right-4 top-4 rounded-full bg-black/40 p-2 text-white">
+            <X className="h-5 w-5" />
+          </button>
+
+          {expandedImages.length > 1 && (
+            <button type="button" onClick={showPrevExpandedImage} className="absolute left-4 rounded-full bg-black/40 p-2 text-white">
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+          )}
+
+          <img
+            src={expandedImages[expandedImageIndex]}
+            alt="expanded"
+            className="max-h-[90vh] max-w-[90vw] rounded-md object-contain"
+          />
+
+          {expandedImages.length > 1 && (
+            <button type="button" onClick={showNextExpandedImage} className="absolute right-4 rounded-full bg-black/40 p-2 text-white">
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          )}
+        </div>
+      )}
 
       {isForwardPickerOpen && (
         <div className="fixed inset-0 z-50 bg-background/95 p-4" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}>
