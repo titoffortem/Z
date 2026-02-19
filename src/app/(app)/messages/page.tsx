@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { firebaseConfig } from '@/firebase/config';
-import { ChevronDown, ChevronLeft, ChevronRight, Loader2, MessageSquare, Paperclip, Search, Send, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Heart, Loader2, MessageSquare, Paperclip, Search, Send, X } from 'lucide-react';
 import {
   addDoc,
   arrayRemove,
@@ -1015,14 +1015,14 @@ export default function MessagesPage() {
                     <div className="mt-1 flex items-center justify-end gap-2 text-[11px] opacity-70">
                       <button
                         type="button"
-                        className={`inline-flex items-center gap-1 ${message.likedBy.includes(user?.uid || '') ? 'text-primary' : ''}`}
+                        className={`inline-flex items-center gap-1 ${message.likedBy.includes(user?.uid || '') ? 'text-rose-400' : ''}`}
                         onClick={(event) => {
                           event.stopPropagation();
                           void toggleMessageLike(message.id, message.likedBy.includes(user?.uid || ''));
                         }}
                       >
-                        <span>❤</span>
-                        <span>{message.likedBy.length}</span>
+                        <Heart className={`h-3.5 w-3.5 ${message.likedBy.includes(user?.uid || '') ? 'fill-current' : ''}`} />
+                        {message.likedBy.length > 0 && <span>{message.likedBy.length}</span>}
                       </button>
                       <span>{formatTime(message.createdAt)}</span>
                       {isMine && (isReadByPartner ? <DoubleCheckIcon /> : <SingleCheckIcon />)}

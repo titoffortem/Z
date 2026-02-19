@@ -417,7 +417,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                                 )}
                                             >
                                                 <Heart className={cn("h-3.5 w-3.5", user && (comment.likedBy || []).includes(user.uid) && "fill-current")} />
-                                                <span>{(comment.likedBy || []).length}</span>
+                                                {(comment.likedBy || []).length > 0 && <span>{(comment.likedBy || []).length}</span>}
                                             </button>
                                         </div>
                                     </div>

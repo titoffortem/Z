@@ -180,6 +180,12 @@ export function PostForwardButton({
       <button
         type="button"
         className={className || 'p-1.5 text-muted-foreground transition-colors hover:text-primary'}
+        onPointerDown={(event) => {
+          if (stopPropagation) {
+            event.stopPropagation();
+            event.preventDefault();
+          }
+        }}
         onClick={(event) => {
           if (stopPropagation) {
             event.stopPropagation();
