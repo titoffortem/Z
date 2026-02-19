@@ -15,6 +15,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
       const backListener = App.addListener('backButton', ({ canGoBack }) => {
+        const isMobileChatOverlayOpen = document.querySelector('[data-mobile-chat-open="true"]');
+
+        if (isMobileChatOverlayOpen) {
+          window.dispatchEvent(new CustomEvent('z:close-mobile-chat'));
+          return;
+        }
         
         // А. ПРОВЕРКА НА ОТКРЫТЫЕ МОДАЛКИ (Radix UI)
         // Ищем любой элемент с ролью dialog или alertdialog
