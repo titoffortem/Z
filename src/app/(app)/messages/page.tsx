@@ -86,16 +86,28 @@ export default function MessagesPage() {
   const [sending, setSending] = useState(false);
   const [isMobileDialogOpen, setMobileDialogOpen] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const [isUserScrolling, setIsUserScrolling] = useState(false);
 
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const isAtBottomRef = useRef(true);
   const previousMessageCountRef = useRef(0);
+  const scrollStopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const updateBottomState = useCallback(() => {
     const container = messagesContainerRef.current;
     if (!container) {
       return;
     }
+
+    setIsUserScrolling(true);
+
+    if (scrollStopTimeoutRef.current) {
+      clearTimeout(scrollStopTimeoutRef.current);
+    }
+
+    scrollStopTimeoutRef.current = setTimeout(() => {
+      setIsUserScrolling(false);
+    }, 220);
 
     const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 80;
     isAtBottomRef.current = nearBottom;
@@ -112,6 +124,15 @@ export default function MessagesPage() {
       top: container.scrollHeight,
       behavior,
     });
+  }, []);
+
+
+  useEffect(() => {
+    return () => {
+      if (scrollStopTimeoutRef.current) {
+        clearTimeout(scrollStopTimeoutRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -571,12 +592,12 @@ export default function MessagesPage() {
             })
           )}
 
-          {selectedChatId && !isAtBottom && (
+          {selectedChatId && (isUserScrolling || !isAtBottom) && (
             <Button
               type="button"
               size="icon"
               onClick={() => scrollToBottom('smooth')}
-              className="absolute bottom-4 right-4 h-10 w-10 rounded-full shadow-md"
+              className="absolute bottom-4 right-4 h-10 w-10 rounded-full bg-[#40594D] text-white shadow-md hover:bg-[#4b6a5b]"
             >
               <ChevronDown className="h-5 w-5" />
             </Button>
