@@ -201,7 +201,11 @@ export function PostForwardButton({
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-md">
+      <DialogContent
+        className="max-w-md"
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
+      >
         <DialogHeader>
           <DialogTitle>Переслать пост</DialogTitle>
         </DialogHeader>
@@ -221,7 +225,10 @@ export function PostForwardButton({
                 <button
                   key={chat.id}
                   type="button"
-                  onClick={() => void handleForwardPost(chat.id)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void handleForwardPost(chat.id);
+                  }}
                   disabled={Boolean(sendingChatId)}
                   className="flex w-full items-center gap-3 rounded-lg border border-border/60 p-2 text-left transition hover:bg-muted/40 disabled:cursor-not-allowed"
                 >
@@ -240,7 +247,14 @@ export function PostForwardButton({
         )}
 
         <div className="flex justify-end">
-          <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={(event) => {
+              event.stopPropagation();
+              setOpen(false);
+            }}
+          >
             Закрыть
           </Button>
         </div>

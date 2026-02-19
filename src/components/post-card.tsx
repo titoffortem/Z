@@ -30,6 +30,8 @@ export function PostCard({ post }: { post: Post }) {
     const [author, setAuthor] = React.useState<UserProfile | null>(null);
     const [isLiked, setIsLiked] = React.useState(false);
     const [likeCount, setLikeCount] = React.useState(post.likedBy?.length ?? 0);
+    const [isLikeUpdating, setIsLikeUpdating] = React.useState(false);
+    const [pendingLikeStatus, setPendingLikeStatus] = React.useState<boolean | null>(null);
 
     const [isOpen, setIsOpen] = React.useState(false);
 
@@ -84,11 +86,20 @@ export function PostCard({ post }: { post: Post }) {
     // --- КОНЕЦ ИЗМЕНЕНИЙ (Логика) ---
 
     React.useEffect(() => {
-        if (user && post.likedBy) {
-            setIsLiked(post.likedBy.includes(user.uid));
+        const likedBy = post.likedBy || [];
+        const likedFromServer = Boolean(user && likedBy.includes(user.uid));
+
+        if (isLikeUpdating) {
+            if (pendingLikeStatus !== null && likedFromServer === pendingLikeStatus) {
+                setIsLikeUpdating(false);
+                setPendingLikeStatus(null);
+            }
+            return;
         }
-        setLikeCount(post.likedBy?.length ?? 0);
-    }, [post, user]);
+
+        setIsLiked(likedFromServer);
+        setLikeCount(likedBy.length);
+    }, [post.likedBy, user, isLikeUpdating, pendingLikeStatus]);
 
     React.useEffect(() => {
         const fetchAuthor = async () => {
@@ -130,6 +141,8 @@ export function PostCard({ post }: { post: Post }) {
         const postRef = doc(firestore, 'posts', post.id);
         const newLikeStatus = !isLiked;
 
+        setIsLikeUpdating(true);
+        setPendingLikeStatus(newLikeStatus);
         setIsLiked(newLikeStatus);
         setLikeCount(currentCount => newLikeStatus ? currentCount + 1 : currentCount - 1);
 
@@ -144,6 +157,8 @@ export function PostCard({ post }: { post: Post }) {
                 });
             }
         } catch (error: any) {
+            setIsLikeUpdating(false);
+            setPendingLikeStatus(null);
             setIsLiked(!newLikeStatus);
             setLikeCount(currentCount => newLikeStatus ? currentCount - 1 : currentCount + 1);
             toast({ title: "Не удалось обновить статус лайка.", description: error.message, variant: "destructive" });
