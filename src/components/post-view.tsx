@@ -43,6 +43,8 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
 
     const [isLiked, setIsLiked] = React.useState(false);
     const [likeCount, setLikeCount] = React.useState(post.likedBy?.length ?? 0);
+    const [isLikeUpdating, setIsLikeUpdating] = React.useState(false);
+    const [pendingLikeStatus, setPendingLikeStatus] = React.useState<boolean | null>(null);
     const [comments, setComments] = React.useState<Comment[]>([]);
     const [commentsLoading, setCommentsLoading] = React.useState(true);
     const [newComment, setNewComment] = React.useState('');
@@ -58,11 +60,20 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     const currentType = mediaTypes[currentIndex];
 
     React.useEffect(() => {
-        if (user && post.likedBy) {
-            setIsLiked(post.likedBy.includes(user.uid));
+        const likedBy = post.likedBy || [];
+        const likedFromServer = Boolean(user && likedBy.includes(user.uid));
+
+        if (isLikeUpdating) {
+            if (pendingLikeStatus !== null && likedFromServer === pendingLikeStatus) {
+                setIsLikeUpdating(false);
+                setPendingLikeStatus(null);
+            }
+            return;
         }
-        setLikeCount(post.likedBy?.length ?? 0);
-    }, [post, user]);
+
+        setIsLiked(likedFromServer);
+        setLikeCount(likedBy.length);
+    }, [post.likedBy, user, isLikeUpdating, pendingLikeStatus]);
 
     React.useEffect(() => {
         if (!firestore || !post.id) return;
@@ -109,6 +120,8 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
         }
         const postRef = doc(firestore, 'posts', post.id);
         const newLikeStatus = !isLiked;
+        setIsLikeUpdating(true);
+        setPendingLikeStatus(newLikeStatus);
         setIsLiked(newLikeStatus);
         setLikeCount(c => newLikeStatus ? c + 1 : c - 1);
 
@@ -119,6 +132,8 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                 await updateDoc(postRef, { likedBy: arrayRemove(user.uid) });
             }
         } catch (error: any) {
+            setIsLikeUpdating(false);
+            setPendingLikeStatus(null);
             setIsLiked(!newLikeStatus);
             setLikeCount(c => newLikeStatus ? c - 1 : c + 1);
             toast({ title: "Ошибка", description: error.message, variant: "destructive" });
