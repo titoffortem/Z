@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { firebaseConfig } from '@/firebase/config';
-import { ChevronDown, ChevronLeft, Loader2, MessageSquare, Search, SendHorizontal } from 'lucide-react';
+import { ChevronDown, ChevronLeft, Loader2, MessageSquare, Paperclip, Search, SendHorizontal } from 'lucide-react';
 import {
   addDoc,
   arrayUnion,
@@ -43,6 +43,13 @@ type ChatMessage = {
   createdAt: string;
   readBy: string[];
   imageUrls: string[];
+  forwardedMessages?: Array<{
+    id: string;
+    senderId: string;
+    text: string;
+    imageUrls: string[];
+    createdAt: string;
+  }>;
   forwardedMessage?: {
     id: string;
     senderId: string;
@@ -279,6 +286,7 @@ export default function MessagesPage() {
             createdAt: toIsoDate(data.createdAt),
             readBy: data.readBy || [],
             imageUrls: data.imageUrls || [],
+            forwardedMessages: data.forwardedMessages || undefined,
             forwardedMessage: data.forwardedMessage || undefined,
           };
         });
@@ -456,26 +464,35 @@ export default function MessagesPage() {
       return;
     }
 
-    for (const message of selectedMessages) {
-      const forwardedPayload = message.forwardedMessage
-        ? message.forwardedMessage
-        : {
-            id: message.id,
-            senderId: message.senderId,
-            text: message.text,
-            imageUrls: message.imageUrls,
-            createdAt: message.createdAt,
-          };
+    const flattenedForwardPayloads = selectedMessages.flatMap((message) => {
+      if (message.forwardedMessages && message.forwardedMessages.length > 0) {
+        return message.forwardedMessages;
+      }
 
-      await addDoc(collection(firestore, 'chats', targetChatId, 'messages'), {
-        senderId: user.uid,
-        text: '',
-        imageUrls: [],
-        forwardedMessage: forwardedPayload,
-        createdAt: serverTimestamp(),
-        readBy: [user.uid],
-      });
-    }
+      if (message.forwardedMessage) {
+        return [message.forwardedMessage];
+      }
+
+      return [
+        {
+          id: message.id,
+          senderId: message.senderId,
+          text: message.text,
+          imageUrls: message.imageUrls,
+          createdAt: message.createdAt,
+        },
+      ];
+    });
+
+    await addDoc(collection(firestore, 'chats', targetChatId, 'messages'), {
+      senderId: user.uid,
+      text: '',
+      imageUrls: [],
+      forwardedMessages: flattenedForwardPayloads,
+      forwardedMessage: null,
+      createdAt: serverTimestamp(),
+      readBy: [user.uid],
+    });
 
     await updateDoc(doc(firestore, 'chats', targetChatId), {
       lastMessageText: `↪ Переслано ${selectedMessages.length}`,
@@ -666,6 +683,18 @@ export default function MessagesPage() {
             messages.map((message) => {
               const isMine = message.senderId === user?.uid;
               const isReadByPartner = Boolean(selectedPartnerId && message.readBy.includes(selectedPartnerId));
+              const normalizedForwarded = message.forwardedMessages && message.forwardedMessages.length > 0
+                ? message.forwardedMessages
+                : message.forwardedMessage
+                  ? [message.forwardedMessage]
+                  : [];
+              const forwardedSenderIds = Array.from(new Set(normalizedForwarded.map((item) => item.senderId).filter(Boolean)));
+              const forwardedFromLabel =
+                forwardedSenderIds.length === 1
+                  ? profilesById[forwardedSenderIds[0]]?.nickname || 'пользователя'
+                  : forwardedSenderIds.length > 1
+                    ? 'нескольких пользователей'
+                    : null;
 
               return (
                 <div
@@ -678,13 +707,17 @@ export default function MessagesPage() {
                       isMine ? 'rounded-br-sm bg-primary text-primary-foreground' : 'rounded-bl-sm bg-muted'
                     } ${selectedForwardMessageIds.includes(message.id) ? 'ring-2 ring-[#577F59]' : ''}`}
                   >
-                    {message.forwardedMessage && (
+                    {normalizedForwarded.length > 0 && (
                       <div className="mb-2 rounded-md border border-border/60 bg-background/40 p-2 text-xs">
-                        <p className="mb-1 opacity-70">Переслано</p>
-                        {message.forwardedMessage.text && <p className="line-clamp-3">{message.forwardedMessage.text}</p>}
-                        {message.forwardedMessage.imageUrls?.length > 0 && (
-                          <p className="mt-1 opacity-80">📷 {message.forwardedMessage.imageUrls.length}</p>
-                        )}
+                        <p className="mb-1 opacity-70">Переслано {forwardedFromLabel ? `от ${forwardedFromLabel}` : ''}</p>
+                        <div className="space-y-1">
+                          {normalizedForwarded.map((forwarded) => (
+                            <div key={`${forwarded.id}-${forwarded.createdAt}`} className="rounded-sm border border-border/40 p-1">
+                              {forwarded.text && <p className="line-clamp-2">{forwarded.text}</p>}
+                              {forwarded.imageUrls?.length > 0 && <p className="mt-1 opacity-80">📷 {forwarded.imageUrls.length}</p>}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
 
@@ -753,7 +786,7 @@ export default function MessagesPage() {
         )}
 
         <div className="border-t border-border/50 p-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}>
-          <div className="flex items-center gap-2">
+          <div className="flex items-end gap-2">
             <input
               ref={fileInputRef}
               type="file"
@@ -762,28 +795,30 @@ export default function MessagesPage() {
               className="hidden"
               onChange={(event) => setSelectedImages(Array.from(event.target.files || []))}
             />
-            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-              Добавить
-            </Button>
-            <Textarea
-              value={newMessage}
-              onChange={(event) => setNewMessage(event.target.value)}
-              placeholder={selectedChatId ? 'Напишите сообщение или комментарий к пересылке...' : 'Сначала выберите диалог'}
-              disabled={!selectedChatId || sending}
-              className="max-h-32 min-h-[44px]"
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.shiftKey) {
-                  event.preventDefault();
-                  void handleSend();
-                }
-              }}
-            />
+            <div className="relative flex-1">
+              <Textarea
+                value={newMessage}
+                onChange={(event) => setNewMessage(event.target.value)}
+                placeholder={selectedChatId ? 'Напишите сообщение...' : 'Сначала выберите диалог'}
+                disabled={!selectedChatId || sending}
+                className="max-h-32 min-h-[44px] resize-none rounded-2xl border-transparent bg-muted/50 py-2.5 pr-10"
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    void handleSend();
+                  }
+                }}
+              />
+            </div>
             <Button
               type="button"
               onClick={() => void handleSend()}
               disabled={!selectedChatId || sending || (!newMessage.trim() && selectedImages.length === 0)}
             >
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizontal className="h-4 w-4" />}
+            </Button>
+            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+              <Paperclip className="h-4 w-4" />
             </Button>
           </div>
         </div>
