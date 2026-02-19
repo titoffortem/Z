@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import { useFirestore } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -8,9 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { ChevronLeft, Loader2, MessageSquare, Search, SendHorizontal } from 'lucide-react';
+import { ChevronDown, ChevronLeft, Loader2, MessageSquare, Search, SendHorizontal } from 'lucide-react';
 import {
   addDoc,
+  arrayUnion,
   collection,
   doc,
   getDoc,
@@ -21,7 +22,9 @@ import {
   serverTimestamp,
   setDoc,
   Timestamp,
+  updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 import type { UserProfile } from '@/types';
 
@@ -37,6 +40,7 @@ type ChatMessage = {
   senderId: string;
   text: string;
   createdAt: string;
+  readBy: string[];
 };
 
 const formatTime = (isoDate: string) => {
@@ -64,6 +68,7 @@ const getChatId = (userA: string, userB: string) => [userA, userB].sort().join('
 export default function MessagesPage() {
   const { user } = useAuth();
   const firestore = useFirestore();
+  const isMobile = useIsMobile();
 
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [profilesById, setProfilesById] = useState<Record<string, UserProfile>>({});
@@ -79,8 +84,41 @@ export default function MessagesPage() {
 
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
-  const isMobile = useIsMobile();
   const [isMobileDialogOpen, setMobileDialogOpen] = useState(false);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const isAtBottomRef = useRef(true);
+  const previousMessageCountRef = useRef(0);
+
+  const updateBottomState = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container) {
+      return;
+    }
+
+    const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 80;
+    isAtBottomRef.current = nearBottom;
+    setIsAtBottom(nearBottom);
+  }, []);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    const container = messagesContainerRef.current;
+    if (!container) {
+      return;
+    }
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior,
+    });
+  }, []);
+
+  useEffect(() => {
+    const handleCloseMobileChat = () => setMobileDialogOpen(false);
+    window.addEventListener('z:close-mobile-chat', handleCloseMobileChat);
+    return () => window.removeEventListener('z:close-mobile-chat', handleCloseMobileChat);
+  }, []);
 
   useEffect(() => {
     if (!user || !firestore) {
@@ -118,7 +156,6 @@ export default function MessagesPage() {
     return () => unsubscribe();
   }, [firestore, user]);
 
-
   useEffect(() => {
     if (chats.length === 0) {
       if (selectedChatId !== null) {
@@ -140,11 +177,7 @@ export default function MessagesPage() {
     }
 
     const partnerIds = Array.from(
-      new Set(
-        chats
-          .flatMap((chat) => chat.participantIds)
-          .filter((participantId) => participantId && participantId !== user.uid)
-      )
+      new Set(chats.flatMap((chat) => chat.participantIds).filter((participantId) => participantId && participantId !== user.uid))
     );
 
     if (partnerIds.length === 0) {
@@ -185,6 +218,7 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!firestore || !selectedChatId) {
       setMessages([]);
+      previousMessageCountRef.current = 0;
       return;
     }
 
@@ -203,6 +237,7 @@ export default function MessagesPage() {
             senderId: data.senderId || '',
             text: data.text || '',
             createdAt: toIsoDate(data.createdAt),
+            readBy: data.readBy || [],
           };
         });
         setMessages(nextMessages);
@@ -215,6 +250,64 @@ export default function MessagesPage() {
 
     return () => unsubscribe();
   }, [firestore, selectedChatId]);
+
+  useEffect(() => {
+    if (!selectedChatId) {
+      return;
+    }
+
+    isAtBottomRef.current = true;
+    setIsAtBottom(true);
+
+    const rafId = requestAnimationFrame(() => {
+      scrollToBottom('auto');
+    });
+
+    return () => cancelAnimationFrame(rafId);
+  }, [selectedChatId, scrollToBottom]);
+
+  useEffect(() => {
+    if (!selectedChatId) {
+      return;
+    }
+
+    const prevCount = previousMessageCountRef.current;
+    const nextCount = messages.length;
+    previousMessageCountRef.current = nextCount;
+
+    if (nextCount === 0) {
+      return;
+    }
+
+    if (nextCount > prevCount && isAtBottomRef.current) {
+      requestAnimationFrame(() => {
+        scrollToBottom('smooth');
+      });
+    }
+  }, [messages, selectedChatId, scrollToBottom]);
+
+  useEffect(() => {
+    if (!firestore || !user || !selectedChatId || messages.length === 0) {
+      return;
+    }
+
+    const unreadIncoming = messages.filter((message) => message.senderId !== user.uid && !message.readBy.includes(user.uid));
+
+    if (unreadIncoming.length === 0) {
+      return;
+    }
+
+    const batch = writeBatch(firestore);
+
+    unreadIncoming.forEach((message) => {
+      const messageRef = doc(firestore, 'chats', selectedChatId, 'messages', message.id);
+      batch.update(messageRef, {
+        readBy: arrayUnion(user.uid),
+      });
+    });
+
+    void batch.commit();
+  }, [firestore, messages, selectedChatId, user]);
 
   useEffect(() => {
     const trimmedTerm = searchTerm.trim();
@@ -254,21 +347,22 @@ export default function MessagesPage() {
     return () => clearTimeout(timeout);
   }, [firestore, searchTerm, user]);
 
-  const selectedChat = useMemo(
-    () => chats.find((chat) => chat.id === selectedChatId) || null,
-    [chats, selectedChatId]
-  );
+  const selectedChat = useMemo(() => chats.find((chat) => chat.id === selectedChatId) || null, [chats, selectedChatId]);
 
-  const selectedPartnerProfile = useMemo(() => {
+  const selectedPartnerId = useMemo(() => {
     if (!selectedChat || !user) {
       return null;
     }
-    const partnerId = selectedChat.participantIds.find((participantId) => participantId !== user.uid);
-    if (!partnerId) {
+
+    return selectedChat.participantIds.find((participantId) => participantId !== user.uid) || null;
+  }, [selectedChat, user]);
+
+  const selectedPartnerProfile = useMemo(() => {
+    if (!selectedPartnerId) {
       return null;
     }
-    return profilesById[partnerId] || null;
-  }, [profilesById, selectedChat, user]);
+    return profilesById[selectedPartnerId] || null;
+  }, [profilesById, selectedPartnerId]);
 
   const openOrCreateDialog = async (targetUser: UserProfile) => {
     if (!firestore || !user) {
@@ -309,28 +403,31 @@ export default function MessagesPage() {
         senderId: user.uid,
         text,
         createdAt: serverTimestamp(),
+        readBy: [user.uid],
       });
 
-      await setDoc(
-        doc(firestore, 'chats', selectedChatId),
-        {
-          lastMessageText: text,
-          lastMessageSenderId: user.uid,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
+      await updateDoc(doc(firestore, 'chats', selectedChatId), {
+        lastMessageText: text,
+        lastMessageSenderId: user.uid,
+        updatedAt: serverTimestamp(),
+      });
 
       setNewMessage('');
+      requestAnimationFrame(() => {
+        scrollToBottom('smooth');
+      });
     } finally {
       setSending(false);
     }
   };
 
   return (
-    <div className="mx-auto flex h-full max-w-5xl relative">
-      <section className={`w-full md:max-w-sm border-r border-border/50 ${isMobile && isMobileDialogOpen ? 'hidden' : 'block'}`}>
-        <header className="border-b border-border/50 p-4 sticky top-0 bg-background/80 backdrop-blur-sm z-10">
+    <div className="mx-auto relative flex h-full max-w-5xl">
+      <section className={`w-full border-r border-border/50 md:max-w-sm ${isMobile && isMobileDialogOpen ? 'hidden' : 'block'}`}>
+        <header
+          className="sticky top-0 z-10 border-b border-border/50 bg-background/80 p-4 backdrop-blur-sm"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
+        >
           <h1 className="text-xl font-bold">Сообщения</h1>
           <div className="relative mt-3">
             {userSearchLoading ? (
@@ -338,17 +435,12 @@ export default function MessagesPage() {
             ) : (
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             )}
-            <Input
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              className="pl-10"
-              placeholder="Найти пользователя..."
-            />
+            <Input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} className="pl-10" placeholder="Найти пользователя..." />
           </div>
         </header>
 
         {userSearchResults.length > 0 && (
-          <div className="border-b border-border/50 p-2 space-y-1">
+          <div className="space-y-1 border-b border-border/50 p-2">
             {userSearchResults.map((searchUser) => (
               <button
                 key={searchUser.id}
@@ -366,13 +458,13 @@ export default function MessagesPage() {
           </div>
         )}
 
-        <div className="overflow-y-auto h-[calc(100%-124px)] p-2">
+        <div className="h-[calc(100%-124px)] overflow-y-auto p-2">
           {chatLoading ? (
             <div className="flex h-40 items-center justify-center text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />
             </div>
           ) : chats.length === 0 ? (
-            <div className="flex h-56 flex-col items-center justify-center gap-2 text-center text-muted-foreground">
+            <div className="flex h-56 flex-col items-center justify-center gap-2 p-2 text-center text-muted-foreground">
               <MessageSquare className="h-10 w-10 opacity-30" />
               <p>Пока нет переписок</p>
               <p className="text-sm">Найдите пользователя и начните диалог</p>
@@ -400,7 +492,9 @@ export default function MessagesPage() {
                   </Avatar>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold">{partner?.nickname || 'Пользователь'}</p>
-                    <p className={`truncate text-sm ${selectedChatId === chat.id ? 'text-white/80' : 'text-muted-foreground'}`}>{chat.lastMessageText || 'Сообщений пока нет'}</p>
+                    <p className={`truncate text-sm ${selectedChatId === chat.id ? 'text-white/80' : 'text-muted-foreground'}`}>
+                      {chat.lastMessageText || 'Сообщений пока нет'}
+                    </p>
                   </div>
                 </button>
               );
@@ -409,8 +503,14 @@ export default function MessagesPage() {
         </div>
       </section>
 
-      <section className={`flex-1 flex-col bg-background ${isMobile ? 'fixed inset-0 z-30' : 'flex'} ${isMobile && !isMobileDialogOpen ? 'hidden' : 'flex'}`}>
-        <header className="border-b border-border/50 p-4 sticky top-0 bg-background/80 backdrop-blur-sm z-10 min-h-[73px]">
+      <section
+        data-mobile-chat-open={isMobile && isMobileDialogOpen ? 'true' : 'false'}
+        className={`flex-1 flex-col bg-background ${isMobile ? 'fixed inset-0 z-30' : 'flex'} ${isMobile && !isMobileDialogOpen ? 'hidden' : 'flex'}`}
+      >
+        <header
+          className="sticky top-0 z-10 min-h-[73px] border-b border-border/50 bg-background/80 p-4 backdrop-blur-sm"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
+        >
           {selectedPartnerProfile ? (
             <div className="flex items-center gap-3">
               {isMobile && (
@@ -439,7 +539,7 @@ export default function MessagesPage() {
           )}
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div ref={messagesContainerRef} onScroll={updateBottomState} className="relative flex-1 space-y-3 overflow-y-auto p-4">
           {!selectedChatId ? (
             <div className="flex h-full items-center justify-center text-muted-foreground">Откройте или создайте диалог</div>
           ) : messagesLoading ? (
@@ -451,38 +551,54 @@ export default function MessagesPage() {
           ) : (
             messages.map((message) => {
               const isMine = message.senderId === user?.uid;
+              const isReadByPartner = Boolean(selectedPartnerId && message.readBy.includes(selectedPartnerId));
+
               return (
                 <div key={message.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                   <div
                     className={`max-w-[75%] rounded-2xl px-3 py-2 ${
-                      isMine ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-muted rounded-bl-sm'
+                      isMine ? 'rounded-br-sm bg-primary text-primary-foreground' : 'rounded-bl-sm bg-muted'
                     }`}
                   >
-                    <p className="whitespace-pre-wrap break-words">{message.text}</p>
-                    <p className="mt-1 text-right text-[11px] opacity-70">{formatTime(message.createdAt)}</p>
+                    <p className="break-words whitespace-pre-wrap">{message.text}</p>
+                    <div className="mt-1 flex items-center justify-end gap-2 text-[11px] opacity-70">
+                      <span>{formatTime(message.createdAt)}</span>
+                      {isMine && <span>{isReadByPartner ? 'Прочитано' : 'Доставлено'}</span>}
+                    </div>
                   </div>
                 </div>
               );
             })
           )}
+
+          {selectedChatId && !isAtBottom && (
+            <Button
+              type="button"
+              size="icon"
+              onClick={() => scrollToBottom('smooth')}
+              className="absolute bottom-4 right-4 h-10 w-10 rounded-full shadow-md"
+            >
+              <ChevronDown className="h-5 w-5" />
+            </Button>
+          )}
         </div>
 
-        <div className="border-t border-border/50 p-3">
+        <div className="border-t border-border/50 p-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}>
           <div className="flex items-center gap-2">
             <Textarea
               value={newMessage}
               onChange={(event) => setNewMessage(event.target.value)}
               placeholder={selectedChatId ? 'Напишите сообщение...' : 'Сначала выберите диалог'}
               disabled={!selectedChatId || sending}
-              className="min-h-[44px] max-h-32"
+              className="max-h-32 min-h-[44px]"
               onKeyDown={(event) => {
                 if (event.key === 'Enter' && !event.shiftKey) {
                   event.preventDefault();
-                  handleSend();
+                  void handleSend();
                 }
               }}
             />
-            <Button type="button" onClick={handleSend} disabled={!selectedChatId || sending || !newMessage.trim()}>
+            <Button type="button" onClick={() => void handleSend()} disabled={!selectedChatId || sending || !newMessage.trim()}>
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizontal className="h-4 w-4" />}
             </Button>
           </div>
