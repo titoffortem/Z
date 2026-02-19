@@ -20,6 +20,7 @@ import { PostView } from './post-view';
 import { useAuth } from "./auth-provider";
 import { useToast } from "@/hooks/use-toast";
 import { Heart } from "lucide-react";
+import { PostForwardButton } from "@/components/post-forward-button";
 import { cn } from "@/lib/utils";
 
 export function PostCard({ post }: { post: Post }) {
@@ -214,25 +215,33 @@ export function PostCard({ post }: { post: Post }) {
                                     </div>
                                 </div>
                                 
-                                <button
-                                  onClick={handleLike}
-                                  className={cn(
-                                    "flex items-center gap-1.5 p-1.5 rounded-md transition-colors flex-shrink-0",
-                                    isLiked
-                                      ? "text-primary"
-                                      : "text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                  )}
-                                >
-                                  <Heart
-                                    className={cn(
-                                      "h-4 w-4",
-                                      isLiked && "fill-current"
-                                    )}
+                                <div className="flex items-center gap-1">
+                                  <PostForwardButton
+                                    post={post}
+                                    stopPropagation
+                                    className="flex items-center p-1.5 rounded-md text-muted-foreground transition-colors hover:text-primary hover:bg-primary/10"
+                                    iconClassName="h-4 w-4"
                                   />
-                                  <span className="text-xs font-semibold">
-                                    {likeCount}
-                                  </span>
-                                </button>
+                                  <button
+                                    onClick={handleLike}
+                                    className={cn(
+                                      "flex items-center gap-1.5 p-1.5 rounded-md transition-colors flex-shrink-0",
+                                      isLiked
+                                        ? "text-primary"
+                                        : "text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                    )}
+                                  >
+                                    <Heart
+                                      className={cn(
+                                        "h-4 w-4",
+                                        isLiked && "fill-current"
+                                      )}
+                                    />
+                                    <span className="text-xs font-semibold">
+                                      {likeCount}
+                                    </span>
+                                  </button>
+                                </div>
                             </div>
                         )}
                     </div>
