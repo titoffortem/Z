@@ -120,8 +120,8 @@ export default function MessagesPage() {
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
-  const [forwardedMessage, setForwardedMessage] = useState<ChatMessage | null>(null);
-  const [forwardTargetChatId, setForwardTargetChatId] = useState<string | null>(null);
+  const [selectedForwardMessageIds, setSelectedForwardMessageIds] = useState<string[]>([]);
+  const [isForwardPickerOpen, setForwardPickerOpen] = useState(false);
   const [isMobileDialogOpen, setMobileDialogOpen] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
 
@@ -298,8 +298,6 @@ export default function MessagesPage() {
       return;
     }
 
-    setForwardTargetChatId((prev) => prev ?? selectedChatId);
-
     isAtBottomRef.current = true;
     setIsAtBottom(true);
 
@@ -444,10 +442,59 @@ export default function MessagesPage() {
     setUserSearchResults([]);
   };
 
+  const toggleForwardMessageSelection = (messageId: string) => {
+    setSelectedForwardMessageIds((prev) => (prev.includes(messageId) ? prev.filter((id) => id !== messageId) : [...prev, messageId]));
+  };
+
+  const forwardSelectedMessages = async (targetChatId: string) => {
+    if (!firestore || !user || selectedForwardMessageIds.length === 0) {
+      return;
+    }
+
+    const selectedMessages = messages.filter((message) => selectedForwardMessageIds.includes(message.id));
+    if (selectedMessages.length === 0) {
+      return;
+    }
+
+    for (const message of selectedMessages) {
+      const forwardedPayload = message.forwardedMessage
+        ? message.forwardedMessage
+        : {
+            id: message.id,
+            senderId: message.senderId,
+            text: message.text,
+            imageUrls: message.imageUrls,
+            createdAt: message.createdAt,
+          };
+
+      await addDoc(collection(firestore, 'chats', targetChatId, 'messages'), {
+        senderId: user.uid,
+        text: '',
+        imageUrls: [],
+        forwardedMessage: forwardedPayload,
+        createdAt: serverTimestamp(),
+        readBy: [user.uid],
+      });
+    }
+
+    await updateDoc(doc(firestore, 'chats', targetChatId), {
+      lastMessageText: `↪ Переслано ${selectedMessages.length}`,
+      lastMessageSenderId: user.uid,
+      updatedAt: serverTimestamp(),
+    });
+
+    setSelectedForwardMessageIds([]);
+    setForwardPickerOpen(false);
+    setMobileDialogOpen(true);
+    requestAnimationFrame(() => {
+      scrollToBottom('smooth');
+    });
+  };
+
   const handleSend = async () => {
     const text = newMessage.trim();
-    const targetChatId = forwardTargetChatId || selectedChatId;
-    const hasPayload = Boolean(text || selectedImages.length > 0 || forwardedMessage);
+    const targetChatId = selectedChatId;
+    const hasPayload = Boolean(text || selectedImages.length > 0);
 
     if (!firestore || !user || !targetChatId || !hasPayload) {
       return;
@@ -467,15 +514,7 @@ export default function MessagesPage() {
         senderId: user.uid,
         text,
         imageUrls,
-        forwardedMessage: forwardedMessage
-          ? {
-              id: forwardedMessage.id,
-              senderId: forwardedMessage.senderId,
-              text: forwardedMessage.text,
-              imageUrls: forwardedMessage.imageUrls,
-              createdAt: forwardedMessage.createdAt,
-            }
-          : null,
+        forwardedMessage: null,
         createdAt: serverTimestamp(),
         readBy: [user.uid],
       });
@@ -488,8 +527,6 @@ export default function MessagesPage() {
 
       setNewMessage('');
       setSelectedImages([]);
-      setForwardedMessage(null);
-      setForwardTargetChatId(selectedChatId);
       requestAnimationFrame(() => {
         scrollToBottom('smooth');
       });
@@ -631,11 +668,15 @@ export default function MessagesPage() {
               const isReadByPartner = Boolean(selectedPartnerId && message.readBy.includes(selectedPartnerId));
 
               return (
-                <div key={message.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                <div
+                  key={message.id}
+                  className={`flex cursor-pointer ${isMine ? 'justify-end' : 'justify-start'}`}
+                  onClick={() => toggleForwardMessageSelection(message.id)}
+                >
                   <div
                     className={`max-w-[75%] rounded-2xl px-3 py-2 ${
                       isMine ? 'rounded-br-sm bg-primary text-primary-foreground' : 'rounded-bl-sm bg-muted'
-                    }`}
+                    } ${selectedForwardMessageIds.includes(message.id) ? 'ring-2 ring-[#577F59]' : ''}`}
                   >
                     {message.forwardedMessage && (
                       <div className="mb-2 rounded-md border border-border/60 bg-background/40 p-2 text-xs">
@@ -652,7 +693,7 @@ export default function MessagesPage() {
                     {message.imageUrls.length > 0 && (
                       <div className="mt-2 grid grid-cols-2 gap-2">
                         {message.imageUrls.map((url) => (
-                          <a key={url} href={url} target="_blank" rel="noreferrer">
+                          <a key={url} href={url} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
                             <img src={url} alt="message" className="h-28 w-full rounded-md object-cover" />
                           </a>
                         ))}
@@ -662,19 +703,6 @@ export default function MessagesPage() {
                     <div className="mt-1 flex items-center justify-end gap-2 text-[11px] opacity-70">
                       <span>{formatTime(message.createdAt)}</span>
                       {isMine && <span>{isReadByPartner ? '✓✓' : '✓'}</span>}
-                    </div>
-
-                    <div className="mt-1 flex justify-end">
-                      <button
-                        type="button"
-                        className="text-[11px] opacity-70 hover:opacity-100"
-                        onClick={() => {
-                          setForwardedMessage(message);
-                          setForwardTargetChatId(selectedChatId);
-                        }}
-                      >
-                        Переслать
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -695,33 +723,21 @@ export default function MessagesPage() {
           </Button>
         )}
 
-        {forwardedMessage && (
+        {selectedForwardMessageIds.length > 0 && (
           <div className="mx-3 mb-2 rounded-md border border-border/60 bg-muted/30 p-2 text-xs">
             <div className="mb-1 flex items-center justify-between">
-              <span>Пересылка сообщения</span>
-              <button type="button" className="opacity-70 hover:opacity-100" onClick={() => setForwardedMessage(null)}>
+              <span>Выбрано для пересылки: {selectedForwardMessageIds.length}</span>
+              <button type="button" className="opacity-70 hover:opacity-100" onClick={() => setSelectedForwardMessageIds([])}>
                 ✕
               </button>
             </div>
-            <p className="line-clamp-2 opacity-80">{forwardedMessage.text || 'Без текста'}</p>
-            {forwardedMessage.imageUrls.length > 0 && <p className="mt-1 opacity-80">📷 {forwardedMessage.imageUrls.length}</p>}
-            <div className="mt-2">
-              <label className="mb-1 block opacity-80">Куда переслать:</label>
-              <select
-                className="w-full rounded-md border border-border bg-background px-2 py-1"
-                value={forwardTargetChatId || selectedChatId || ''}
-                onChange={(event) => setForwardTargetChatId(event.target.value)}
-              >
-                {chats.map((chat) => {
-                  const partnerId = chat.participantIds.find((id) => id !== user?.uid);
-                  const partner = partnerId ? profilesById[partnerId] : null;
-                  return (
-                    <option key={chat.id} value={chat.id}>
-                      {partner?.nickname || 'Пользователь'}
-                    </option>
-                  );
-                })}
-              </select>
+            <div className="mt-2 flex gap-2">
+              <Button type="button" size="sm" onClick={() => selectedChatId && void forwardSelectedMessages(selectedChatId)}>
+                Переслать сюда
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => setForwardPickerOpen(true)}>
+                Переслать
+              </Button>
             </div>
           </div>
         )}
@@ -747,7 +763,7 @@ export default function MessagesPage() {
               onChange={(event) => setSelectedImages(Array.from(event.target.files || []))}
             />
             <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-              📷
+              Добавить
             </Button>
             <Textarea
               value={newMessage}
@@ -765,13 +781,51 @@ export default function MessagesPage() {
             <Button
               type="button"
               onClick={() => void handleSend()}
-              disabled={!selectedChatId || sending || (!newMessage.trim() && selectedImages.length === 0 && !forwardedMessage)}
+              disabled={!selectedChatId || sending || (!newMessage.trim() && selectedImages.length === 0)}
             >
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizontal className="h-4 w-4" />}
             </Button>
           </div>
         </div>
       </section>
+
+      {isForwardPickerOpen && (
+        <div className="fixed inset-0 z-50 bg-background/95 p-4" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Выберите диалог для пересылки</h2>
+            <Button variant="ghost" size="icon" onClick={() => setForwardPickerOpen(false)}>
+              ✕
+            </Button>
+          </div>
+
+          <div className="space-y-2 overflow-y-auto">
+            {chats.map((chat) => {
+              const partnerId = chat.participantIds.find((id) => id !== user?.uid);
+              const partner = partnerId ? profilesById[partnerId] : null;
+
+              return (
+                <button
+                  key={chat.id}
+                  type="button"
+                  className="flex w-full items-center gap-3 rounded-lg border border-border/50 p-3 text-left hover:bg-accent/30"
+                  onClick={async () => {
+                    await forwardSelectedMessages(chat.id);
+                  }}
+                >
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={partner?.profilePictureUrl ?? undefined} alt={partner?.nickname || 'User'} />
+                    <AvatarFallback>{partner?.nickname?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-medium">{partner?.nickname || 'Пользователь'}</p>
+                    <p className="text-xs text-muted-foreground">{chat.lastMessageText || 'Без сообщений'}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
