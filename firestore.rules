@@ -25,9 +25,10 @@ service cloud.firestore {
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       // Удалять комменты может только автор
       allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
-      // Разрешаем только лайки комментариев
+      // Лайк/дизлайк комментария: разрешаем только изменение поля likedBy.
+      // request.writeFields корректно работает и для arrayUnion/arrayRemove.
       allow update: if request.auth != null
-        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['likedBy']);
+        && request.writeFields.hasOnly(['likedBy']);
     }
     
     // Если у тебя есть чаты (коллекция chats)
