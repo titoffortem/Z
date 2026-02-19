@@ -206,11 +206,13 @@ export default function MessagesPage() {
   const [groupTitle, setGroupTitle] = useState('');
   const [groupSearchTerm, setGroupSearchTerm] = useState('');
   const [groupSearchLoading, setGroupSearchLoading] = useState(false);
+  const [isGroupMemberPickerOpen, setGroupMemberPickerOpen] = useState(false);
   const [groupSearchResults, setGroupSearchResults] = useState<UserProfile[]>([]);
   const [selectedGroupMemberIds, setSelectedGroupMemberIds] = useState<string[]>([]);
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
 
   const [isInviteOpen, setInviteOpen] = useState(false);
+  const [isParticipantsOpen, setParticipantsOpen] = useState(false);
   const [inviteSearchTerm, setInviteSearchTerm] = useState('');
   const [inviteSearchLoading, setInviteSearchLoading] = useState(false);
   const [inviteSearchResults, setInviteSearchResults] = useState<UserProfile[]>([]);
@@ -703,7 +705,7 @@ export default function MessagesPage() {
   );
 
   useEffect(() => {
-    if (!isCreateGroupOpen || !user) {
+    if (!isCreateGroupOpen || !isGroupMemberPickerOpen || !user) {
       setGroupSearchResults([]);
       setGroupSearchLoading(false);
       return;
@@ -727,7 +729,7 @@ export default function MessagesPage() {
     }, 250);
 
     return () => clearTimeout(timeout);
-  }, [groupSearchTerm, isCreateGroupOpen, searchUsers, selectedGroupMemberIds, user]);
+  }, [groupSearchTerm, isCreateGroupOpen, isGroupMemberPickerOpen, searchUsers, selectedGroupMemberIds, user]);
 
   useEffect(() => {
     if (!isInviteOpen || !selectedChat || !user) {
@@ -778,6 +780,7 @@ export default function MessagesPage() {
       setGroupTitle('');
       setGroupSearchTerm('');
       setGroupSearchResults([]);
+      setGroupMemberPickerOpen(false);
       setSelectedGroupMemberIds([]);
     } finally {
       setIsCreatingGroup(false);
@@ -1063,11 +1066,13 @@ export default function MessagesPage() {
                   </Button>
                 )}
                 {isSelectedChatGroup ? (
-                  <Avatar>
-                    <AvatarFallback>
-                      <Users className="h-5 w-5" />
-                    </AvatarFallback>
-                  </Avatar>
+                  <button type="button" onClick={() => setParticipantsOpen(true)}>
+                    <Avatar>
+                      <AvatarFallback>
+                        <Users className="h-5 w-5" />
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
                 ) : selectedPartnerProfile ? (
                   <Link href={`/profile?nickname=${selectedPartnerProfile.nickname}`} className="flex items-center gap-3">
                     <Avatar>
@@ -1078,7 +1083,7 @@ export default function MessagesPage() {
                 ) : null}
                 <div>
                   {isSelectedChatGroup ? (
-                    <p className="font-semibold">{selectedChatTitle}</p>
+                    <button type="button" className="font-semibold text-left hover:underline" onClick={() => setParticipantsOpen(true)}>{selectedChatTitle}</button>
                   ) : selectedPartnerProfile ? (
                     <Link href={`/profile?nickname=${selectedPartnerProfile.nickname}`} className="font-semibold hover:underline">
                       {selectedPartnerProfile.nickname}
@@ -1088,17 +1093,9 @@ export default function MessagesPage() {
                   )}
                   <p className="text-xs text-muted-foreground">{isSelectedChatGroup ? 'Групповая беседа' : 'Личные сообщения'}</p>
                   {isSelectedChatGroup && (
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {selectedChatParticipants.map((member) => (
-                        <Link
-                          key={member.id}
-                          href={`/profile?nickname=${member.nickname}`}
-                          className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
-                        >
-                          {member.nickname}
-                        </Link>
-                      ))}
-                    </div>
+                    <button type="button" className="mt-1 text-xs text-muted-foreground hover:underline" onClick={() => setParticipantsOpen(true)}>
+                      Участники: {selectedChatParticipants.length}
+                    </button>
                   )}
                 </div>
               </div>
@@ -1427,8 +1424,12 @@ export default function MessagesPage() {
 
           <div className="space-y-2 overflow-y-auto">
             {chats.map((chat) => {
+              const isGroupChat = Boolean(chat.isGroup || chat.participantIds.length > 2);
               const partnerId = chat.participantIds.find((id) => id !== user?.uid);
               const partner = partnerId ? profilesById[partnerId] : null;
+              const chatName = isGroupChat
+                ? (chat.title?.trim() || 'Беседа')
+                : partner?.nickname || 'Пользователь';
 
               return (
                 <button
@@ -1440,11 +1441,19 @@ export default function MessagesPage() {
                   }}
                 >
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src={partner?.profilePictureUrl ?? undefined} alt={partner?.nickname || 'User'} />
-                    <AvatarFallback>{partner?.nickname?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+                    {isGroupChat ? (
+                      <AvatarFallback>
+                        <Users className="h-5 w-5" />
+                      </AvatarFallback>
+                    ) : (
+                      <>
+                        <AvatarImage src={partner?.profilePictureUrl ?? undefined} alt={partner?.nickname || 'User'} />
+                        <AvatarFallback>{partner?.nickname?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+                      </>
+                    )}
                   </Avatar>
                   <div>
-                    <p className="font-medium">{partner?.nickname || 'Пользователь'}</p>
+                    <p className="font-medium">{chatName}</p>
                     <p className="text-xs text-muted-foreground">{chat.lastMessageText || 'Без сообщений'}</p>
                   </div>
                 </button>
@@ -1462,50 +1471,33 @@ export default function MessagesPage() {
 
           <div className="space-y-3">
             <Input value={groupTitle} onChange={(event) => setGroupTitle(event.target.value)} placeholder="Название беседы (необязательно)" />
-            <Input
-              value={groupSearchTerm}
-              onChange={(event) => setGroupSearchTerm(event.target.value)}
-              placeholder="Найти пользователей (минимум 2 символа)"
-            />
 
-            {selectedGroupMemberIds.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {selectedGroupMemberIds.map((memberId) => (
-                  <button
-                    key={memberId}
-                    type="button"
-                    className="rounded-full bg-muted px-2 py-1 text-xs"
-                    onClick={() => setSelectedGroupMemberIds((prev) => prev.filter((id) => id !== memberId))}
-                  >
-                    {profilesById[memberId]?.nickname || memberId} ✕
-                  </button>
-                ))}
-              </div>
-            )}
+            <Button type="button" variant="outline" className="w-full justify-start gap-2" onClick={() => setGroupMemberPickerOpen(true)}>
+              <UserPlus className="h-4 w-4" />
+              Добавить участников
+            </Button>
 
             <div className="max-h-56 space-y-1 overflow-y-auto">
-              {groupSearchLoading ? (
-                <p className="text-sm text-muted-foreground">Поиск...</p>
-              ) : groupSearchResults.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Пользователи не найдены.</p>
+              {selectedGroupMemberIds.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Участники пока не выбраны.</p>
               ) : (
-                groupSearchResults.map((candidate) => (
-                  <button
-                    key={candidate.id}
-                    type="button"
-                    className="flex w-full items-center gap-3 rounded-md border p-2 text-left hover:bg-muted/40"
-                    onClick={() => {
-                      setProfilesById((prev) => ({ ...prev, [candidate.id]: candidate }));
-                      setSelectedGroupMemberIds((prev) => (prev.includes(candidate.id) ? prev : [...prev, candidate.id]));
-                    }}
-                  >
-                    <Avatar className="h-9 w-9">
-                      <AvatarImage src={candidate.profilePictureUrl ?? undefined} alt={candidate.nickname} />
-                      <AvatarFallback>{candidate.nickname[0]?.toUpperCase() || '?'}</AvatarFallback>
-                    </Avatar>
-                    <span className="truncate">{candidate.nickname}</span>
-                  </button>
-                ))
+                selectedGroupMemberIds.map((memberId) => {
+                  const member = profilesById[memberId];
+                  return (
+                    <div key={memberId} className="flex items-center justify-between rounded-md border p-2">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={member?.profilePictureUrl ?? undefined} alt={member?.nickname || 'Участник'} />
+                          <AvatarFallback>{(member?.nickname || '?')[0]?.toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <span className="truncate text-sm">{member?.nickname || memberId}</span>
+                      </div>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedGroupMemberIds((prev) => prev.filter((id) => id !== memberId))}>
+                        Убрать
+                      </Button>
+                    </div>
+                  );
+                })
               )}
             </div>
 
@@ -1517,6 +1509,65 @@ export default function MessagesPage() {
                 {isCreatingGroup ? 'Создание...' : 'Создать беседу'}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isGroupMemberPickerOpen} onOpenChange={setGroupMemberPickerOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogTitle>Добавить участников</DialogTitle>
+          <DialogDescription>Выберите пользователей для новой беседы.</DialogDescription>
+          <Input
+            value={groupSearchTerm}
+            onChange={(event) => setGroupSearchTerm(event.target.value)}
+            placeholder="Найти пользователей (минимум 2 символа)"
+          />
+          <div className="max-h-64 space-y-1 overflow-y-auto">
+            {groupSearchLoading ? (
+              <p className="text-sm text-muted-foreground">Поиск...</p>
+            ) : groupSearchResults.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Пользователи не найдены.</p>
+            ) : (
+              groupSearchResults.map((candidate) => (
+                <button
+                  key={candidate.id}
+                  type="button"
+                  className="flex w-full items-center gap-3 rounded-md border p-2 text-left hover:bg-muted/40"
+                  onClick={() => {
+                    setProfilesById((prev) => ({ ...prev, [candidate.id]: candidate }));
+                    setSelectedGroupMemberIds((prev) => (prev.includes(candidate.id) ? prev : [...prev, candidate.id]));
+                  }}
+                >
+                  <Avatar className="h-9 w-9">
+                    <AvatarImage src={candidate.profilePictureUrl ?? undefined} alt={candidate.nickname} />
+                    <AvatarFallback>{candidate.nickname[0]?.toUpperCase() || '?'}</AvatarFallback>
+                  </Avatar>
+                  <span className="truncate">{candidate.nickname}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isParticipantsOpen} onOpenChange={setParticipantsOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogTitle>{selectedChatTitle || 'Участники беседы'}</DialogTitle>
+          <DialogDescription>Список участников беседы.</DialogDescription>
+          <div className="max-h-64 space-y-1 overflow-y-auto">
+            {selectedChatParticipants.map((member) => (
+              <Link
+                key={member.id}
+                href={`/profile?nickname=${member.nickname}`}
+                className="flex items-center gap-3 rounded-md border p-2 hover:bg-muted/40"
+              >
+                <Avatar className="h-9 w-9">
+                  <AvatarImage src={member.profilePictureUrl ?? undefined} alt={member.nickname} />
+                  <AvatarFallback>{member.nickname[0]?.toUpperCase() || '?'}</AvatarFallback>
+                </Avatar>
+                <span className="truncate">{member.nickname}</span>
+              </Link>
+            ))}
           </div>
         </DialogContent>
       </Dialog>
