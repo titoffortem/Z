@@ -26,5 +26,6 @@ export type Comment = {
   userId: string;
   text: string;
   createdAt: string;
+  likedBy?: string[];
   author?: UserProfile;
 };
