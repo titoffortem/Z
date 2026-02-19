@@ -30,11 +30,13 @@ export function PostForwardButton({
   className,
   iconClassName,
   stopPropagation,
+  onForwarded,
 }: {
   post: Post;
   className?: string;
   iconClassName?: string;
   stopPropagation?: boolean;
+  onForwarded?: () => void;
 }) {
   const firestore = useFirestore();
   const { user } = useAuth();
@@ -164,6 +166,7 @@ export function PostForwardButton({
 
       toast({ title: 'Пост переслан' });
       setOpen(false);
+      onForwarded?.();
     } catch (error: any) {
       toast({
         title: 'Не удалось переслать пост',
