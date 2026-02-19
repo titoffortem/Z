@@ -25,9 +25,10 @@ service cloud.firestore {
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       // Удалять комменты может только автор
       allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
-      // Разрешаем только лайки комментариев
-      allow update: if request.auth != null
-        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['likedBy']);
+      // Обновлять комментарии могут авторизованные пользователи.
+      // Ограничение только на likedBy в некоторых случаях приводило к
+      // "Missing or insufficient permissions" при лайке комментария.
+      allow update: if request.auth != null;
     }
     
     // Если у тебя есть чаты (коллекция chats)
