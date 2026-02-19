@@ -216,6 +216,7 @@ export default function MessagesPage() {
   const [inviteSearchTerm, setInviteSearchTerm] = useState('');
   const [inviteSearchLoading, setInviteSearchLoading] = useState(false);
   const [inviteSearchResults, setInviteSearchResults] = useState<UserProfile[]>([]);
+  const [unreadCountsByChatId, setUnreadCountsByChatId] = useState<Record<string, number>>({});
 
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -475,6 +476,34 @@ export default function MessagesPage() {
   }, [chats, firestore, user]);
 
   useEffect(() => {
+    if (!firestore || !user || chats.length === 0) {
+      setUnreadCountsByChatId({});
+      return;
+    }
+
+    const unsubs = chats.map((chat) =>
+      onSnapshot(collection(firestore, 'chats', chat.id, 'messages'), (snapshot) => {
+        const unreadCount = snapshot.docs.reduce((acc, messageDoc) => {
+          const data = messageDoc.data();
+          const senderId = data.senderId || '';
+          const readBy = Array.isArray(data.readBy) ? data.readBy : [];
+          if (senderId !== user.uid && !readBy.includes(user.uid)) {
+            return acc + 1;
+          }
+
+          return acc;
+        }, 0);
+
+        setUnreadCountsByChatId((prev) => ({ ...prev, [chat.id]: unreadCount }));
+      })
+    );
+
+    return () => {
+      unsubs.forEach((unsubscribe) => unsubscribe());
+    };
+  }, [chats, firestore, user]);
+
+  useEffect(() => {
     if (!firestore || !selectedChatId) {
       setMessages([]);
       previousMessageCountRef.current = 0;
@@ -679,6 +708,19 @@ export default function MessagesPage() {
       .filter((profile): profile is UserProfile => Boolean(profile));
   }, [chats, profilesById, selectedGroupMemberIds, user]);
 
+  const suggestedInviteParticipants = useMemo(() => {
+    if (!selectedChat || !user) {
+      return [] as UserProfile[];
+    }
+
+    const excludedIds = new Set([user.uid, ...selectedChat.participantIds]);
+    const suggestedIds = Array.from(new Set(chats.flatMap((chat) => chat.participantIds).filter((id) => id && !excludedIds.has(id))));
+
+    return suggestedIds
+      .map((id) => profilesById[id])
+      .filter((profile): profile is UserProfile => Boolean(profile));
+  }, [chats, profilesById, selectedChat, user]);
+
   const selectedImagePreviews = useMemo(
     () => selectedImages.map((file) => ({ key: `${file.name}-${file.size}-${file.lastModified}`, url: URL.createObjectURL(file) })),
     [selectedImages]
@@ -861,7 +903,13 @@ export default function MessagesPage() {
       return;
     }
 
+    const forwardedPostPayload = selectedMessages.length === 1 ? selectedMessages[0].forwardedPost ?? null : null;
+
     const flattenedForwardPayloads = selectedMessages.flatMap((message) => {
+      if (message.forwardedPost) {
+        return [];
+      }
+
       if (message.forwardedMessages && message.forwardedMessages.length > 0) {
         return message.forwardedMessages;
       }
@@ -885,8 +933,9 @@ export default function MessagesPage() {
       senderId: user.uid,
       text: forwardComment.trim(),
       imageUrls: [],
-      forwardedMessages: flattenedForwardPayloads,
+      forwardedMessages: flattenedForwardPayloads.length > 0 ? flattenedForwardPayloads : null,
       forwardedMessage: null,
+      forwardedPost: forwardedPostPayload,
       createdAt: serverTimestamp(),
       readBy: [user.uid],
       likedBy: [],
@@ -1060,6 +1109,15 @@ export default function MessagesPage() {
                       {chat.lastMessageText || 'Сообщений пока нет'}
                     </p>
                   </div>
+                  {Boolean(unreadCountsByChatId[chat.id]) && (
+                    <div
+                      className={`min-w-[1.25rem] rounded-full px-1.5 py-0.5 text-center text-xs font-semibold ${
+                        selectedChatId === chat.id ? 'bg-white/90 text-[#40594D]' : 'bg-[#577F59] text-white'
+                      }`}
+                    >
+                      {unreadCountsByChatId[chat.id]}
+                    </div>
+                  )}
                 </button>
               );
             })
@@ -1162,6 +1220,7 @@ export default function MessagesPage() {
               const isSelectedForForward = selectedForwardMessageIds.includes(message.id);
               const isLikedByMe = message.likedBy.includes(user?.uid || '');
               const likedColorClass = 'text-[#A7BBA9]';
+              const messageAuthor = profilesById[message.senderId];
               return (
                 <div
                   key={message.id}
@@ -1187,6 +1246,23 @@ export default function MessagesPage() {
                     } ${highlightedMessageId === message.id ? 'ring-2 ring-primary' : ''
                     }`}
                   >
+                    {isSelectedChatGroup && (
+                      <div className="mb-1 flex items-center justify-between gap-2 text-[11px] opacity-70">
+                        {messageAuthor ? (
+                          <Link
+                            href={`/profile?nickname=${messageAuthor.nickname}`}
+                            onClick={(event) => event.stopPropagation()}
+                            className="truncate font-medium hover:underline"
+                          >
+                            @{messageAuthor.nickname}
+                          </Link>
+                        ) : (
+                          <span className="truncate font-medium">@пользователь</span>
+                        )}
+                        <span>{formatTime(message.createdAt)}</span>
+                      </div>
+                    )}
+
                     {normalizedForwarded.length > 0 && (
                       <div className="mb-2 rounded-md border border-border/60 bg-background/40 p-2 text-xs">
                         <div className="space-y-1">
@@ -1221,26 +1297,24 @@ export default function MessagesPage() {
                     {message.forwardedPost && (
                       <button
                         type="button"
-                        className="mb-2 block w-full rounded-md border border-border/60 bg-background/40 p-2 text-left text-xs transition hover:bg-background/60"
+                        className="mb-2 block w-full rounded-md border border-border/60 bg-background/40 p-2 text-left transition hover:bg-background/60"
                         onClick={async (event) => {
                           event.stopPropagation();
                           await openForwardedPost(message.forwardedPost!, message.createdAt);
                         }}
                       >
-                        <p className="mb-1 text-[11px] opacity-70">Переслан пост</p>
+                        <p className="mb-1 text-xs opacity-70">Переслан пост</p>
                         {profilesById[message.forwardedPost.authorId]?.nickname && (
-                          <p className="mb-1 text-[11px] opacity-70">От {profilesById[message.forwardedPost.authorId]?.nickname}</p>
+                          <p className="mb-1 text-xs opacity-70">От {profilesById[message.forwardedPost.authorId]?.nickname}</p>
                         )}
                         {message.forwardedPost.caption && (
-                          <p className="line-clamp-3 whitespace-pre-wrap break-words">{message.forwardedPost.caption}</p>
+                          <p className="whitespace-pre-wrap break-words">{message.forwardedPost.caption}</p>
                         )}
-                        {message.forwardedPost.mediaUrls?.length > 0 && (
-                          <img
-                            src={message.forwardedPost.mediaUrls[0]}
-                            alt="forwarded post"
-                            className="mt-2 h-28 w-28 rounded-md object-cover"
-                          />
-                        )}
+                        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          {message.forwardedPost.mediaUrls?.map((url, idx) => (
+                            <img key={`${url}-${idx}`} src={url} alt="forwarded post" className="max-h-60 w-full rounded-md object-cover" />
+                          ))}
+                        </div>
                       </button>
                     )}
 
@@ -1284,7 +1358,7 @@ export default function MessagesPage() {
                         <Heart className={`h-3.5 w-3.5 ${isLikedByMe ? 'fill-current' : ''}`} />
                         {message.likedBy.length > 0 && <span>{message.likedBy.length}</span>}
                       </button>
-                      <span>{formatTime(message.createdAt)}</span>
+                      {!isSelectedChatGroup && <span>{formatTime(message.createdAt)}</span>}
                       {isMine && (isReadByPartner ? <DoubleCheckIcon /> : <SingleCheckIcon />)}
                     </div>
                   </div>
@@ -1620,6 +1694,27 @@ export default function MessagesPage() {
           <DialogTitle>Пригласить в беседу</DialogTitle>
           <DialogDescription>Добавьте новых участников в текущую беседу.</DialogDescription>
 
+          <div className="max-h-48 space-y-1 overflow-y-auto">
+            {suggestedInviteParticipants.length > 0 ? (
+              suggestedInviteParticipants.map((candidate) => (
+                <button
+                  key={candidate.id}
+                  type="button"
+                  className="flex w-full items-center gap-3 rounded-md border p-2 text-left hover:bg-muted/40"
+                  onClick={() => void addUserToSelectedChat(candidate)}
+                >
+                  <Avatar className="h-9 w-9">
+                    <AvatarImage src={candidate.profilePictureUrl ?? undefined} alt={candidate.nickname} />
+                    <AvatarFallback>{candidate.nickname[0]?.toUpperCase() || '?'}</AvatarFallback>
+                  </Avatar>
+                  <span className="truncate">{candidate.nickname}</span>
+                </button>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">Нет доступных контактов из ваших диалогов.</p>
+            )}
+          </div>
+
           <Input
             value={inviteSearchTerm}
             onChange={(event) => setInviteSearchTerm(event.target.value)}
@@ -1653,4 +1748,3 @@ export default function MessagesPage() {
     </div>
   );
 }
-
