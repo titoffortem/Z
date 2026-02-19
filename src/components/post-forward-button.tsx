@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Send, Loader2 } from 'lucide-react';
+import { Send, Loader2, Users } from 'lucide-react';
 import { useAuth } from '@/components/auth-provider';
 import { useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -15,6 +15,8 @@ type ChatItem = {
   id: string;
   participantIds: string[];
   updatedAt: string;
+  title?: string;
+  isGroup?: boolean;
 };
 
 const toIsoDate = (value: unknown) => {
@@ -63,6 +65,8 @@ export function PostForwardButton({
             id: chatDoc.id,
             participantIds: data.participantIds || [],
             updatedAt: toIsoDate(data.updatedAt),
+            title: data.title || '',
+            isGroup: Boolean(data.isGroup),
           } as ChatItem;
         })
         .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
@@ -217,8 +221,10 @@ export function PostForwardButton({
         ) : (
           <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
             {chats.map((chat) => {
+              const isGroupChat = Boolean(chat.isGroup || chat.participantIds.length > 2);
               const partnerId = chat.participantIds.find((id) => id !== user.uid);
               const partner = partnerId ? profilesById[partnerId] : null;
+              const chatName = isGroupChat ? (chat.title?.trim() || 'Беседа') : partner?.nickname || 'Диалог';
               const isSending = sendingChatId === chat.id;
 
               return (
@@ -233,11 +239,19 @@ export function PostForwardButton({
                   className="flex w-full items-center gap-3 rounded-lg border border-border/60 p-2 text-left transition hover:bg-muted/40 disabled:cursor-not-allowed"
                 >
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src={partner?.profilePictureUrl ?? undefined} alt={partner?.nickname || 'Чат'} />
-                    <AvatarFallback>{(partner?.nickname || 'Ч')[0]?.toUpperCase()}</AvatarFallback>
+                    {isGroupChat ? (
+                      <AvatarFallback>
+                        <Users className="h-4 w-4" />
+                      </AvatarFallback>
+                    ) : (
+                      <>
+                        <AvatarImage src={partner?.profilePictureUrl ?? undefined} alt={partner?.nickname || 'Чат'} />
+                        <AvatarFallback>{(partner?.nickname || 'Ч')[0]?.toUpperCase()}</AvatarFallback>
+                      </>
+                    )}
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{partner?.nickname || 'Диалог'}</p>
+                    <p className="truncate text-sm font-medium">{chatName}</p>
                   </div>
                   {isSending && <Loader2 className="h-4 w-4 animate-spin" />}
                 </button>

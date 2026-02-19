@@ -436,7 +436,7 @@ export default function MessagesPage() {
     }
 
     const partnerIds = Array.from(
-      new Set(chats.flatMap((chat) => chat.participantIds).filter((participantId) => participantId && participantId !== user.uid))
+      new Set(chats.flatMap((chat) => chat.participantIds).filter((participantId) => Boolean(participantId)))
     );
 
     if (partnerIds.length === 0) {
@@ -660,6 +660,24 @@ export default function MessagesPage() {
 
     return selectedPartnerProfile?.nickname || 'Пользователь';
   }, [isSelectedChatGroup, profilesById, selectedChat, selectedPartnerProfile, user]);
+
+  const suggestedGroupParticipants = useMemo(() => {
+    if (!user) {
+      return [] as UserProfile[];
+    }
+
+    const suggestedIds = Array.from(
+      new Set(
+        chats
+          .flatMap((chat) => chat.participantIds)
+          .filter((id) => id && id !== user.uid && !selectedGroupMemberIds.includes(id))
+      )
+    );
+
+    return suggestedIds
+      .map((id) => profilesById[id])
+      .filter((profile): profile is UserProfile => Boolean(profile));
+  }, [chats, profilesById, selectedGroupMemberIds, user]);
 
   const selectedImagePreviews = useMemo(
     () => selectedImages.map((file) => ({ key: `${file.name}-${file.size}-${file.lastModified}`, url: URL.createObjectURL(file) })),
@@ -1094,7 +1112,7 @@ export default function MessagesPage() {
                   <p className="text-xs text-muted-foreground">{isSelectedChatGroup ? 'Групповая беседа' : 'Личные сообщения'}</p>
                   {isSelectedChatGroup && (
                     <button type="button" className="mt-1 text-xs text-muted-foreground hover:underline" onClick={() => setParticipantsOpen(true)}>
-                      Участники: {selectedChatParticipants.length}
+                      Участники: {selectedChat?.participantIds.length || 0}
                     </button>
                   )}
                 </div>
@@ -1517,11 +1535,36 @@ export default function MessagesPage() {
         <DialogContent className="max-w-lg">
           <DialogTitle>Добавить участников</DialogTitle>
           <DialogDescription>Выберите пользователей для новой беседы.</DialogDescription>
+
+          <div className="max-h-48 space-y-1 overflow-y-auto">
+            {suggestedGroupParticipants.length > 0 ? (
+              suggestedGroupParticipants.map((candidate) => (
+                <button
+                  key={candidate.id}
+                  type="button"
+                  className="flex w-full items-center gap-3 rounded-md border p-2 text-left hover:bg-muted/40"
+                  onClick={() => {
+                    setSelectedGroupMemberIds((prev) => (prev.includes(candidate.id) ? prev : [...prev, candidate.id]));
+                  }}
+                >
+                  <Avatar className="h-9 w-9">
+                    <AvatarImage src={candidate.profilePictureUrl ?? undefined} alt={candidate.nickname} />
+                    <AvatarFallback>{candidate.nickname[0]?.toUpperCase() || '?'}</AvatarFallback>
+                  </Avatar>
+                  <span className="truncate">{candidate.nickname}</span>
+                </button>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">Нет предложенных участников из ваших бесед.</p>
+            )}
+          </div>
+
           <Input
             value={groupSearchTerm}
             onChange={(event) => setGroupSearchTerm(event.target.value)}
             placeholder="Найти пользователей (минимум 2 символа)"
           />
+
           <div className="max-h-64 space-y-1 overflow-y-auto">
             {groupSearchLoading ? (
               <p className="text-sm text-muted-foreground">Поиск...</p>
