@@ -109,7 +109,7 @@ const getChatId = (userA: string, userB: string) => [userA, userB].sort().join('
 
 function SingleCheckIcon() {
   return (
-    <svg viewBox="0 0 329.14 258.16" className="h-3.5 w-auto" aria-hidden="true">
+    <svg viewBox="0 0 329.14 258.16" className="h-[10px] w-auto" aria-hidden="true">
       <rect
         fill="#c9d5ca"
         x="158.56"
@@ -136,7 +136,7 @@ function SingleCheckIcon() {
 
 function DoubleCheckIcon() {
   return (
-    <svg viewBox="0 0 505.33 258.61" className="h-3.5 w-auto" aria-hidden="true">
+    <svg viewBox="0 0 505.33 258.61" className="h-[10px] w-auto" aria-hidden="true">
       <rect
         fill="#c9d5ca"
         x="334.74"
@@ -192,6 +192,7 @@ export default function MessagesPage() {
   const [sending, setSending] = useState(false);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [selectedForwardMessageIds, setSelectedForwardMessageIds] = useState<string[]>([]);
+  const [forwardComment, setForwardComment] = useState('');
   const [isForwardPickerOpen, setForwardPickerOpen] = useState(false);
   const [isMobileDialogOpen, setMobileDialogOpen] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
@@ -576,7 +577,7 @@ export default function MessagesPage() {
 
     await addDoc(collection(firestore, 'chats', targetChatId, 'messages'), {
       senderId: user.uid,
-      text: '',
+      text: forwardComment.trim(),
       imageUrls: [],
       forwardedMessages: flattenedForwardPayloads,
       forwardedMessage: null,
@@ -591,6 +592,7 @@ export default function MessagesPage() {
     });
 
     setSelectedForwardMessageIds([]);
+    setForwardComment('');
     setForwardPickerOpen(false);
     setMobileDialogOpen(true);
     requestAnimationFrame(() => {
@@ -799,7 +801,13 @@ export default function MessagesPage() {
                   <div
                     className={`rounded-2xl ${isImageOnlyMessage ? 'w-fit p-1' : 'max-w-[75%] px-3 py-2'} ${
                       isMine ? 'rounded-br-sm bg-primary text-primary-foreground' : 'rounded-bl-sm bg-muted'
-                    } ${selectedForwardMessageIds.includes(message.id) ? 'ring-2 ring-[#577F59]' : ''}`}
+                    } ${
+                      selectedForwardMessageIds.includes(message.id)
+                        ? isMine
+                          ? 'ring-2 ring-[#40594D]'
+                          : 'ring-2 ring-[#577F59]'
+                        : ''
+                    }`}
                   >
                     {normalizedForwarded.length > 0 && (
                       <div className="mb-2 rounded-md border border-border/60 bg-background/40 p-2 text-xs">
@@ -880,10 +888,23 @@ export default function MessagesPage() {
           <div className="mx-3 mb-2 rounded-md border border-border/60 bg-muted/30 p-2 text-xs">
             <div className="mb-1 flex items-center justify-between">
               <span>Выбрано для пересылки: {selectedForwardMessageIds.length}</span>
-              <button type="button" className="opacity-70 hover:opacity-100" onClick={() => setSelectedForwardMessageIds([])}>
+              <button
+                type="button"
+                className="opacity-70 hover:opacity-100"
+                onClick={() => {
+                  setSelectedForwardMessageIds([]);
+                  setForwardComment('');
+                }}
+              >
                 ✕
               </button>
             </div>
+            <Textarea
+              value={forwardComment}
+              onChange={(event) => setForwardComment(event.target.value)}
+              placeholder="Подпись к пересланному сообщению (необязательно)"
+              className="min-h-[40px] resize-none bg-background/70"
+            />
             <div className="mt-2 flex gap-2">
               <Button type="button" size="sm" onClick={() => selectedChatId && void forwardSelectedMessages(selectedChatId)}>
                 Переслать сюда
