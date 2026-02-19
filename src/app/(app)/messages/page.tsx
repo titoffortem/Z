@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/components/auth-provider';
 import { PostView } from '@/components/post-view';
 import { useFirestore } from '@/firebase';
@@ -11,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { firebaseConfig } from '@/firebase/config';
-import { ChevronDown, ChevronLeft, ChevronRight, Heart, Loader2, MessageSquare, Paperclip, Search, Send, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Heart, Loader2, MessageSquare, Paperclip, Search, Send, UserPlus, Users, X } from 'lucide-react';
 import {
   addDoc,
   arrayRemove,
@@ -37,6 +38,8 @@ type ChatItem = {
   participantIds: string[];
   lastMessageText: string;
   updatedAt: string;
+  title?: string;
+  isGroup?: boolean;
 };
 
 type ChatMessage = {
@@ -198,6 +201,19 @@ export default function MessagesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [userSearchLoading, setUserSearchLoading] = useState(false);
   const [userSearchResults, setUserSearchResults] = useState<UserProfile[]>([]);
+
+  const [isCreateGroupOpen, setCreateGroupOpen] = useState(false);
+  const [groupTitle, setGroupTitle] = useState('');
+  const [groupSearchTerm, setGroupSearchTerm] = useState('');
+  const [groupSearchLoading, setGroupSearchLoading] = useState(false);
+  const [groupSearchResults, setGroupSearchResults] = useState<UserProfile[]>([]);
+  const [selectedGroupMemberIds, setSelectedGroupMemberIds] = useState<string[]>([]);
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+
+  const [isInviteOpen, setInviteOpen] = useState(false);
+  const [inviteSearchTerm, setInviteSearchTerm] = useState('');
+  const [inviteSearchLoading, setInviteSearchLoading] = useState(false);
+  const [inviteSearchResults, setInviteSearchResults] = useState<UserProfile[]>([]);
 
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -380,6 +396,8 @@ export default function MessagesPage() {
               participantIds: data.participantIds || [],
               lastMessageText: data.lastMessageText || '',
               updatedAt: toIsoDate(data.updatedAt),
+              title: data.title || '',
+              isGroup: Boolean(data.isGroup),
             };
           })
           .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
@@ -608,6 +626,39 @@ export default function MessagesPage() {
     return profilesById[selectedPartnerId] || null;
   }, [profilesById, selectedPartnerId]);
 
+  const selectedChatParticipants = useMemo(() => {
+    if (!selectedChat) {
+      return [] as UserProfile[];
+    }
+
+    return selectedChat.participantIds
+      .map((participantId) => profilesById[participantId])
+      .filter((profile): profile is UserProfile => Boolean(profile));
+  }, [profilesById, selectedChat]);
+
+  const isSelectedChatGroup = Boolean(selectedChat && (selectedChat.isGroup || selectedChat.participantIds.length > 2));
+
+  const selectedChatTitle = useMemo(() => {
+    if (!selectedChat || !user) {
+      return '';
+    }
+
+    if (isSelectedChatGroup) {
+      if (selectedChat.title?.trim()) {
+        return selectedChat.title;
+      }
+
+      const memberNames = selectedChat.participantIds
+        .filter((id) => id !== user.uid)
+        .map((id) => profilesById[id]?.nickname)
+        .filter((nickname): nickname is string => Boolean(nickname));
+
+      return memberNames.length > 0 ? memberNames.join(', ') : 'Беседа';
+    }
+
+    return selectedPartnerProfile?.nickname || 'Пользователь';
+  }, [isSelectedChatGroup, profilesById, selectedChat, selectedPartnerProfile, user]);
+
   const selectedImagePreviews = useMemo(
     () => selectedImages.map((file) => ({ key: `${file.name}-${file.size}-${file.lastModified}`, url: URL.createObjectURL(file) })),
     [selectedImages]
@@ -618,6 +669,135 @@ export default function MessagesPage() {
       selectedImagePreviews.forEach((item) => URL.revokeObjectURL(item.url));
     };
   }, [selectedImagePreviews]);
+
+  const searchUsers = useCallback(
+    async (term: string, excludedIds: string[]) => {
+      if (!firestore || !user) {
+        return [] as UserProfile[];
+      }
+
+      const normalizedTerm = term.trim().toLowerCase();
+      if (!normalizedTerm) {
+        return [] as UserProfile[];
+      }
+
+      const usersSnapshot = await getDocs(query(collection(firestore, 'users')));
+      const excluded = new Set(excludedIds);
+
+      return usersSnapshot.docs
+        .map((userDoc) => {
+          const data = userDoc.data();
+          return {
+            id: userDoc.id,
+            nickname: data.nickname || '',
+            profilePictureUrl: data.profilePictureUrl || null,
+            createdAt: toIsoDate(data.createdAt),
+            followingUserIds: data.followingUserIds || [],
+            followerUserIds: data.followerUserIds || [],
+          } as UserProfile;
+        })
+        .filter((candidate) => !excluded.has(candidate.id) && candidate.nickname.toLowerCase().includes(normalizedTerm))
+        .slice(0, 12);
+    },
+    [firestore, user]
+  );
+
+  useEffect(() => {
+    if (!isCreateGroupOpen || !user) {
+      setGroupSearchResults([]);
+      setGroupSearchLoading(false);
+      return;
+    }
+
+    const trimmed = groupSearchTerm.trim();
+    if (trimmed.length < 2) {
+      setGroupSearchResults([]);
+      setGroupSearchLoading(false);
+      return;
+    }
+
+    const timeout = setTimeout(async () => {
+      setGroupSearchLoading(true);
+      try {
+        const found = await searchUsers(trimmed, [user.uid, ...selectedGroupMemberIds]);
+        setGroupSearchResults(found);
+      } finally {
+        setGroupSearchLoading(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timeout);
+  }, [groupSearchTerm, isCreateGroupOpen, searchUsers, selectedGroupMemberIds, user]);
+
+  useEffect(() => {
+    if (!isInviteOpen || !selectedChat || !user) {
+      setInviteSearchResults([]);
+      setInviteSearchLoading(false);
+      return;
+    }
+
+    const trimmed = inviteSearchTerm.trim();
+    if (trimmed.length < 2) {
+      setInviteSearchResults([]);
+      setInviteSearchLoading(false);
+      return;
+    }
+
+    const timeout = setTimeout(async () => {
+      setInviteSearchLoading(true);
+      try {
+        const found = await searchUsers(trimmed, [user.uid, ...selectedChat.participantIds]);
+        setInviteSearchResults(found);
+      } finally {
+        setInviteSearchLoading(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timeout);
+  }, [inviteSearchTerm, isInviteOpen, searchUsers, selectedChat, user]);
+
+  const createGroupChat = async () => {
+    if (!firestore || !user || selectedGroupMemberIds.length === 0) {
+      return;
+    }
+
+    setIsCreatingGroup(true);
+    try {
+      const uniqueParticipantIds = Array.from(new Set([user.uid, ...selectedGroupMemberIds]));
+      const chatRef = await addDoc(collection(firestore, 'chats'), {
+        participantIds: uniqueParticipantIds,
+        isGroup: true,
+        title: groupTitle.trim(),
+        updatedAt: serverTimestamp(),
+        lastMessageText: '',
+      });
+
+      setSelectedChatId(chatRef.id);
+      setMobileDialogOpen(true);
+      setCreateGroupOpen(false);
+      setGroupTitle('');
+      setGroupSearchTerm('');
+      setGroupSearchResults([]);
+      setSelectedGroupMemberIds([]);
+    } finally {
+      setIsCreatingGroup(false);
+    }
+  };
+
+  const addUserToSelectedChat = async (targetUser: UserProfile) => {
+    if (!firestore || !selectedChatId) {
+      return;
+    }
+
+    await updateDoc(doc(firestore, 'chats', selectedChatId), {
+      participantIds: arrayUnion(targetUser.id),
+      updatedAt: serverTimestamp(),
+    });
+
+    setProfilesById((prev) => ({ ...prev, [targetUser.id]: targetUser }));
+    setInviteSearchTerm('');
+    setInviteSearchResults([]);
+  };
 
   const openOrCreateDialog = async (targetUser: UserProfile) => {
     if (!firestore || !user) {
@@ -632,6 +812,8 @@ export default function MessagesPage() {
     if (!existingChat.exists()) {
       await setDoc(chatRef, {
         participantIds: [user.uid, targetUser.id],
+        isGroup: false,
+        title: '',
         updatedAt: serverTimestamp(),
         lastMessageText: '',
       });
@@ -767,7 +949,13 @@ export default function MessagesPage() {
           className="sticky top-0 z-10 border-b border-border/50 bg-background/80 p-4 backdrop-blur-sm"
           style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
         >
-          <h1 className="text-xl font-bold">Сообщения</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-bold">Сообщения</h1>
+            <Button type="button" size="sm" variant="outline" onClick={() => setCreateGroupOpen(true)} className="gap-1">
+              <Users className="h-4 w-4" />
+              Беседа
+            </Button>
+          </div>
           <div className="relative mt-3">
             {userSearchLoading ? (
               <Loader2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
@@ -810,8 +998,16 @@ export default function MessagesPage() {
             </div>
           ) : (
             chats.map((chat) => {
+              const isGroupChat = Boolean(chat.isGroup || chat.participantIds.length > 2);
               const partnerId = user ? chat.participantIds.find((id) => id !== user.uid) : null;
               const partner = partnerId ? profilesById[partnerId] : null;
+              const groupMemberNames = chat.participantIds
+                .filter((id) => id !== user?.uid)
+                .map((id) => profilesById[id]?.nickname)
+                .filter((nickname): nickname is string => Boolean(nickname));
+              const chatTitle = isGroupChat
+                ? chat.title || (groupMemberNames.length > 0 ? groupMemberNames.join(', ') : 'Беседа')
+                : partner?.nickname || 'Пользователь';
 
               return (
                 <button
@@ -826,11 +1022,19 @@ export default function MessagesPage() {
                   }`}
                 >
                   <Avatar className="h-11 w-11">
-                    <AvatarImage src={partner?.profilePictureUrl ?? undefined} alt={partner?.nickname || 'User'} />
-                    <AvatarFallback>{partner?.nickname?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+                    {isGroupChat ? (
+                      <AvatarFallback>
+                        <Users className="h-5 w-5" />
+                      </AvatarFallback>
+                    ) : (
+                      <>
+                        <AvatarImage src={partner?.profilePictureUrl ?? undefined} alt={partner?.nickname || 'User'} />
+                        <AvatarFallback>{partner?.nickname?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+                      </>
+                    )}
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold">{partner?.nickname || 'Пользователь'}</p>
+                    <p className="truncate font-semibold">{chatTitle}</p>
                     <p className={`truncate text-sm ${selectedChatId === chat.id ? 'text-white/80' : 'text-muted-foreground'}`}>
                       {chat.lastMessageText || 'Сообщений пока нет'}
                     </p>
@@ -850,21 +1054,60 @@ export default function MessagesPage() {
           className="sticky top-0 z-10 min-h-[73px] border-b border-border/50 bg-background/80 p-4 backdrop-blur-sm"
           style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
         >
-          {selectedPartnerProfile ? (
-            <div className="flex items-center gap-3">
-              {isMobile && (
-                <Button variant="ghost" size="icon" onClick={() => setMobileDialogOpen(false)} className="mr-1">
-                  <ChevronLeft className="h-5 w-5" />
+          {selectedChat ? (
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                {isMobile && (
+                  <Button variant="ghost" size="icon" onClick={() => setMobileDialogOpen(false)} className="mr-1">
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                )}
+                {isSelectedChatGroup ? (
+                  <Avatar>
+                    <AvatarFallback>
+                      <Users className="h-5 w-5" />
+                    </AvatarFallback>
+                  </Avatar>
+                ) : selectedPartnerProfile ? (
+                  <Link href={`/profile?nickname=${selectedPartnerProfile.nickname}`} className="flex items-center gap-3">
+                    <Avatar>
+                      <AvatarImage src={selectedPartnerProfile.profilePictureUrl ?? undefined} alt={selectedPartnerProfile.nickname} />
+                      <AvatarFallback>{selectedPartnerProfile.nickname[0]?.toUpperCase() || '?'}</AvatarFallback>
+                    </Avatar>
+                  </Link>
+                ) : null}
+                <div>
+                  {isSelectedChatGroup ? (
+                    <p className="font-semibold">{selectedChatTitle}</p>
+                  ) : selectedPartnerProfile ? (
+                    <Link href={`/profile?nickname=${selectedPartnerProfile.nickname}`} className="font-semibold hover:underline">
+                      {selectedPartnerProfile.nickname}
+                    </Link>
+                  ) : (
+                    <p className="font-semibold">{selectedChatTitle}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground">{isSelectedChatGroup ? 'Групповая беседа' : 'Личные сообщения'}</p>
+                  {isSelectedChatGroup && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {selectedChatParticipants.map((member) => (
+                        <Link
+                          key={member.id}
+                          href={`/profile?nickname=${member.nickname}`}
+                          className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
+                        >
+                          {member.nickname}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              {isSelectedChatGroup && (
+                <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => setInviteOpen(true)}>
+                  <UserPlus className="h-4 w-4" />
+                  Пригласить
                 </Button>
               )}
-              <Avatar>
-                <AvatarImage src={selectedPartnerProfile.profilePictureUrl ?? undefined} alt={selectedPartnerProfile.nickname} />
-                <AvatarFallback>{selectedPartnerProfile.nickname[0]?.toUpperCase() || '?'}</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="font-semibold">{selectedPartnerProfile.nickname}</p>
-                <p className="text-xs text-muted-foreground">Личные сообщения</p>
-              </div>
             </div>
           ) : (
             <div className="flex items-center gap-2">
@@ -903,7 +1146,7 @@ export default function MessagesPage() {
               const isImageOnlyMessage = !hasForwardedContent && !hasForwardedPost && !hasMessageText && hasImages;
               const isSelectedForForward = selectedForwardMessageIds.includes(message.id);
               const isLikedByMe = message.likedBy.includes(user?.uid || '');
-              const likedColorClass = isMine ? 'text-[#40594D]' : 'text-[#577F59]';
+              const likedColorClass = 'text-[#A7BBA9]';
               return (
                 <div
                   key={message.id}
@@ -1210,6 +1453,109 @@ export default function MessagesPage() {
           </div>
         </div>
       )}
+
+
+      <Dialog open={isCreateGroupOpen} onOpenChange={setCreateGroupOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogTitle>Новая беседа</DialogTitle>
+          <DialogDescription>Выберите участников и создайте групповой чат.</DialogDescription>
+
+          <div className="space-y-3">
+            <Input value={groupTitle} onChange={(event) => setGroupTitle(event.target.value)} placeholder="Название беседы (необязательно)" />
+            <Input
+              value={groupSearchTerm}
+              onChange={(event) => setGroupSearchTerm(event.target.value)}
+              placeholder="Найти пользователей (минимум 2 символа)"
+            />
+
+            {selectedGroupMemberIds.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {selectedGroupMemberIds.map((memberId) => (
+                  <button
+                    key={memberId}
+                    type="button"
+                    className="rounded-full bg-muted px-2 py-1 text-xs"
+                    onClick={() => setSelectedGroupMemberIds((prev) => prev.filter((id) => id !== memberId))}
+                  >
+                    {profilesById[memberId]?.nickname || memberId} ✕
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="max-h-56 space-y-1 overflow-y-auto">
+              {groupSearchLoading ? (
+                <p className="text-sm text-muted-foreground">Поиск...</p>
+              ) : groupSearchResults.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Пользователи не найдены.</p>
+              ) : (
+                groupSearchResults.map((candidate) => (
+                  <button
+                    key={candidate.id}
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-md border p-2 text-left hover:bg-muted/40"
+                    onClick={() => {
+                      setProfilesById((prev) => ({ ...prev, [candidate.id]: candidate }));
+                      setSelectedGroupMemberIds((prev) => (prev.includes(candidate.id) ? prev : [...prev, candidate.id]));
+                    }}
+                  >
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage src={candidate.profilePictureUrl ?? undefined} alt={candidate.nickname} />
+                      <AvatarFallback>{candidate.nickname[0]?.toUpperCase() || '?'}</AvatarFallback>
+                    </Avatar>
+                    <span className="truncate">{candidate.nickname}</span>
+                  </button>
+                ))
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setCreateGroupOpen(false)}>
+                Отмена
+              </Button>
+              <Button type="button" onClick={() => void createGroupChat()} disabled={selectedGroupMemberIds.length === 0 || isCreatingGroup}>
+                {isCreatingGroup ? 'Создание...' : 'Создать беседу'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isInviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogTitle>Пригласить в беседу</DialogTitle>
+          <DialogDescription>Добавьте новых участников в текущую беседу.</DialogDescription>
+
+          <Input
+            value={inviteSearchTerm}
+            onChange={(event) => setInviteSearchTerm(event.target.value)}
+            placeholder="Найти пользователей (минимум 2 символа)"
+          />
+
+          <div className="max-h-64 space-y-1 overflow-y-auto">
+            {inviteSearchLoading ? (
+              <p className="text-sm text-muted-foreground">Поиск...</p>
+            ) : inviteSearchResults.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Нет пользователей для приглашения.</p>
+            ) : (
+              inviteSearchResults.map((candidate) => (
+                <button
+                  key={candidate.id}
+                  type="button"
+                  className="flex w-full items-center gap-3 rounded-md border p-2 text-left hover:bg-muted/40"
+                  onClick={() => void addUserToSelectedChat(candidate)}
+                >
+                  <Avatar className="h-9 w-9">
+                    <AvatarImage src={candidate.profilePictureUrl ?? undefined} alt={candidate.nickname} />
+                    <AvatarFallback>{candidate.nickname[0]?.toUpperCase() || '?'}</AvatarFallback>
+                  </Avatar>
+                  <span className="truncate">{candidate.nickname}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
