@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Heart, Loader2, MessageCircle, X, ChevronLeft, ChevronRight, ArrowLeft, Send } from "lucide-react"; 
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
+import { PostForwardButton } from "@/components/post-forward-button";
 
 export function PostView({ post, author }: { post: Post, author: UserProfile | null }) {
     const mediaUrls = post.mediaUrls && post.mediaUrls.length > 0 ? post.mediaUrls : [];
@@ -74,7 +75,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                 const createdAt = data.createdAt instanceof Timestamp 
                     ? data.createdAt.toDate().toISOString() 
                     : new Date().toISOString();
-                return { id: doc.id, ...data, createdAt } as Comment;
+                return { id: doc.id, ...data, likedBy: data.likedBy || [], createdAt } as Comment;
             });
             const commentsWithAuthors = await Promise.all(commentsData.map(async (comment) => {
                 if (!comment.userId) return comment;
@@ -138,6 +139,22 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
             toast({ title: 'Ошибка', description: error.message, variant: "destructive" });
         } finally {
             setIsSubmittingComment(false);
+        }
+    };
+
+
+    const toggleCommentLike = async (commentId: string, isLiked: boolean) => {
+        if (!firestore || !user) {
+            toast({ title: 'Войдите, чтобы поставить лайк', variant: 'destructive' });
+            return;
+        }
+
+        try {
+            await updateDoc(doc(firestore, 'posts', post.id, 'comments', commentId), {
+                likedBy: isLiked ? arrayRemove(user.uid) : arrayUnion(user.uid),
+            });
+        } catch (error: any) {
+            toast({ title: 'Ошибка', description: error.message, variant: 'destructive' });
         }
     };
 
@@ -248,6 +265,11 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                         ) : <div></div>}
 
                         <div className="flex items-center gap-5">
+                            <PostForwardButton
+                                post={post}
+                                className="p-0 text-foreground hover:text-primary transition-colors"
+                                iconClassName="h-6 w-6"
+                            />
                             <button onClick={handleLike} className={cn("flex items-center gap-1.5", isLiked ? "text-primary" : "text-foreground")}>
                                 <Heart className={cn("h-6 w-6", isLiked && "fill-current")} />
                                 <span className="text-sm font-semibold">{likeCount}</span>
@@ -315,10 +337,17 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                     {/* ПРАВЫЙ БЛОК: Кнопки действий (ПК) */}
                     <div className="hidden md:flex items-center gap-4 ml-auto pl-4">
                         { (isSingleContent || (!showComments && !isSingleContent)) && (
-                            <button onClick={handleLike} className={cn("flex items-center gap-1.5 group", isLiked ? "text-primary" : "text-muted-foreground hover:text-primary transition-colors")}>
-                                <Heart className={cn("h-5 w-5 transition-transform group-active:scale-90", isLiked && "fill-current")} />
-                                <span className="text-sm font-semibold">{likeCount}</span>
-                            </button>
+                            <>
+                                <PostForwardButton
+                                    post={post}
+                                    className="p-1 text-muted-foreground hover:text-primary transition-colors"
+                                    iconClassName="h-5 w-5"
+                                />
+                                <button onClick={handleLike} className={cn("flex items-center gap-1.5 group", isLiked ? "text-primary" : "text-muted-foreground hover:text-primary transition-colors")}>
+                                    <Heart className={cn("h-5 w-5 transition-transform group-active:scale-90", isLiked && "fill-current")} />
+                                    <span className="text-sm font-semibold">{likeCount}</span>
+                                </button>
+                            </>
                         )}
                         
                         { (!isSingleContent && !showComments) && (
@@ -377,6 +406,19 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                                 </div>
                                                 <p className="text-sm text-foreground break-words leading-relaxed">{comment.text}</p>
                                             </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => void toggleCommentLike(comment.id, Boolean(user && (comment.likedBy || []).includes(user.uid)))}
+                                                className={cn(
+                                                    "mt-1 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors",
+                                                    user && (comment.likedBy || []).includes(user.uid)
+                                                        ? "text-primary"
+                                                        : "text-muted-foreground hover:text-primary"
+                                                )}
+                                            >
+                                                <Heart className={cn("h-3.5 w-3.5", user && (comment.likedBy || []).includes(user.uid) && "fill-current")} />
+                                                {(comment.likedBy || []).length > 0 && <span>{(comment.likedBy || []).length}</span>}
+                                            </button>
                                         </div>
                                     </div>
                                 ))
