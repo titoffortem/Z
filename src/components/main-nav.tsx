@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth as useFirebaseAuth } from '@/firebase';
 import { CreatePost } from '@/components/create-post';
 import { ZLogoIcon } from '@/components/icons';
+import { useUnreadMessages } from '@/contexts/unread-messages-context';
 
 const navItems = [
   { href: '/feed', icon: Home, label: 'Лента' },
@@ -21,6 +22,7 @@ export function MainNav() {
   const pathname = usePathname();
   const { userProfile } = useAuth();
   const auth = useFirebaseAuth();
+  const { totalUnread } = useUnreadMessages();
 
   return (
     <aside className="flex h-screen w-20 flex-col items-center border-r border-border/50 bg-background py-4">
@@ -35,13 +37,18 @@ export function MainNav() {
                 <Link
                   href={item.href}
                   className={cn(
-                    'flex h-12 w-12 items-center justify-center rounded-lg transition-colors',
+                    'relative flex h-12 w-12 items-center justify-center rounded-lg transition-colors',
                     pathname === item.href
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                   )}
                 >
                   <item.icon className="h-6 w-6" />
+                  {item.href === '/messages' && totalUnread > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 min-w-[1.25rem] rounded-full bg-[#577F59] px-1.5 py-0.5 text-center text-xs font-semibold text-white">
+                      {totalUnread > 99 ? '99+' : totalUnread}
+                    </span>
+                  )}
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="right">

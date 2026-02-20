@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/components/auth-provider";
 import { MainNav } from "@/components/main-nav";
+import { UnreadMessagesProvider } from "@/contexts/unread-messages-context";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 
@@ -34,9 +35,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
   
   return (
-    <div className="flex h-screen">
-      <MainNav />
-      <main className="flex-1 overflow-y-auto border-l border-border/50">{children}</main>
-    </div>
+    <UnreadMessagesProvider>
+      <div className="flex h-screen">
+        <MainNav />
+        <main className="flex-1 overflow-y-auto border-l border-border/50">{children}</main>
+      </div>
+    </UnreadMessagesProvider>
   );
 }

@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/auth-provider';
+import { PostCard } from '@/components/post-card';
 import { PostView } from '@/components/post-view';
 import { useFirestore } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -32,6 +33,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import type { Post, UserProfile } from '@/types';
+import { useUnreadMessages } from '@/contexts/unread-messages-context';
 
 type ChatItem = {
   id: string;
@@ -216,7 +218,7 @@ export default function MessagesPage() {
   const [inviteSearchTerm, setInviteSearchTerm] = useState('');
   const [inviteSearchLoading, setInviteSearchLoading] = useState(false);
   const [inviteSearchResults, setInviteSearchResults] = useState<UserProfile[]>([]);
-  const [unreadCountsByChatId, setUnreadCountsByChatId] = useState<Record<string, number>>({});
+  const { unreadByChatId } = useUnreadMessages();
 
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -236,8 +238,27 @@ export default function MessagesPage() {
   const isAtBottomRef = useRef(true);
   const previousMessageCountRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const messageInputRef = useRef<HTMLTextAreaElement | null>(null);
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastChatAndMessagesRef = useRef<{ chatId: string; messageIds: string[] } | null>(null);
+  const initialScrollDoneForChatRef = useRef<string | null>(null);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+
+  const LINE_HEIGHT_PX = 21;
+  const MIN_LINES = 1.25;
+  const MAX_LINES = 12;
+  const resizeMessageInput = useCallback(() => {
+    const el = messageInputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const minH = LINE_HEIGHT_PX * MIN_LINES;
+    const maxH = LINE_HEIGHT_PX * MAX_LINES;
+    el.style.height = `${Math.max(minH, Math.min(maxH, el.scrollHeight))}px`;
+  }, []);
+
+  useEffect(() => {
+    resizeMessageInput();
+  }, [newMessage, resizeMessageInput]);
 
   const openImageViewer = (images: string[], index: number) => {
     setExpandedImages(images);
@@ -476,34 +497,6 @@ export default function MessagesPage() {
   }, [chats, firestore, user]);
 
   useEffect(() => {
-    if (!firestore || !user || chats.length === 0) {
-      setUnreadCountsByChatId({});
-      return;
-    }
-
-    const unsubs = chats.map((chat) =>
-      onSnapshot(collection(firestore, 'chats', chat.id, 'messages'), (snapshot) => {
-        const unreadCount = snapshot.docs.reduce((acc, messageDoc) => {
-          const data = messageDoc.data();
-          const senderId = data.senderId || '';
-          const readBy = Array.isArray(data.readBy) ? data.readBy : [];
-          if (senderId !== user.uid && !readBy.includes(user.uid)) {
-            return acc + 1;
-          }
-
-          return acc;
-        }, 0);
-
-        setUnreadCountsByChatId((prev) => ({ ...prev, [chat.id]: unreadCount }));
-      })
-    );
-
-    return () => {
-      unsubs.forEach((unsubscribe) => unsubscribe());
-    };
-  }, [chats, firestore, user]);
-
-  useEffect(() => {
     if (!firestore || !selectedChatId) {
       setMessages([]);
       previousMessageCountRef.current = 0;
@@ -534,6 +527,7 @@ export default function MessagesPage() {
           };
         });
         setMessages(nextMessages);
+        lastChatAndMessagesRef.current = { chatId: selectedChatId, messageIds: nextMessages.map((m) => m.id) };
         setMessagesLoading(false);
       },
       () => {
@@ -544,23 +538,80 @@ export default function MessagesPage() {
     return () => unsubscribe();
   }, [firestore, selectedChatId]);
 
+  // Mark messages as read when leaving the chat (so divider disappears on reopen)
   useEffect(() => {
-    if (!selectedChatId) {
+    if (!firestore || !user || !selectedChatId) {
       return;
     }
+    const prev = lastChatAndMessagesRef.current;
+    if (prev && prev.chatId !== selectedChatId) {
+      initialScrollDoneForChatRef.current = null;
+      if (prev.messageIds.length > 0) {
+        const batch = writeBatch(firestore);
+        prev.messageIds.forEach((messageId) => {
+          const messageRef = doc(firestore, 'chats', prev.chatId, 'messages', messageId);
+          batch.update(messageRef, { readBy: arrayUnion(user.uid) });
+        });
+        void batch.commit();
+      }
+    }
+  }, [firestore, selectedChatId, user]);
 
-    isAtBottomRef.current = true;
-    setIsAtBottom(true);
+  // On mobile: mark as read when user closes the chat panel (back to list)
+  const prevMobileDialogOpenRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (!isMobile || !firestore || !user || !selectedChatId) {
+      return;
+    }
+    const wasOpen = prevMobileDialogOpenRef.current;
+    prevMobileDialogOpenRef.current = isMobileDialogOpen;
+    if (wasOpen === true && !isMobileDialogOpen) {
+      initialScrollDoneForChatRef.current = null;
+      const cur = lastChatAndMessagesRef.current;
+      if (cur?.chatId === selectedChatId && cur.messageIds.length > 0) {
+        const batch = writeBatch(firestore);
+        cur.messageIds.forEach((messageId) => {
+          const messageRef = doc(firestore, 'chats', selectedChatId, 'messages', messageId);
+          batch.update(messageRef, { readBy: arrayUnion(user.uid) });
+        });
+        void batch.commit();
+      }
+    }
+  }, [isMobile, isMobileDialogOpen, firestore, user, selectedChatId]);
 
-    const rafId = requestAnimationFrame(() => {
-      scrollToBottom('auto');
+  // Initial scroll when opening chat: last read at top, reveal up to 3 new messages
+  useEffect(() => {
+    if (!selectedChatId || !user || messages.length === 0) {
+      return;
+    }
+    if (lastChatAndMessagesRef.current?.chatId !== selectedChatId) {
+      return;
+    }
+    if (initialScrollDoneForChatRef.current === selectedChatId) {
+      return;
+    }
+    initialScrollDoneForChatRef.current = selectedChatId;
+    const firstUnreadIndex = messages.findIndex((m) => m.senderId !== user.uid && !m.readBy.includes(user.uid));
+    const lastReadIndex = firstUnreadIndex === -1 ? messages.length - 1 : firstUnreadIndex - 1;
+    const lastReadMessageId = lastReadIndex >= 0 ? messages[lastReadIndex].id : null;
+    const unreadCount = firstUnreadIndex === -1 ? 0 : messages.length - firstUnreadIndex;
+    const targetIndex = firstUnreadIndex === -1 ? lastReadIndex : Math.min(firstUnreadIndex + Math.min(3, unreadCount) - 1, messages.length - 1);
+    const targetMessageId = messages[targetIndex]?.id ?? lastReadMessageId;
+    isAtBottomRef.current = targetIndex >= messages.length - 1;
+    setIsAtBottom(targetIndex >= messages.length - 1);
+    requestAnimationFrame(() => {
+      const el = messageElementRefs.current[targetMessageId ?? ''];
+      if (el) {
+        el.scrollIntoView({ behavior: 'auto', block: 'end' });
+      } else {
+        scrollToBottom('auto');
+      }
     });
-
-    return () => cancelAnimationFrame(rafId);
-  }, [selectedChatId, scrollToBottom]);
+  }, [selectedChatId, messages, user, scrollToBottom]);
 
   useEffect(() => {
     if (!selectedChatId) {
+      initialScrollDoneForChatRef.current = null;
       return;
     }
 
@@ -578,29 +629,6 @@ export default function MessagesPage() {
       });
     }
   }, [messages, selectedChatId, scrollToBottom]);
-
-  useEffect(() => {
-    if (!firestore || !user || !selectedChatId || messages.length === 0) {
-      return;
-    }
-
-    const unreadIncoming = messages.filter((message) => message.senderId !== user.uid && !message.readBy.includes(user.uid));
-
-    if (unreadIncoming.length === 0) {
-      return;
-    }
-
-    const batch = writeBatch(firestore);
-
-    unreadIncoming.forEach((message) => {
-      const messageRef = doc(firestore, 'chats', selectedChatId, 'messages', message.id);
-      batch.update(messageRef, {
-        readBy: arrayUnion(user.uid),
-      });
-    });
-
-    void batch.commit();
-  }, [firestore, messages, selectedChatId, user]);
 
   useEffect(() => {
     const trimmedTerm = searchTerm.trim();
@@ -1109,15 +1137,16 @@ export default function MessagesPage() {
                       {chat.lastMessageText || 'Сообщений пока нет'}
                     </p>
                   </div>
-                  {Boolean(unreadCountsByChatId[chat.id]) && (
-                    <div
-                      className={`min-w-[1.25rem] rounded-full px-1.5 py-0.5 text-center text-xs font-semibold ${
-                        selectedChatId === chat.id ? 'bg-white/90 text-[#40594D]' : 'bg-[#577F59] text-white'
-                      }`}
-                    >
-                      {unreadCountsByChatId[chat.id]}
-                    </div>
-                  )}
+                  {(() => {
+                    const count = selectedChatId === chat.id ? 0 : (unreadByChatId[chat.id] ?? 0);
+                    return count > 0 ? (
+                      <div
+                        className="min-w-[1.25rem] rounded-full px-1.5 py-0.5 text-center text-xs font-semibold bg-[#577F59] text-white"
+                      >
+                        {count}
+                      </div>
+                    ) : null;
+                  })()}
                 </button>
               );
             })
@@ -1204,7 +1233,11 @@ export default function MessagesPage() {
           ) : messages.length === 0 ? (
             <div className="flex h-full items-center justify-center text-muted-foreground">Начните общение первым сообщением</div>
           ) : (
-            messages.map((message) => {
+            (() => {
+              const firstUnreadIndex = user
+                ? messages.findIndex((m) => m.senderId !== user.uid && !m.readBy.includes(user.uid))
+                : -1;
+              return messages.map((message, index) => {
               const isMine = message.senderId === user?.uid;
               const isReadByPartner = Boolean(selectedPartnerId && message.readBy.includes(selectedPartnerId));
               const hasMessageText = Boolean(message.text?.trim());
@@ -1222,12 +1255,19 @@ export default function MessagesPage() {
               const likedColorClass = 'text-[#A7BBA9]';
               const messageAuthor = profilesById[message.senderId];
               return (
+                <Fragment key={message.id}>
+                  {index === firstUnreadIndex && (
+                    <div className="flex w-full items-center gap-2 py-2">
+                      <div className="flex-1 h-px bg-border" />
+                      <span className="text-xs text-muted-foreground shrink-0">Новые сообщения</span>
+                      <div className="flex-1 h-px bg-border" />
+                    </div>
+                  )}
                 <div
-                  key={message.id}
                   ref={(element) => {
                     messageElementRefs.current[message.id] = element;
                   }}
-                  className={`flex cursor-pointer ${isMine ? 'justify-end' : 'justify-start'}`}
+                  className={`flex cursor-pointer w-full ${isMine ? 'justify-end' : 'justify-start'}`}
                   onClick={() => toggleForwardMessageSelection(message.id)}
                 >
                   <div
@@ -1248,18 +1288,37 @@ export default function MessagesPage() {
                   >
                     {isSelectedChatGroup && (
                       <div className="mb-1 flex items-center justify-between gap-2 text-[11px] opacity-70">
-                        {messageAuthor ? (
-                          <Link
-                            href={`/profile?nickname=${messageAuthor.nickname}`}
-                            onClick={(event) => event.stopPropagation()}
-                            className="truncate font-medium hover:underline"
-                          >
-                            @{messageAuthor.nickname}
-                          </Link>
-                        ) : (
-                          <span className="truncate font-medium">@пользователь</span>
-                        )}
-                        <span>{formatTime(message.createdAt)}</span>
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
+                          {messageAuthor ? (
+                            <>
+                              <Link
+                                href={`/profile?nickname=${messageAuthor.nickname}`}
+                                onClick={(event) => event.stopPropagation()}
+                                className="flex-shrink-0"
+                              >
+                                <Avatar className="h-5 w-5">
+                                  <AvatarImage src={messageAuthor.profilePictureUrl ?? undefined} alt={messageAuthor.nickname} />
+                                  <AvatarFallback className="text-[10px]">{messageAuthor.nickname[0]?.toUpperCase() ?? '?'}</AvatarFallback>
+                                </Avatar>
+                              </Link>
+                              <Link
+                                href={`/profile?nickname=${messageAuthor.nickname}`}
+                                onClick={(event) => event.stopPropagation()}
+                                className="truncate font-medium hover:underline"
+                              >
+                                @{messageAuthor.nickname}
+                              </Link>
+                            </>
+                          ) : (
+                            <>
+                              <Avatar className="h-5 w-5 flex-shrink-0">
+                                <AvatarFallback className="text-[10px]">?</AvatarFallback>
+                              </Avatar>
+                              <span className="truncate font-medium">@пользователь</span>
+                            </>
+                          )}
+                        </div>
+                        <span className="flex-shrink-0">{formatTime(message.createdAt)}</span>
                       </div>
                     )}
 
@@ -1271,13 +1330,20 @@ export default function MessagesPage() {
                             const showSenderLabel = idx === 0 || prevSenderId !== forwarded.senderId;
 
                             return (
-                            <button
+                            <div
                               key={`${forwarded.id}-${forwarded.createdAt}`}
-                              type="button"
-                              className="block w-full rounded-sm border border-border/40 p-1 text-left transition hover:bg-background/40"
+                              role="button"
+                              tabIndex={0}
+                              className="block w-full cursor-pointer rounded-sm border border-border/40 p-1 text-left transition hover:bg-background/40"
                               onClick={(event) => {
                                 event.stopPropagation();
                                 scrollToOriginalMessage(forwarded.id);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  scrollToOriginalMessage(forwarded.id);
+                                }
                               }}
                             >
                               {showSenderLabel && (
@@ -1286,37 +1352,52 @@ export default function MessagesPage() {
                                 </p>
                               )}
                               {forwarded.text && <p className="line-clamp-2">{forwarded.text}</p>}
-                              {forwarded.imageUrls?.length > 0 && <p className="mt-1 opacity-80">📷 {forwarded.imageUrls.length}</p>}
-                            </button>
+                              {forwarded.imageUrls?.length > 0 && (
+                                <div
+                                  className={`mt-1 grid gap-1 ${forwarded.imageUrls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {forwarded.imageUrls.map((url, imgIdx) => (
+                                    <button
+                                      key={`${url}-${imgIdx}`}
+                                      type="button"
+                                      className={forwarded.imageUrls.length === 1 ? 'w-fit' : ''}
+                                      onClick={() => openImageViewer(forwarded.imageUrls!, imgIdx)}
+                                    >
+                                      <img
+                                        src={url}
+                                        alt=""
+                                        className={`${forwarded.imageUrls!.length === 1 ? 'block max-h-32 max-w-[200px] rounded object-contain' : 'h-20 w-20 rounded object-contain'}`}
+                                      />
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                             );
                           })}
                         </div>
                       </div>
                     )}
 
-                    {message.forwardedPost && (
-                      <button
-                        type="button"
-                        className="mb-2 block w-full rounded-md border border-border/60 bg-background/40 p-2 text-left transition hover:bg-background/60"
-                        onClick={async (event) => {
-                          event.stopPropagation();
-                          await openForwardedPost(message.forwardedPost!, message.createdAt);
-                        }}
-                      >
-                        <p className="mb-1 text-xs opacity-70">Переслан пост</p>
-                        {profilesById[message.forwardedPost.authorId]?.nickname && (
-                          <p className="mb-1 text-xs opacity-70">От {profilesById[message.forwardedPost.authorId]?.nickname}</p>
-                        )}
-                        {message.forwardedPost.caption && (
-                          <p className="whitespace-pre-wrap break-words">{message.forwardedPost.caption}</p>
-                        )}
-                        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                          {message.forwardedPost.mediaUrls?.map((url, idx) => (
-                            <img key={`${url}-${idx}`} src={url} alt="forwarded post" className="max-h-60 w-full rounded-md object-cover" />
-                          ))}
+                    {message.forwardedPost && (() => {
+                      const fp = message.forwardedPost;
+                      const postForCard: Post = {
+                        id: fp.postId,
+                        userId: fp.authorId,
+                        caption: fp.caption ?? '',
+                        mediaUrls: fp.mediaUrls ?? [],
+                        mediaTypes: fp.mediaTypes ?? [],
+                        createdAt: message.createdAt,
+                        updatedAt: message.createdAt,
+                        likedBy: [],
+                      };
+                      return (
+                        <div className="mb-2 w-full max-w-[280px]" onClick={(e) => e.stopPropagation()}>
+                          <PostCard post={postForCard} />
                         </div>
-                      </button>
-                    )}
+                      );
+                    })()}
 
                     {hasMessageText && <p className="break-words whitespace-pre-wrap">{message.text}</p>}
 
@@ -1339,7 +1420,7 @@ export default function MessagesPage() {
                             <img
                               src={url}
                               alt="message"
-                              className={`${message.imageUrls.length === 1 ? 'block h-48 w-auto max-w-[260px]' : 'h-28 w-28'} rounded-md object-cover`}
+                              className={`${message.imageUrls.length === 1 ? 'block max-h-48 max-w-[260px] rounded-md object-contain' : 'h-28 w-28 rounded-md object-contain'}`}
                             />
                           </button>
                         ))}
@@ -1363,8 +1444,10 @@ export default function MessagesPage() {
                     </div>
                   </div>
                 </div>
+                </Fragment>
               );
-            })
+              });
+            })()
           )}
 
         </div>
@@ -1433,11 +1516,16 @@ export default function MessagesPage() {
               />
               <div className="flex items-center gap-2">
                 <Textarea
+                  ref={messageInputRef}
                   value={newMessage}
-                  onChange={(event) => setNewMessage(event.target.value)}
+                  onChange={(event) => {
+                    setNewMessage(event.target.value);
+                    requestAnimationFrame(resizeMessageInput);
+                  }}
                   placeholder={selectedChatId ? 'Написать...' : 'Сначала выберите диалог'}
                   disabled={!selectedChatId || sending}
-                  className="max-h-32 min-h-[40px] flex-1 resize-none border-none bg-transparent px-2 py-2 shadow-none focus-visible:ring-0"
+                  className="flex-1 resize-none overflow-y-auto border-none bg-transparent px-2 py-2 shadow-none focus-visible:ring-0 text-sm leading-normal"
+                  style={{ minHeight: LINE_HEIGHT_PX * MIN_LINES, maxHeight: LINE_HEIGHT_PX * MAX_LINES }}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' && !event.shiftKey) {
                       event.preventDefault();
