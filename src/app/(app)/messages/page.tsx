@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, Fragment, type ClipboardEvent } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/auth-provider';
 import { PostCard } from '@/components/post-card';
@@ -246,8 +246,8 @@ export default function MessagesPage() {
   const initialScrollDoneForChatRef = useRef<string | null>(null);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
 
-  const LINE_HEIGHT_PX = 21;
-  const MIN_LINES = 1.25;
+  const LINE_HEIGHT_PX = 20;
+  const MIN_LINES = 1;
   const MAX_LINES = 12;
   const resizeMessageInput = useCallback(() => {
     const el = messageInputRef.current;
@@ -257,6 +257,20 @@ export default function MessagesPage() {
     const maxH = LINE_HEIGHT_PX * MAX_LINES;
     el.style.height = `${Math.max(minH, Math.min(maxH, el.scrollHeight))}px`;
   }, []);
+
+  const handlePasteImageToMessageInput = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    const pastedImages = Array.from(event.clipboardData.items)
+      .filter((item) => item.type.startsWith('image/'))
+      .map((item) => item.getAsFile())
+      .filter((file): file is File => Boolean(file));
+
+    if (pastedImages.length === 0) {
+      return;
+    }
+
+    event.preventDefault();
+    setSelectedImages((prev) => [...prev, ...pastedImages]);
+  };
 
   useEffect(() => {
     resizeMessageInput();
@@ -1584,7 +1598,7 @@ export default function MessagesPage() {
                   }}
                   placeholder={selectedChatId ? 'Написать...' : 'Сначала выберите диалог'}
                   disabled={!selectedChatId || sending}
-                  className="flex-1 resize-none overflow-y-auto border-none bg-transparent px-2 py-2 shadow-none focus-visible:ring-0 text-sm leading-normal"
+                  className="flex-1 resize-none overflow-y-auto border-none bg-transparent px-2 py-1.5 shadow-none focus-visible:ring-0 text-sm leading-5"
                   style={{ minHeight: LINE_HEIGHT_PX * MIN_LINES, maxHeight: LINE_HEIGHT_PX * MAX_LINES }}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' && !event.shiftKey) {
@@ -1592,6 +1606,7 @@ export default function MessagesPage() {
                       void handleSend();
                     }
                   }}
+                  onPaste={handlePasteImageToMessageInput}
                 />
                 <Button type="button" variant="ghost" size="icon" className="h-9 w-9 self-center rounded-full" onClick={() => fileInputRef.current?.click()}>
                   <Paperclip className="h-4 w-4" />
