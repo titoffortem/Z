@@ -218,6 +218,8 @@ export default function MessagesPage() {
   const [inviteSearchTerm, setInviteSearchTerm] = useState('');
   const [inviteSearchLoading, setInviteSearchLoading] = useState(false);
   const [inviteSearchResults, setInviteSearchResults] = useState<UserProfile[]>([]);
+  const [inviteCandidatesLoading, setInviteCandidatesLoading] = useState(false);
+  const [inviteCandidates, setInviteCandidates] = useState<UserProfile[]>([]);
   const { unreadByChatId } = useUnreadMessages();
 
   const [newMessage, setNewMessage] = useState('');
@@ -749,6 +751,20 @@ export default function MessagesPage() {
       .filter((profile): profile is UserProfile => Boolean(profile));
   }, [chats, profilesById, selectedChat, user]);
 
+  const invitePickerParticipants = useMemo(() => {
+    const uniqueById = new Map<string, UserProfile>();
+
+    suggestedInviteParticipants.forEach((candidate) => {
+      uniqueById.set(candidate.id, candidate);
+    });
+
+    inviteCandidates.forEach((candidate) => {
+      uniqueById.set(candidate.id, candidate);
+    });
+
+    return Array.from(uniqueById.values());
+  }, [inviteCandidates, suggestedInviteParticipants]);
+
   const selectedImagePreviews = useMemo(
     () => selectedImages.map((file) => ({ key: `${file.name}-${file.size}-${file.lastModified}`, url: URL.createObjectURL(file) })),
     [selectedImages]
@@ -845,6 +861,50 @@ export default function MessagesPage() {
 
     return () => clearTimeout(timeout);
   }, [inviteSearchTerm, isInviteOpen, searchUsers, selectedChat, user]);
+
+  useEffect(() => {
+    if (!isInviteOpen || !selectedChat || !user || !firestore) {
+      setInviteCandidates([]);
+      setInviteCandidatesLoading(false);
+      return;
+    }
+
+    let isActive = true;
+    void (async () => {
+      setInviteCandidatesLoading(true);
+      try {
+        const excludedIds = new Set([user.uid, ...selectedChat.participantIds]);
+        const usersSnapshot = await getDocs(query(collection(firestore, 'users')));
+        const candidates = usersSnapshot.docs
+          .map((userDoc) => {
+            const data = userDoc.data();
+            return {
+              id: userDoc.id,
+              nickname: data.nickname || '',
+              profilePictureUrl: data.profilePictureUrl || null,
+              createdAt: toIsoDate(data.createdAt),
+              followingUserIds: data.followingUserIds || [],
+              followerUserIds: data.followerUserIds || [],
+            } as UserProfile;
+          })
+          .filter((candidate) => !excludedIds.has(candidate.id))
+          .sort((a, b) => a.nickname.localeCompare(b.nickname, 'ru'))
+          .slice(0, 20);
+
+        if (isActive) {
+          setInviteCandidates(candidates);
+        }
+      } finally {
+        if (isActive) {
+          setInviteCandidatesLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      isActive = false;
+    };
+  }, [firestore, isInviteOpen, selectedChat, user]);
 
   const createGroupChat = async () => {
     if (!firestore || !user || selectedGroupMemberIds.length === 0) {
@@ -1783,8 +1843,10 @@ export default function MessagesPage() {
           <DialogDescription>Добавьте новых участников в текущую беседу.</DialogDescription>
 
           <div className="max-h-48 space-y-1 overflow-y-auto">
-            {suggestedInviteParticipants.length > 0 ? (
-              suggestedInviteParticipants.map((candidate) => (
+            {inviteCandidatesLoading ? (
+              <p className="text-sm text-muted-foreground">Загружаем список пользователей...</p>
+            ) : invitePickerParticipants.length > 0 ? (
+              invitePickerParticipants.map((candidate) => (
                 <button
                   key={candidate.id}
                   type="button"
@@ -1799,7 +1861,7 @@ export default function MessagesPage() {
                 </button>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground">Нет доступных контактов из ваших диалогов.</p>
+              <p className="text-sm text-muted-foreground">Нет доступных пользователей для приглашения.</p>
             )}
           </div>
 
