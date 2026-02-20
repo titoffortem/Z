@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { uploadImageWithCompression } from '@/lib/image-upload';
+import { firebaseConfig } from '@/firebase/config';
 import { ChevronDown, ChevronLeft, ChevronRight, Heart, Loader2, MessageSquare, Paperclip, Search, Send, UserPlus, Users, X } from 'lucide-react';
 import {
   addDoc,
@@ -74,6 +74,32 @@ type ChatMessage = {
     authorId: string;
   };
 };
+
+async function uploadToImgBB(file: File): Promise<string | null> {
+  const apiKey = firebaseConfig.imgbbKey;
+  if (!apiKey) {
+    return null;
+  }
+
+  const formData = new FormData();
+  formData.append('image', file);
+
+  try {
+    const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return data?.data?.url ?? null;
+  } catch {
+    return null;
+  }
+}
 
 const formatTime = (isoDate: string) => {
   const date = new Date(isoDate);
@@ -1047,7 +1073,7 @@ export default function MessagesPage() {
       let imageUrls: string[] = [];
 
       if (selectedImages.length > 0) {
-        const uploaded = await Promise.all(selectedImages.map((file) => uploadImageWithCompression(file)));
+        const uploaded = await Promise.all(selectedImages.map((file) => uploadToImgBB(file)));
         imageUrls = uploaded.filter((url): url is string => Boolean(url));
       }
 

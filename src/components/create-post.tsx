@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 import { useFirestore } from '@/firebase';
 import { collection, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
-import { uploadImageWithCompression } from '@/lib/image-upload';
+import { firebaseConfig } from '@/firebase/config';
 
 const formSchema = z.object({
     caption: z.string().optional(),
@@ -35,6 +35,42 @@ const formSchema = z.object({
           path: ["caption"],
       }
   );
+
+async function uploadToImgBB(file: File): Promise<string | null> {
+  const apiKey = firebaseConfig.imgbbKey;
+
+  if (!apiKey) {
+    console.error('ImgBB API key is not configured in firebase/config.ts');
+    return null;
+  }
+  
+  const formData = new FormData();
+  formData.append('image', file);
+
+  try {
+    const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('ImgBB upload failed with status:', response.status, errorText);
+      return null;
+    }
+
+    const data = await response.json();
+    if (data.success) {
+      return data.data.url;
+    } else {
+      console.error('ImgBB API returned an error:', data);
+      return null;
+    }
+  } catch (error) {
+    console.error('Error during ImgBB upload:', error);
+    return null;
+  }
+}
 
 export function CreatePost() {
   const { user, userProfile } = useAuth();
@@ -114,7 +150,7 @@ export function CreatePost() {
         let mediaTypes: string[] = [];
 
         if (values.images && values.images.length > 0) {
-          const uploadPromises = values.images.map(image => uploadImageWithCompression(image));
+          const uploadPromises = values.images.map(image => uploadToImgBB(image));
           const urls = await Promise.all(uploadPromises);
           
           if (urls.some(url => url === null)) {
