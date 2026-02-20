@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, Fragment, type ClipboardEvent } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/auth-provider';
 import { PostCard } from '@/components/post-card';
@@ -218,6 +218,8 @@ export default function MessagesPage() {
   const [inviteSearchTerm, setInviteSearchTerm] = useState('');
   const [inviteSearchLoading, setInviteSearchLoading] = useState(false);
   const [inviteSearchResults, setInviteSearchResults] = useState<UserProfile[]>([]);
+  const [inviteCandidatesLoading, setInviteCandidatesLoading] = useState(false);
+  const [inviteCandidates, setInviteCandidates] = useState<UserProfile[]>([]);
   const { unreadByChatId } = useUnreadMessages();
 
   const [newMessage, setNewMessage] = useState('');
@@ -244,8 +246,8 @@ export default function MessagesPage() {
   const initialScrollDoneForChatRef = useRef<string | null>(null);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
 
-  const LINE_HEIGHT_PX = 21;
-  const MIN_LINES = 1.25;
+  const LINE_HEIGHT_PX = 20;
+  const MIN_LINES = 1;
   const MAX_LINES = 12;
   const resizeMessageInput = useCallback(() => {
     const el = messageInputRef.current;
@@ -255,6 +257,20 @@ export default function MessagesPage() {
     const maxH = LINE_HEIGHT_PX * MAX_LINES;
     el.style.height = `${Math.max(minH, Math.min(maxH, el.scrollHeight))}px`;
   }, []);
+
+  const handlePasteImageToMessageInput = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    const pastedImages = Array.from(event.clipboardData.items)
+      .filter((item) => item.type.startsWith('image/'))
+      .map((item) => item.getAsFile())
+      .filter((file): file is File => Boolean(file));
+
+    if (pastedImages.length === 0) {
+      return;
+    }
+
+    event.preventDefault();
+    setSelectedImages((prev) => [...prev, ...pastedImages]);
+  };
 
   useEffect(() => {
     resizeMessageInput();
@@ -749,6 +765,20 @@ export default function MessagesPage() {
       .filter((profile): profile is UserProfile => Boolean(profile));
   }, [chats, profilesById, selectedChat, user]);
 
+  const invitePickerParticipants = useMemo(() => {
+    const uniqueById = new Map<string, UserProfile>();
+
+    suggestedInviteParticipants.forEach((candidate) => {
+      uniqueById.set(candidate.id, candidate);
+    });
+
+    inviteCandidates.forEach((candidate) => {
+      uniqueById.set(candidate.id, candidate);
+    });
+
+    return Array.from(uniqueById.values());
+  }, [inviteCandidates, suggestedInviteParticipants]);
+
   const selectedImagePreviews = useMemo(
     () => selectedImages.map((file) => ({ key: `${file.name}-${file.size}-${file.lastModified}`, url: URL.createObjectURL(file) })),
     [selectedImages]
@@ -845,6 +875,50 @@ export default function MessagesPage() {
 
     return () => clearTimeout(timeout);
   }, [inviteSearchTerm, isInviteOpen, searchUsers, selectedChat, user]);
+
+  useEffect(() => {
+    if (!isInviteOpen || !selectedChat || !user || !firestore) {
+      setInviteCandidates([]);
+      setInviteCandidatesLoading(false);
+      return;
+    }
+
+    let isActive = true;
+    void (async () => {
+      setInviteCandidatesLoading(true);
+      try {
+        const excludedIds = new Set([user.uid, ...selectedChat.participantIds]);
+        const usersSnapshot = await getDocs(query(collection(firestore, 'users')));
+        const candidates = usersSnapshot.docs
+          .map((userDoc) => {
+            const data = userDoc.data();
+            return {
+              id: userDoc.id,
+              nickname: data.nickname || '',
+              profilePictureUrl: data.profilePictureUrl || null,
+              createdAt: toIsoDate(data.createdAt),
+              followingUserIds: data.followingUserIds || [],
+              followerUserIds: data.followerUserIds || [],
+            } as UserProfile;
+          })
+          .filter((candidate) => !excludedIds.has(candidate.id))
+          .sort((a, b) => a.nickname.localeCompare(b.nickname, 'ru'))
+          .slice(0, 20);
+
+        if (isActive) {
+          setInviteCandidates(candidates);
+        }
+      } finally {
+        if (isActive) {
+          setInviteCandidatesLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      isActive = false;
+    };
+  }, [firestore, isInviteOpen, selectedChat, user]);
 
   const createGroupChat = async () => {
     if (!firestore || !user || selectedGroupMemberIds.length === 0) {
@@ -1524,7 +1598,7 @@ export default function MessagesPage() {
                   }}
                   placeholder={selectedChatId ? 'Написать...' : 'Сначала выберите диалог'}
                   disabled={!selectedChatId || sending}
-                  className="flex-1 resize-none overflow-y-auto border-none bg-transparent px-2 py-2 shadow-none focus-visible:ring-0 text-sm leading-normal"
+                  className="flex-1 resize-none overflow-y-auto border-none bg-transparent px-2 py-1.5 shadow-none focus-visible:ring-0 text-sm leading-5"
                   style={{ minHeight: LINE_HEIGHT_PX * MIN_LINES, maxHeight: LINE_HEIGHT_PX * MAX_LINES }}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' && !event.shiftKey) {
@@ -1532,6 +1606,7 @@ export default function MessagesPage() {
                       void handleSend();
                     }
                   }}
+                  onPaste={handlePasteImageToMessageInput}
                 />
                 <Button type="button" variant="ghost" size="icon" className="h-9 w-9 self-center rounded-full" onClick={() => fileInputRef.current?.click()}>
                   <Paperclip className="h-4 w-4" />
@@ -1783,8 +1858,10 @@ export default function MessagesPage() {
           <DialogDescription>Добавьте новых участников в текущую беседу.</DialogDescription>
 
           <div className="max-h-48 space-y-1 overflow-y-auto">
-            {suggestedInviteParticipants.length > 0 ? (
-              suggestedInviteParticipants.map((candidate) => (
+            {inviteCandidatesLoading ? (
+              <p className="text-sm text-muted-foreground">Загружаем список пользователей...</p>
+            ) : invitePickerParticipants.length > 0 ? (
+              invitePickerParticipants.map((candidate) => (
                 <button
                   key={candidate.id}
                   type="button"
@@ -1799,7 +1876,7 @@ export default function MessagesPage() {
                 </button>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground">Нет доступных контактов из ваших диалогов.</p>
+              <p className="text-sm text-muted-foreground">Нет доступных пользователей для приглашения.</p>
             )}
           </div>
 
