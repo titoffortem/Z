@@ -11,6 +11,12 @@ type FreeimageUploadResponse = {
   image?: {
     url?: string;
     display_url?: string;
+    medium?: {
+      url?: string;
+    };
+    thumb?: {
+      url?: string;
+    };
   };
 };
 
@@ -18,7 +24,7 @@ const FREEIMAGE_API_KEY = process.env.FREEIMAGE_API_KEY || process.env.NEXT_PUBL
 const RESMUSH_QUALITY = 92;
 const RESMUSH_URL = `https://api.resmush.it/ws.php?qlty=${RESMUSH_QUALITY}`;
 
-async function compressImage(file: File): Promise<Blob> {
+async function compressImage(file: File): Promise<Blob | null> {
   const compressFormData = new FormData();
   compressFormData.append('files', file, file.name);
 
@@ -33,22 +39,22 @@ async function compressImage(file: File): Promise<Blob> {
     });
 
     if (!compressResponse.ok) {
-      return file;
+      return null;
     }
 
     const compressData = (await compressResponse.json()) as ResmushResponse;
     if (compressData.error || !compressData.dest) {
-      return file;
+      return null;
     }
 
     const optimizedResponse = await fetch(compressData.dest);
     if (!optimizedResponse.ok) {
-      return file;
+      return null;
     }
 
     return await optimizedResponse.blob();
   } catch {
-    return file;
+    return null;
   }
 }
 
@@ -66,6 +72,14 @@ export async function POST(request: Request) {
     }
 
     const compressedBlob = await compressImage(file);
+    if (!compressedBlob) {
+      return NextResponse.json({ error: 'Image compression failed on reSmush.it.' }, { status: 502 });
+    }
+
+    if (compressedBlob.size >= file.size) {
+      return NextResponse.json({ error: 'Image was not compressed, upload canceled.' }, { status: 422 });
+    }
+
     const compressedFile = new File([compressedBlob], file.name, {
       type: compressedBlob.type || file.type || 'application/octet-stream',
     });
@@ -86,13 +100,19 @@ export async function POST(request: Request) {
     }
 
     const uploadData = (await uploadResponse.json()) as FreeimageUploadResponse;
-    const imageUrl = uploadData?.image?.url || uploadData?.image?.display_url;
+    const imageUrl = uploadData?.image?.display_url || uploadData?.image?.medium?.url || uploadData?.image?.url || uploadData?.image?.thumb?.url;
 
     if (!imageUrl) {
       return NextResponse.json({ error: 'Freeimage response did not include image URL.' }, { status: 502 });
     }
 
-    return NextResponse.json({ url: imageUrl }, { status: 200 });
+    return NextResponse.json({
+      url: imageUrl,
+      meta: {
+        sourceSize: file.size,
+        compressedSize: compressedFile.size,
+      },
+    }, { status: 200 });
   } catch {
     return NextResponse.json({ error: 'Unexpected upload error.' }, { status: 500 });
   }
