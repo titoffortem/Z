@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { firebaseConfig } from '@/firebase/config';
-import { ChevronDown, ChevronLeft, ChevronRight, Heart, Loader2, MessageSquare, Paperclip, Search, Send, UserPlus, Users, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Heart, Loader2, MessageSquare, Paperclip, Search, UserPlus, Users, X } from 'lucide-react';
 import {
   addDoc,
   arrayRemove,
@@ -1119,7 +1119,7 @@ export default function MessagesPage() {
       return;
     }
 
-    setMessageSendAnimationKey((current) => current + 1);
+    const sendStartedAt = Date.now();
     setSending(true);
 
     try {
@@ -1152,6 +1152,13 @@ export default function MessagesPage() {
         scrollToBottom('smooth');
       });
     } finally {
+      const elapsed = Date.now() - sendStartedAt;
+      const spinDurationMs = 2000;
+      const remainder = elapsed % spinDurationMs;
+      const remaining = remainder === 0 ? 0 : spinDurationMs - remainder;
+      if (remaining > 0) {
+        await new Promise((resolve) => setTimeout(resolve, remaining));
+      }
       setSending(false);
     }
   };
@@ -1676,7 +1683,7 @@ export default function MessagesPage() {
                   onClick={() => void handleSend()}
                   disabled={!selectedChatId || sending || (!newMessage.trim() && selectedImages.length === 0)}
                 >
-                  {sending ? <AppLoaderIcon className="h-4 w-4 text-primary-foreground" /> : <Send key={`message-send-${messageSendAnimationKey}`} className={`h-4 w-4 ${messageSendAnimationKey > 0 ? "send-click-fly" : ""}`} />}
+                  <AppLoaderIcon className="h-4 w-4 text-primary-foreground" spinning={sending} />
                 </Button>
               </div>
             </div>
