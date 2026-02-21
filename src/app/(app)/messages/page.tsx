@@ -227,6 +227,7 @@ export default function MessagesPage() {
 
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [messageSendAnimationKey, setMessageSendAnimationKey] = useState(0);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [selectedForwardMessageIds, setSelectedForwardMessageIds] = useState<string[]>([]);
   const [forwardComment, setForwardComment] = useState('');
