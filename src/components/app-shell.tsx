@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import { Capacitor } from '@capacitor/core';
+import { AppLoader } from '@/components/app-loader';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -80,14 +81,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   // 3. SPLASH SCREEN
   if (loading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-         {/* Логотип Z */}
-         <div className="animate-pulse flex flex-col items-center">
-            <h1 className="text-6xl font-bold text-primary">Z</h1>
-        </div>
-      </div>
-    );
+    return <AppLoader />;
   }
 
   return <>{children}</>;
