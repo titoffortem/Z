@@ -1627,7 +1627,7 @@ export default function MessagesPage() {
                   onClick={() => void handleSend()}
                   disabled={!selectedChatId || sending || (!newMessage.trim() && selectedImages.length === 0)}
                 >
-                  {sending ? <AppLoaderIcon className="h-4 w-4" /> : <Send key={`message-send-${messageSendAnimationKey}`} className={`h-4 w-4 ${messageSendAnimationKey > 0 ? "send-click-fly" : ""}`} />}
+                  {sending ? <AppLoaderIcon className="h-4 w-4 text-primary-foreground" /> : <Send key={`message-send-${messageSendAnimationKey}`} className={`h-4 w-4 ${messageSendAnimationKey > 0 ? "send-click-fly" : ""}`} />}
                 </Button>
               </div>
             </div>
