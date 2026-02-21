@@ -196,6 +196,7 @@ export default function MessagesPage() {
   const [profilesById, setProfilesById] = useState<Record<string, UserProfile>>({});
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messageHeartAnimationKeys, setMessageHeartAnimationKeys] = useState<Record<string, number>>({});
 
   const [chatLoading, setChatLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(false);
@@ -1108,6 +1109,11 @@ export default function MessagesPage() {
       return;
     }
 
+    setMessageHeartAnimationKeys((current) => ({
+      ...current,
+      [messageId]: (current[messageId] || 0) + 1,
+    }));
+
     const messageRef = doc(firestore, 'chats', selectedChatId, 'messages', messageId);
     await updateDoc(messageRef, {
       likedBy: isLiked ? arrayRemove(user.uid) : arrayUnion(user.uid),
@@ -1510,7 +1516,7 @@ export default function MessagesPage() {
                           void toggleMessageLike(message.id, isLikedByMe);
                         }}
                       >
-                        <Heart className={`h-3.5 w-3.5 ${isLikedByMe ? 'fill-current' : ''}`} />
+                        <Heart key={`message-heart-${message.id}-${messageHeartAnimationKeys[message.id] || 0}`} className={`h-3.5 w-3.5 ${(messageHeartAnimationKeys[message.id] || 0) > 0 ? 'heart-like-pop' : ''} ${isLikedByMe ? 'fill-current' : ''}`} />
                         {message.likedBy.length > 0 && <span>{message.likedBy.length}</span>}
                       </button>
                       {!isSelectedChatGroup && <span>{formatTime(message.createdAt)}</span>}
