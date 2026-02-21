@@ -11,10 +11,11 @@ import { useAuth } from "@/components/auth-provider";
 import { useFirestore } from "@/firebase";
 import { doc, updateDoc, arrayUnion, arrayRemove, collection, query, orderBy, onSnapshot, Timestamp, getDoc, addDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Heart, Loader2, MessageCircle, X, ChevronLeft, ChevronRight, ArrowLeft, Send } from "lucide-react"; 
+import { Heart, Loader2, MessageCircle, X, ChevronLeft, ChevronRight, ArrowLeft } from "lucide-react"; 
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
 import { PostForwardButton } from "@/components/post-forward-button";
+import { AppLoaderIcon } from "@/components/app-loader-icon";
 
 export function PostView({ post, author }: { post: Post, author: UserProfile | null }) {
     const mediaUrls = post.mediaUrls && post.mediaUrls.length > 0 ? post.mediaUrls : [];
@@ -45,10 +46,13 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     const [likeCount, setLikeCount] = React.useState(post.likedBy?.length ?? 0);
     const [isLikeUpdating, setIsLikeUpdating] = React.useState(false);
     const [pendingLikeStatus, setPendingLikeStatus] = React.useState<boolean | null>(null);
+    const [postHeartAnimationKey, setPostHeartAnimationKey] = React.useState(0);
+    const [commentHeartAnimationKeys, setCommentHeartAnimationKeys] = React.useState<Record<string, number>>({});
     const [comments, setComments] = React.useState<Comment[]>([]);
     const [commentsLoading, setCommentsLoading] = React.useState(true);
     const [newComment, setNewComment] = React.useState('');
     const [isSubmittingComment, setIsSubmittingComment] = React.useState(false);
+    const [commentSendAnimationKey, setCommentSendAnimationKey] = React.useState(0);
     
     // UI State
     const [isImageExpanded, setIsImageExpanded] = React.useState(false);
@@ -120,6 +124,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
         }
         const postRef = doc(firestore, 'posts', post.id);
         const newLikeStatus = !isLiked;
+        setPostHeartAnimationKey((current) => current + 1);
         setIsLikeUpdating(true);
         setPendingLikeStatus(newLikeStatus);
         setIsLiked(newLikeStatus);
@@ -143,6 +148,8 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     const handleCommentSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user || !userProfile || !newComment.trim()) return;
+        setCommentSendAnimationKey((current) => current + 1);
+        const sendStartedAt = Date.now();
         setIsSubmittingComment(true);
         try {
             await addDoc(collection(firestore, 'posts', post.id, 'comments'), {
@@ -153,6 +160,13 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
         } catch (error: any) {
             toast({ title: 'Ошибка', description: error.message, variant: "destructive" });
         } finally {
+            const elapsed = Date.now() - sendStartedAt;
+            const spinDurationMs = 2000;
+            const remainder = elapsed % spinDurationMs;
+            const remaining = remainder === 0 ? 0 : spinDurationMs - remainder;
+            if (remaining > 0) {
+                await new Promise((resolve) => setTimeout(resolve, remaining));
+            }
             setIsSubmittingComment(false);
         }
     };
@@ -163,6 +177,11 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
             toast({ title: 'Войдите, чтобы поставить лайк', variant: 'destructive' });
             return;
         }
+
+        setCommentHeartAnimationKeys((current) => ({
+            ...current,
+            [commentId]: (current[commentId] || 0) + 1,
+        }));
 
         try {
             await updateDoc(doc(firestore, 'posts', post.id, 'comments', commentId), {
@@ -286,7 +305,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                 iconClassName="h-6 w-6"
                             />
                             <button onClick={handleLike} className={cn("flex items-center gap-1.5", isLiked ? "text-primary" : "text-foreground")}>
-                                <Heart className={cn("h-6 w-6", isLiked && "fill-current")} />
+                                <Heart key={`post-view-mobile-heart-${postHeartAnimationKey}`} className={cn("h-6 w-6", postHeartAnimationKey > 0 && "heart-like-pop", isLiked && "fill-current")} />
                                 <span className="text-sm font-semibold">{likeCount}</span>
                             </button>
                             <button onClick={() => setShowComments(true)} className="flex items-center gap-1.5 text-foreground hover:text-primary transition-colors">
@@ -359,7 +378,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                     iconClassName="h-5 w-5"
                                 />
                                 <button onClick={handleLike} className={cn("flex items-center gap-1.5 group", isLiked ? "text-primary" : "text-muted-foreground hover:text-primary transition-colors")}>
-                                    <Heart className={cn("h-5 w-5 transition-transform group-active:scale-90", isLiked && "fill-current")} />
+                                    <Heart key={`post-view-desktop-heart-${postHeartAnimationKey}`} className={cn("h-5 w-5 transition-transform group-active:scale-90", postHeartAnimationKey > 0 && "heart-like-pop", isLiked && "fill-current")} />
                                     <span className="text-sm font-semibold">{likeCount}</span>
                                 </button>
                             </>
@@ -431,7 +450,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                                         : "text-muted-foreground hover:text-primary"
                                                 )}
                                             >
-                                                <Heart className={cn("h-3.5 w-3.5", user && (comment.likedBy || []).includes(user.uid) && "fill-current")} />
+                                                <Heart key={`comment-heart-${comment.id}-${commentHeartAnimationKeys[comment.id] || 0}`} className={cn("h-3.5 w-3.5", (commentHeartAnimationKeys[comment.id] || 0) > 0 && "heart-like-pop", user && (comment.likedBy || []).includes(user.uid) && "fill-current")} />
                                                 {(comment.likedBy || []).length > 0 && <span>{(comment.likedBy || []).length}</span>}
                                             </button>
                                         </div>
@@ -466,7 +485,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                     className="absolute right-2 bottom-2 p-1.5 rounded-xl bg-primary text-primary-foreground disabled:opacity-50 hover:bg-primary/90 transition-colors"
                                     disabled={!newComment.trim() || isSubmittingComment}
                                 >
-                                    {isSubmittingComment ? <Loader2 className="animate-spin h-4 w-4"/> : <Send className="h-4 w-4" />}
+                                    <AppLoaderIcon className="h-4 w-4" spinning={isSubmittingComment} />
                                 </button>
                             </div>
                         </form>

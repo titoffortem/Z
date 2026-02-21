@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Send, Loader2, Users } from 'lucide-react';
+import { Loader2, Users } from 'lucide-react';
 import { useAuth } from '@/components/auth-provider';
 import { useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -153,6 +153,7 @@ export function PostForwardButton({
           mediaUrls: post.mediaUrls || [],
           mediaTypes: post.mediaTypes || [],
           authorId: post.userId,
+          likedBy: post.likedBy || [],
         },
         createdAt: serverTimestamp(),
         readBy: [user.uid],
@@ -201,7 +202,22 @@ export function PostForwardButton({
         }}
         aria-label="Переслать пост"
       >
-        <Send className={iconClassName || 'h-4 w-4'} />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 22.02 20.02"
+          className={iconClassName || 'h-4 w-4'}
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M9.08,13.05c-.54,0-1.09.13-1.52.46-.82.64-1.14,1.58-.99,2.45l.39,2.36c.07.42-.32.78-.74.69-3.35-.72-5.13-2.81-5.23-6.16-.13-4.3,3.46-7.8,7.75-7.8h1.98c.22,0,.26-.05.26-.1v-2.62c0-.73.59-1.32,1.32-1.32.31,0,.62.11.85.31l6.93,5.89c.56.48.95,1.17.92,1.91-.03.68-.33,1.28-.81,1.68l-7.04,5.98c-.56.47-1.39.4-1.86-.15-.2-.24-.31-.54-.31-.85v-2.62c0-.06-.05-.1-.1-.1h-1.81Z"
+          />
+        </svg>
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
