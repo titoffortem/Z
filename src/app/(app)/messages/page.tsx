@@ -1361,7 +1361,7 @@ export default function MessagesPage() {
                   ) : (
                     <p className="font-semibold">{selectedChatTitle}</p>
                   )}
-                  <p className="text-xs text-muted-foreground">{isSelectedChatGroup ? 'Групповая беседа' : 'Личные сообщения'}</p>
+                  {!isSelectedChatGroup && <p className="text-xs text-muted-foreground">Личные сообщения</p>}
                   {isSelectedChatGroup && (
                     <button type="button" className="mt-1 text-xs text-muted-foreground hover:underline" onClick={() => setParticipantsOpen(true)}>
                       Участники: {selectedChat?.participantIds.length || 0}
@@ -1657,7 +1657,7 @@ export default function MessagesPage() {
               <Textarea
                 value={forwardComment}
                 onChange={(event) => setForwardComment(event.target.value)}
-                placeholder="Подпись к пересланному сообщению (необязательно)"
+                placeholder="Написать..."
                 className="min-h-[40px] resize-none bg-background/70"
               />
               <div className="mt-2 flex gap-2">
