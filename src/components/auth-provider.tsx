@@ -8,6 +8,7 @@ import type { User as FirebaseAuthUser } from 'firebase/auth';
 
 import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
+import { AppLoader } from '@/components/app-loader';
 
 
 interface AuthContextType {
@@ -72,13 +73,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // We show a global loading screen here while auth and profile are resolving.
   // Specific layouts (like AppLayout) will handle their own loading state for redirects.
   if (isAuthLoading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <div className="text-center">
-          <p>Загружаем приложение Z...</p>
-        </div>
-      </div>
-    );
+    return <AppLoader />;
   }
 
   return (
