@@ -182,3 +182,33 @@ html, body {
     transform: scale(1);
   }
 }
+
+
+.send-click-fly {
+  transform-origin: 12px 12px;
+  animation: sendFlyPress 700ms ease-in-out;
+}
+
+@keyframes sendFlyPress {
+  0% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  15% {
+    transform: translate(-2px, 2px) scale(0.95) rotate(-5deg);
+    opacity: 1;
+  }
+  40% {
+    transform: translate(24px, -24px) scale(0.5) rotate(15deg);
+    opacity: 0;
+  }
+  45% {
+    transform: translate(-20px, 20px) scale(0.5) rotate(-15deg);
+    opacity: 0;
+  }
+  70%,
+  100% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}

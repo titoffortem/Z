@@ -225,6 +225,7 @@ export default function MessagesPage() {
 
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [messageSendAnimationKey, setMessageSendAnimationKey] = useState(0);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [selectedForwardMessageIds, setSelectedForwardMessageIds] = useState<string[]>([]);
   const [forwardComment, setForwardComment] = useState('');
@@ -1068,6 +1069,7 @@ export default function MessagesPage() {
       return;
     }
 
+    setMessageSendAnimationKey((current) => current + 1);
     setSending(true);
 
     try {
@@ -1624,7 +1626,7 @@ export default function MessagesPage() {
                   onClick={() => void handleSend()}
                   disabled={!selectedChatId || sending || (!newMessage.trim() && selectedImages.length === 0)}
                 >
-                  {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send key={`message-send-${messageSendAnimationKey}`} className={`h-4 w-4 ${messageSendAnimationKey > 0 ? "send-click-fly" : ""}`} />}
                 </Button>
               </div>
             </div>

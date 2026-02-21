@@ -51,6 +51,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     const [commentsLoading, setCommentsLoading] = React.useState(true);
     const [newComment, setNewComment] = React.useState('');
     const [isSubmittingComment, setIsSubmittingComment] = React.useState(false);
+    const [commentSendAnimationKey, setCommentSendAnimationKey] = React.useState(0);
     
     // UI State
     const [isImageExpanded, setIsImageExpanded] = React.useState(false);
@@ -146,6 +147,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     const handleCommentSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user || !userProfile || !newComment.trim()) return;
+        setCommentSendAnimationKey((current) => current + 1);
         setIsSubmittingComment(true);
         try {
             await addDoc(collection(firestore, 'posts', post.id, 'comments'), {
@@ -474,7 +476,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                     className="absolute right-2 bottom-2 p-1.5 rounded-xl bg-primary text-primary-foreground disabled:opacity-50 hover:bg-primary/90 transition-colors"
                                     disabled={!newComment.trim() || isSubmittingComment}
                                 >
-                                    {isSubmittingComment ? <Loader2 className="animate-spin h-4 w-4"/> : <Send className="h-4 w-4" />}
+                                    {isSubmittingComment ? <Loader2 className="animate-spin h-4 w-4"/> : <Send key={`comment-send-${commentSendAnimationKey}`} className={cn("h-4 w-4", commentSendAnimationKey > 0 && "send-click-fly")} />}
                                 </button>
                             </div>
                         </form>
