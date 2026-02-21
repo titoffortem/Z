@@ -1363,7 +1363,7 @@ export default function MessagesPage() {
                   )}
                   {!isSelectedChatGroup && <p className="text-xs text-muted-foreground">Личные сообщения</p>}
                   {isSelectedChatGroup && (
-                    <button type="button" className="mt-1 text-xs text-muted-foreground hover:underline" onClick={() => setParticipantsOpen(true)}>
+                    <button type="button" className="mt-1 block text-xs text-muted-foreground hover:underline" onClick={() => setParticipantsOpen(true)}>
                       Участники: {selectedChat?.participantIds.length || 0}
                     </button>
                   )}
