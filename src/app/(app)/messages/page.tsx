@@ -34,6 +34,7 @@ import {
 } from 'firebase/firestore';
 import type { Post, UserProfile } from '@/types';
 import { useUnreadMessages } from '@/contexts/unread-messages-context';
+import { AppLoaderIcon } from '@/components/app-loader-icon';
 
 type ChatItem = {
   id: string;
@@ -1626,7 +1627,7 @@ export default function MessagesPage() {
                   onClick={() => void handleSend()}
                   disabled={!selectedChatId || sending || (!newMessage.trim() && selectedImages.length === 0)}
                 >
-                  {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send key={`message-send-${messageSendAnimationKey}`} className={`h-4 w-4 ${messageSendAnimationKey > 0 ? "send-click-fly" : ""}`} />}
+                  {sending ? <AppLoaderIcon className="h-4 w-4" /> : <Send key={`message-send-${messageSendAnimationKey}`} className={`h-4 w-4 ${messageSendAnimationKey > 0 ? "send-click-fly" : ""}`} />}
                 </Button>
               </div>
             </div>
