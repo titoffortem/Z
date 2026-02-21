@@ -45,6 +45,8 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     const [likeCount, setLikeCount] = React.useState(post.likedBy?.length ?? 0);
     const [isLikeUpdating, setIsLikeUpdating] = React.useState(false);
     const [pendingLikeStatus, setPendingLikeStatus] = React.useState<boolean | null>(null);
+    const [postHeartAnimationKey, setPostHeartAnimationKey] = React.useState(0);
+    const [commentHeartAnimationKeys, setCommentHeartAnimationKeys] = React.useState<Record<string, number>>({});
     const [comments, setComments] = React.useState<Comment[]>([]);
     const [commentsLoading, setCommentsLoading] = React.useState(true);
     const [newComment, setNewComment] = React.useState('');
@@ -120,6 +122,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
         }
         const postRef = doc(firestore, 'posts', post.id);
         const newLikeStatus = !isLiked;
+        setPostHeartAnimationKey((current) => current + 1);
         setIsLikeUpdating(true);
         setPendingLikeStatus(newLikeStatus);
         setIsLiked(newLikeStatus);
@@ -163,6 +166,11 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
             toast({ title: 'Войдите, чтобы поставить лайк', variant: 'destructive' });
             return;
         }
+
+        setCommentHeartAnimationKeys((current) => ({
+            ...current,
+            [commentId]: (current[commentId] || 0) + 1,
+        }));
 
         try {
             await updateDoc(doc(firestore, 'posts', post.id, 'comments', commentId), {
@@ -286,7 +294,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                 iconClassName="h-6 w-6"
                             />
                             <button onClick={handleLike} className={cn("flex items-center gap-1.5", isLiked ? "text-primary" : "text-foreground")}>
-                                <Heart className={cn("h-6 w-6", isLiked && "fill-current")} />
+                                <Heart key={`post-view-mobile-heart-${postHeartAnimationKey}`} className={cn("h-6 w-6 heart-like-pop", isLiked && "fill-current")} />
                                 <span className="text-sm font-semibold">{likeCount}</span>
                             </button>
                             <button onClick={() => setShowComments(true)} className="flex items-center gap-1.5 text-foreground hover:text-primary transition-colors">
@@ -359,7 +367,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                     iconClassName="h-5 w-5"
                                 />
                                 <button onClick={handleLike} className={cn("flex items-center gap-1.5 group", isLiked ? "text-primary" : "text-muted-foreground hover:text-primary transition-colors")}>
-                                    <Heart className={cn("h-5 w-5 transition-transform group-active:scale-90", isLiked && "fill-current")} />
+                                    <Heart key={`post-view-desktop-heart-${postHeartAnimationKey}`} className={cn("h-5 w-5 heart-like-pop transition-transform group-active:scale-90", isLiked && "fill-current")} />
                                     <span className="text-sm font-semibold">{likeCount}</span>
                                 </button>
                             </>
@@ -431,7 +439,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                                         : "text-muted-foreground hover:text-primary"
                                                 )}
                                             >
-                                                <Heart className={cn("h-3.5 w-3.5", user && (comment.likedBy || []).includes(user.uid) && "fill-current")} />
+                                                <Heart key={`comment-heart-${comment.id}-${commentHeartAnimationKeys[comment.id] || 0}`} className={cn("h-3.5 w-3.5 heart-like-pop", user && (comment.likedBy || []).includes(user.uid) && "fill-current")} />
                                                 {(comment.likedBy || []).length > 0 && <span>{(comment.likedBy || []).length}</span>}
                                             </button>
                                         </div>

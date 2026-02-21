@@ -32,6 +32,7 @@ export function PostCard({ post }: { post: Post }) {
     const [likeCount, setLikeCount] = React.useState(post.likedBy?.length ?? 0);
     const [isLikeUpdating, setIsLikeUpdating] = React.useState(false);
     const [pendingLikeStatus, setPendingLikeStatus] = React.useState<boolean | null>(null);
+    const [heartAnimationKey, setHeartAnimationKey] = React.useState(0);
 
     const [isOpen, setIsOpen] = React.useState(false);
 
@@ -141,6 +142,8 @@ export function PostCard({ post }: { post: Post }) {
         const postRef = doc(firestore, 'posts', post.id);
         const newLikeStatus = !isLiked;
 
+        setHeartAnimationKey((current) => current + 1);
+
         setIsLikeUpdating(true);
         setPendingLikeStatus(newLikeStatus);
         setIsLiked(newLikeStatus);
@@ -249,8 +252,9 @@ export function PostCard({ post }: { post: Post }) {
                                     )}
                                   >
                                     <Heart
+                                      key={`post-card-heart-${heartAnimationKey}`}
                                       className={cn(
-                                        "h-4 w-4",
+                                        "h-4 w-4 heart-like-pop",
                                         isLiked && "fill-current"
                                       )}
                                     />
