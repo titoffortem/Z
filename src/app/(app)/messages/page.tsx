@@ -73,6 +73,7 @@ type ChatMessage = {
     mediaUrls: string[];
     mediaTypes: string[];
     authorId: string;
+    likedBy?: string[];
   };
 };
 
@@ -237,6 +238,7 @@ export default function MessagesPage() {
   const [expandedImageIndex, setExpandedImageIndex] = useState(0);
   const [expandedPost, setExpandedPost] = useState<Post | null>(null);
   const [expandedPostAuthor, setExpandedPostAuthor] = useState<UserProfile | null>(null);
+  const [forwardedPostLikesById, setForwardedPostLikesById] = useState<Record<string, string[]>>({});
 
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const messageElementRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -289,6 +291,53 @@ export default function MessagesPage() {
     setExpandedImageIndex(0);
   };
 
+  useEffect(() => {
+    if (!firestore) {
+      return;
+    }
+
+    const postIds = Array.from(
+      new Set(messages.map((message) => message.forwardedPost?.postId).filter((id): id is string => Boolean(id)))
+    );
+
+    if (postIds.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void Promise.all(postIds.map(async (postId) => {
+      try {
+        const snapshot = await getDoc(doc(firestore, 'posts', postId));
+        if (!snapshot.exists()) {
+          return [postId, null] as const;
+        }
+        const data = snapshot.data();
+        return [postId, Array.isArray(data.likedBy) ? data.likedBy : []] as const;
+      } catch {
+        return [postId, null] as const;
+      }
+    })).then((pairs) => {
+      if (cancelled) {
+        return;
+      }
+
+      setForwardedPostLikesById((current) => {
+        const next = { ...current };
+        for (const [postId, likedBy] of pairs) {
+          if (likedBy) {
+            next[postId] = likedBy;
+          }
+        }
+        return next;
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [firestore, messages]);
+
   const openForwardedPost = async (forwardedPost: NonNullable<ChatMessage['forwardedPost']>, fallbackCreatedAt: string) => {
     if (!firestore) {
       return;
@@ -319,7 +368,7 @@ export default function MessagesPage() {
         mediaTypes: forwardedPost.mediaTypes || [],
         createdAt: fallbackCreatedAt,
         updatedAt: fallbackCreatedAt,
-        likedBy: [],
+        likedBy: forwardedPostLikesById[forwardedPost.postId] || forwardedPost.likedBy || [],
       };
     }
 
@@ -1473,7 +1522,7 @@ export default function MessagesPage() {
                         mediaTypes: fp.mediaTypes ?? [],
                         createdAt: message.createdAt,
                         updatedAt: message.createdAt,
-                        likedBy: [],
+                        likedBy: forwardedPostLikesById[fp.postId] || fp.likedBy || [],
                       };
                       return (
                         <div className="mb-2 w-full max-w-[280px]" onClick={(e) => e.stopPropagation()}>
