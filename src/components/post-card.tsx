@@ -254,7 +254,8 @@ export function PostCard({ post }: { post: Post }) {
                                     <Heart
                                       key={`post-card-heart-${heartAnimationKey}`}
                                       className={cn(
-                                        "h-4 w-4 heart-like-pop",
+                                        "h-4 w-4",
+                                        heartAnimationKey > 0 && "heart-like-pop",
                                         isLiked && "fill-current"
                                       )}
                                     />

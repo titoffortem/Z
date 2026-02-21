@@ -1516,7 +1516,7 @@ export default function MessagesPage() {
                           void toggleMessageLike(message.id, isLikedByMe);
                         }}
                       >
-                        <Heart key={`message-heart-${message.id}-${messageHeartAnimationKeys[message.id] || 0}`} className={`h-3.5 w-3.5 heart-like-pop ${isLikedByMe ? 'fill-current' : ''}`} />
+                        <Heart key={`message-heart-${message.id}-${messageHeartAnimationKeys[message.id] || 0}`} className={`h-3.5 w-3.5 ${(messageHeartAnimationKeys[message.id] || 0) > 0 ? 'heart-like-pop' : ''} ${isLikedByMe ? 'fill-current' : ''}`} />
                         {message.likedBy.length > 0 && <span>{message.likedBy.length}</span>}
                       </button>
                       {!isSelectedChatGroup && <span>{formatTime(message.createdAt)}</span>}

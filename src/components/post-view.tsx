@@ -294,7 +294,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                 iconClassName="h-6 w-6"
                             />
                             <button onClick={handleLike} className={cn("flex items-center gap-1.5", isLiked ? "text-primary" : "text-foreground")}>
-                                <Heart key={`post-view-mobile-heart-${postHeartAnimationKey}`} className={cn("h-6 w-6 heart-like-pop", isLiked && "fill-current")} />
+                                <Heart key={`post-view-mobile-heart-${postHeartAnimationKey}`} className={cn("h-6 w-6", postHeartAnimationKey > 0 && "heart-like-pop", isLiked && "fill-current")} />
                                 <span className="text-sm font-semibold">{likeCount}</span>
                             </button>
                             <button onClick={() => setShowComments(true)} className="flex items-center gap-1.5 text-foreground hover:text-primary transition-colors">
@@ -367,7 +367,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                     iconClassName="h-5 w-5"
                                 />
                                 <button onClick={handleLike} className={cn("flex items-center gap-1.5 group", isLiked ? "text-primary" : "text-muted-foreground hover:text-primary transition-colors")}>
-                                    <Heart key={`post-view-desktop-heart-${postHeartAnimationKey}`} className={cn("h-5 w-5 heart-like-pop transition-transform group-active:scale-90", isLiked && "fill-current")} />
+                                    <Heart key={`post-view-desktop-heart-${postHeartAnimationKey}`} className={cn("h-5 w-5 transition-transform group-active:scale-90", postHeartAnimationKey > 0 && "heart-like-pop", isLiked && "fill-current")} />
                                     <span className="text-sm font-semibold">{likeCount}</span>
                                 </button>
                             </>
@@ -439,7 +439,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                                         : "text-muted-foreground hover:text-primary"
                                                 )}
                                             >
-                                                <Heart key={`comment-heart-${comment.id}-${commentHeartAnimationKeys[comment.id] || 0}`} className={cn("h-3.5 w-3.5 heart-like-pop", user && (comment.likedBy || []).includes(user.uid) && "fill-current")} />
+                                                <Heart key={`comment-heart-${comment.id}-${commentHeartAnimationKeys[comment.id] || 0}`} className={cn("h-3.5 w-3.5", (commentHeartAnimationKeys[comment.id] || 0) > 0 && "heart-like-pop", user && (comment.likedBy || []).includes(user.uid) && "fill-current")} />
                                                 {(comment.likedBy || []).length > 0 && <span>{(comment.likedBy || []).length}</span>}
                                             </button>
                                         </div>
