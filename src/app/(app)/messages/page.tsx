@@ -647,6 +647,32 @@ export default function MessagesPage() {
     }
   }, [isMobile, isMobileDialogOpen, firestore, user, selectedChatId]);
 
+
+
+  // Mark incoming messages as read while chat is open/viewed
+  useEffect(() => {
+    if (!firestore || !user || !selectedChatId) {
+      return;
+    }
+    if (isMobile && !isMobileDialogOpen) {
+      return;
+    }
+
+    const unreadIncomingIds = messages
+      .filter((message) => message.senderId !== user.uid && !message.readBy.includes(user.uid))
+      .map((message) => message.id);
+
+    if (unreadIncomingIds.length === 0) {
+      return;
+    }
+
+    const batch = writeBatch(firestore);
+    unreadIncomingIds.forEach((messageId) => {
+      const messageRef = doc(firestore, 'chats', selectedChatId, 'messages', messageId);
+      batch.update(messageRef, { readBy: arrayUnion(user.uid) });
+    });
+    void batch.commit();
+  }, [firestore, isMobile, isMobileDialogOpen, messages, selectedChatId, user]);
   // Initial scroll when opening chat: last read at top, reveal up to 3 new messages
   useEffect(() => {
     if (!selectedChatId || !user || messages.length === 0) {

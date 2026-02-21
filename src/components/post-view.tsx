@@ -11,10 +11,11 @@ import { useAuth } from "@/components/auth-provider";
 import { useFirestore } from "@/firebase";
 import { doc, updateDoc, arrayUnion, arrayRemove, collection, query, orderBy, onSnapshot, Timestamp, getDoc, addDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Heart, Loader2, MessageCircle, X, ChevronLeft, ChevronRight, ArrowLeft, Send } from "lucide-react"; 
+import { Heart, Loader2, MessageCircle, X, ChevronLeft, ChevronRight, ArrowLeft } from "lucide-react"; 
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
 import { PostForwardButton } from "@/components/post-forward-button";
+import { AppLoaderIcon } from "@/components/app-loader-icon";
 
 export function PostView({ post, author }: { post: Post, author: UserProfile | null }) {
     const mediaUrls = post.mediaUrls && post.mediaUrls.length > 0 ? post.mediaUrls : [];
@@ -148,6 +149,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
         e.preventDefault();
         if (!user || !userProfile || !newComment.trim()) return;
         setCommentSendAnimationKey((current) => current + 1);
+        const sendStartedAt = Date.now();
         setIsSubmittingComment(true);
         try {
             await addDoc(collection(firestore, 'posts', post.id, 'comments'), {
@@ -158,6 +160,13 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
         } catch (error: any) {
             toast({ title: 'Ошибка', description: error.message, variant: "destructive" });
         } finally {
+            const elapsed = Date.now() - sendStartedAt;
+            const spinDurationMs = 2000;
+            const remainder = elapsed % spinDurationMs;
+            const remaining = remainder === 0 ? 0 : spinDurationMs - remainder;
+            if (remaining > 0) {
+                await new Promise((resolve) => setTimeout(resolve, remaining));
+            }
             setIsSubmittingComment(false);
         }
     };
@@ -476,7 +485,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                     className="absolute right-2 bottom-2 p-1.5 rounded-xl bg-primary text-primary-foreground disabled:opacity-50 hover:bg-primary/90 transition-colors"
                                     disabled={!newComment.trim() || isSubmittingComment}
                                 >
-                                    {isSubmittingComment ? <Loader2 className="animate-spin h-4 w-4"/> : <Send key={`comment-send-${commentSendAnimationKey}`} className={cn("h-4 w-4", commentSendAnimationKey > 0 && "send-click-fly")} />}
+                                    <AppLoaderIcon className="h-4 w-4" spinning={isSubmittingComment} />
                                 </button>
                             </div>
                         </form>
