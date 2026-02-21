@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Send, Loader2, Users } from 'lucide-react';
+import { Loader2, Users } from 'lucide-react';
 import { useAuth } from '@/components/auth-provider';
 import { useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -153,6 +153,7 @@ export function PostForwardButton({
           mediaUrls: post.mediaUrls || [],
           mediaTypes: post.mediaTypes || [],
           authorId: post.userId,
+          likedBy: post.likedBy || [],
         },
         createdAt: serverTimestamp(),
         readBy: [user.uid],
@@ -201,7 +202,16 @@ export function PostForwardButton({
         }}
         aria-label="Переслать пост"
       >
-        <Send className={iconClassName || 'h-4 w-4'} />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          className={iconClassName || 'h-4 w-4'}
+          fill="none"
+          stroke="none"
+          aria-hidden="true"
+        >
+          <path fill="currentColor" d="M10 9V5L3 12l7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z" />
+        </svg>
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
