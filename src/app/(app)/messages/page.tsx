@@ -253,7 +253,7 @@ export default function MessagesPage() {
 
   const LINE_HEIGHT_PX = 20;
   const MIN_LINES = 2;
-  const MAX_LINES = 5;
+  const MAX_LINES = 2;
   const resizeMessageInput = useCallback(() => {
     const el = messageInputRef.current;
     if (!el) return;
