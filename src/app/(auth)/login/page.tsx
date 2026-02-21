@@ -13,6 +13,7 @@ import { GoogleIcon, ZLogoIcon } from '@/components/icons';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from 'lucide-react';
+import { AppLoader } from '@/components/app-loader';
 
 // --- ИМПОРТЫ ДЛЯ CAPACITOR ---
 import { Capacitor } from '@capacitor/core';
@@ -86,11 +87,7 @@ export default function LoginPage() {
 
   // While checking auth state, or in the process of signing in, or if user object is present (pre-redirect)
   if (isUserLoading || isSigningIn || user) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        Проверяем статус авторизации...
-      </div>
-    );
+    return <AppLoader />;
   }
 
   // If not loading and no user, render the login page.

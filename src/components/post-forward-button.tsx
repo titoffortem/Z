@@ -153,6 +153,7 @@ export function PostForwardButton({
           mediaUrls: post.mediaUrls || [],
           mediaTypes: post.mediaTypes || [],
           authorId: post.userId,
+          likedBy: post.likedBy || [],
         },
         createdAt: serverTimestamp(),
         readBy: [user.uid],
