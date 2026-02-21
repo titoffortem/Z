@@ -252,8 +252,8 @@ export default function MessagesPage() {
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
 
   const LINE_HEIGHT_PX = 20;
-  const MIN_LINES = 1;
-  const MAX_LINES = 12;
+  const MIN_LINES = 2;
+  const MAX_LINES = 5;
   const resizeMessageInput = useCallback(() => {
     const el = messageInputRef.current;
     if (!el) return;
@@ -1663,7 +1663,7 @@ export default function MessagesPage() {
                   }}
                   placeholder={selectedChatId ? 'Написать...' : 'Сначала выберите диалог'}
                   disabled={!selectedChatId || sending}
-                  className="flex-1 resize-none overflow-y-auto border-none bg-transparent px-2 py-1.5 shadow-none focus-visible:ring-0 text-sm leading-5"
+                  className="flex-1 min-h-0 resize-none overflow-y-auto border-none bg-transparent px-2 py-1.5 shadow-none focus-visible:ring-0 text-sm leading-5"
                   style={{ minHeight: LINE_HEIGHT_PX * MIN_LINES, maxHeight: LINE_HEIGHT_PX * MAX_LINES }}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' && !event.shiftKey) {
