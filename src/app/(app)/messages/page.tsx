@@ -34,6 +34,7 @@ import {
 } from 'firebase/firestore';
 import type { Post, UserProfile } from '@/types';
 import { useUnreadMessages } from '@/contexts/unread-messages-context';
+import { AppLoaderIcon } from '@/components/app-loader-icon';
 
 type ChatItem = {
   id: string;
@@ -196,6 +197,7 @@ export default function MessagesPage() {
   const [profilesById, setProfilesById] = useState<Record<string, UserProfile>>({});
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messageHeartAnimationKeys, setMessageHeartAnimationKeys] = useState<Record<string, number>>({});
 
   const [chatLoading, setChatLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(false);
@@ -224,6 +226,7 @@ export default function MessagesPage() {
 
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [messageSendAnimationKey, setMessageSendAnimationKey] = useState(0);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [selectedForwardMessageIds, setSelectedForwardMessageIds] = useState<string[]>([]);
   const [forwardComment, setForwardComment] = useState('');
@@ -1067,6 +1070,7 @@ export default function MessagesPage() {
       return;
     }
 
+    setMessageSendAnimationKey((current) => current + 1);
     setSending(true);
 
     try {
@@ -1107,6 +1111,11 @@ export default function MessagesPage() {
     if (!firestore || !user || !selectedChatId) {
       return;
     }
+
+    setMessageHeartAnimationKeys((current) => ({
+      ...current,
+      [messageId]: (current[messageId] || 0) + 1,
+    }));
 
     const messageRef = doc(firestore, 'chats', selectedChatId, 'messages', messageId);
     await updateDoc(messageRef, {
@@ -1510,7 +1519,7 @@ export default function MessagesPage() {
                           void toggleMessageLike(message.id, isLikedByMe);
                         }}
                       >
-                        <Heart className={`h-3.5 w-3.5 ${isLikedByMe ? 'fill-current' : ''}`} />
+                        <Heart key={`message-heart-${message.id}-${messageHeartAnimationKeys[message.id] || 0}`} className={`h-3.5 w-3.5 ${(messageHeartAnimationKeys[message.id] || 0) > 0 ? 'heart-like-pop' : ''} ${isLikedByMe ? 'fill-current' : ''}`} />
                         {message.likedBy.length > 0 && <span>{message.likedBy.length}</span>}
                       </button>
                       {!isSelectedChatGroup && <span>{formatTime(message.createdAt)}</span>}
@@ -1618,7 +1627,7 @@ export default function MessagesPage() {
                   onClick={() => void handleSend()}
                   disabled={!selectedChatId || sending || (!newMessage.trim() && selectedImages.length === 0)}
                 >
-                  {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  {sending ? <AppLoaderIcon className="h-4 w-4 text-primary-foreground" /> : <Send key={`message-send-${messageSendAnimationKey}`} className={`h-4 w-4 ${messageSendAnimationKey > 0 ? "send-click-fly" : ""}`} />}
                 </Button>
               </div>
             </div>
