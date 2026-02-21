@@ -5,6 +5,7 @@ import { MainNav } from "@/components/main-nav";
 import { UnreadMessagesProvider } from "@/contexts/unread-messages-context";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
+import { AppLoader } from "@/components/app-loader";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, userProfile, loading } = useAuth();
@@ -31,7 +32,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   // Show a loading screen while auth is resolving or if user is being redirected
   if (loading || !user || !userProfile) {
-    return <div className="flex h-screen items-center justify-center">Загрузка приложения...</div>;
+    return <AppLoader />;
   }
   
   return (
