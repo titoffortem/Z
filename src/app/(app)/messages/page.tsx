@@ -41,6 +41,7 @@ type ChatItem = {
   participantIds: string[];
   lastMessageText: string;
   updatedAt: string;
+  typingUserIds: string[];
   title?: string;
   isGroup?: boolean;
 };
@@ -189,6 +190,55 @@ function DoubleCheckIcon() {
   );
 }
 
+function TypingKeyboardIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 773.97 777.05"
+      className="h-4 w-auto"
+      style={{ overflow: 'visible' }}
+      aria-hidden="true"
+    >
+      <defs>
+        <style>
+          {`
+            .typing-logo-fill {
+              fill: #577f59;
+            }
+
+            .typing-roller {
+              transform-origin: center;
+              transform-box: fill-box;
+              animation: rollOneTurn 2.5s linear infinite;
+            }
+
+            @keyframes rollOneTurn {
+              0% {
+                transform: translateX(-1000px) rotate(0deg);
+              }
+              100% {
+                transform: translateX(1434px) rotate(360deg);
+              }
+            }
+          `}
+        </style>
+      </defs>
+
+      <g className="typing-roller">
+        <path
+          className="typing-logo-fill"
+          d="M374.38.24c20.4-.7,40.82.16,61.09,2.58,81.32,9.6,157.39,45.1,216.98,101.27,18.48,17.54,33.16,35.07,48.76,54.91-5.77,4.85-12.09,11.53-17.49,16.97l-23.23,23.19-86.52,86.56-243.55,243.99c-28.45,28.45-57,58.17-85.75,86.19,9.2,6.53,20.07,11.97,30.26,16.79,101.25,47.93,221.42,26.77,300.25-52.73,41.56-41.36,68.32-95.28,76.11-153.4,2.08-16.01,2.28-29.64,2.22-45.6,13.17-.75,32.33-.17,45.99-.16l74.28-.24c3.24,103.67-33.68,198.21-103.68,274.2-70.04,74.93-167.05,118.86-269.58,122.07-27.57.93-55.16-1.01-82.33-5.79-82.64-14.68-158.36-55.59-215.95-116.67-11.27-11.93-22.11-24.26-31.52-37.75l124.89-124.72,191.9-192.12,86.96-87.06c17.19-17.22,35.07-35.7,52.58-52.46-28.24-20.09-70.96-34.9-105.15-38.82C255.99,102.38,119.1,231.65,120.43,395.96l-120.43.03c.57-7.1.32-16.66.62-24.15.58-11.79,1.7-23.54,3.34-35.23,10.44-79.29,45.25-153.38,99.62-212.02C173.56,48.55,271.11,3.76,374.38.24Z"
+        />
+        <path
+          className="typing-logo-fill"
+          d="M377.76,18.24c17.19-.54,34.39.13,51.49,1.99,77.16,8.53,149.62,41.31,206.98,93.62,14.52,13.54,27.99,28.16,40.31,43.73-20.93,21.51-43.1,43.05-64.4,64.33l-120.26,120.41-275.58,275.87c50.8,37.26,104.83,56.9,168.29,57.77,75.32,1.03,147.93-28.05,201.72-80.79,53.01-51.7,83.58-122.16,85.11-196.19h83.83c-1.18,88.51-34.79,173.5-94.46,238.87-53.12,58.68-123.71,98.73-201.33,114.21-20.84,4.11-38.47,5.83-59.48,6.87-16.13.4-32.27-.13-48.33-1.58-84.17-8.08-163.13-44.38-224.08-102.99-11.8-11.36-21.88-22.91-32.26-35.52,12.01-13.36,28.09-28.76,40.94-41.72l89.04-89.02,211.09-211.44,65.93-66.06c17.45-17.35,35.83-35.06,52.88-52.71-8.34-7.08-22.1-15.99-31.64-21.37-37.73-21.45-80.1-33.44-123.47-34.95-77.04-2.86-151.98,25.46-207.88,78.57-53.44,50.22-87.52,123.99-89.84,197.38l-83.39-.04c3.75-91.32,36.39-174.44,99.06-241.65C185.38,63.47,278.93,21.11,377.76,18.24Z"
+        />
+      </g>
+    </svg>
+  );
+}
+
+
 export default function MessagesPage() {
   const { user } = useAuth();
   const firestore = useFirestore();
@@ -249,6 +299,9 @@ export default function MessagesPage() {
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastChatAndMessagesRef = useRef<{ chatId: string; messageIds: string[] } | null>(null);
   const initialScrollDoneForChatRef = useRef<string | null>(null);
+  const typingStopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingChatIdRef = useRef<string | null>(null);
+  const isTypingRef = useRef(false);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
 
   const LINE_HEIGHT_PX = 20;
@@ -431,11 +484,38 @@ export default function MessagesPage() {
 
   useEffect(() => {
     return () => {
+      if (typingStopTimeoutRef.current) {
+        clearTimeout(typingStopTimeoutRef.current);
+      }
       if (highlightTimeoutRef.current) {
         clearTimeout(highlightTimeoutRef.current);
       }
     };
   }, []);
+
+  const setTypingStateForChat = useCallback(async (chatId: string, isTyping: boolean) => {
+    if (!firestore || !user) {
+      return;
+    }
+
+    try {
+      await updateDoc(doc(firestore, 'chats', chatId), {
+        typingUserIds: isTyping ? arrayUnion(user.uid) : arrayRemove(user.uid),
+      });
+    } catch {
+      // Ignore typing state errors to avoid interrupting message UI.
+    }
+  }, [firestore, user]);
+
+  const stopTypingForChat = useCallback(async (chatId: string | null) => {
+    if (!chatId || !isTypingRef.current || typingChatIdRef.current !== chatId) {
+      return;
+    }
+
+    isTypingRef.current = false;
+    typingChatIdRef.current = null;
+    await setTypingStateForChat(chatId, false);
+  }, [setTypingStateForChat]);
 
   const updateBottomState = useCallback(() => {
     const container = messagesContainerRef.current;
@@ -488,6 +568,7 @@ export default function MessagesPage() {
               participantIds: data.participantIds || [],
               lastMessageText: data.lastMessageText || '',
               updatedAt: toIsoDate(data.updatedAt),
+              typingUserIds: data.typingUserIds || [],
               title: data.title || '',
               isGroup: Boolean(data.isGroup),
             };
@@ -702,6 +783,53 @@ export default function MessagesPage() {
       }
     });
   }, [selectedChatId, messages, user, scrollToBottom]);
+
+  useEffect(() => {
+    const previousChatId = typingChatIdRef.current;
+    if (previousChatId && previousChatId !== selectedChatId) {
+      void stopTypingForChat(previousChatId);
+    }
+
+    if (!firestore || !user || !selectedChatId) {
+      return;
+    }
+
+    const hasText = newMessage.trim().length > 0;
+
+    if (!hasText) {
+      if (typingStopTimeoutRef.current) {
+        clearTimeout(typingStopTimeoutRef.current);
+        typingStopTimeoutRef.current = null;
+      }
+      void stopTypingForChat(selectedChatId);
+      return;
+    }
+
+    if (!isTypingRef.current || typingChatIdRef.current !== selectedChatId) {
+      isTypingRef.current = true;
+      typingChatIdRef.current = selectedChatId;
+      void setTypingStateForChat(selectedChatId, true);
+    }
+
+    if (typingStopTimeoutRef.current) {
+      clearTimeout(typingStopTimeoutRef.current);
+    }
+
+    typingStopTimeoutRef.current = setTimeout(() => {
+      void stopTypingForChat(selectedChatId);
+    }, 2500);
+  }, [firestore, newMessage, selectedChatId, setTypingStateForChat, stopTypingForChat, user]);
+
+  useEffect(() => {
+    return () => {
+      if (typingStopTimeoutRef.current) {
+        clearTimeout(typingStopTimeoutRef.current);
+      }
+      if (typingChatIdRef.current) {
+        void stopTypingForChat(typingChatIdRef.current);
+      }
+    };
+  }, [stopTypingForChat]);
 
   useEffect(() => {
     if (!selectedChatId) {
@@ -1012,6 +1140,7 @@ export default function MessagesPage() {
         title: groupTitle.trim(),
         updatedAt: serverTimestamp(),
         lastMessageText: '',
+        typingUserIds: [],
       });
 
       setSelectedChatId(chatRef.id);
@@ -1059,6 +1188,7 @@ export default function MessagesPage() {
         title: '',
         updatedAt: serverTimestamp(),
         lastMessageText: '',
+        typingUserIds: [],
       });
     }
 
@@ -1127,6 +1257,8 @@ export default function MessagesPage() {
       updatedAt: serverTimestamp(),
     });
 
+    await stopTypingForChat(targetChatId);
+
     setSelectedForwardMessageIds([]);
     setForwardComment('');
     setForwardPickerOpen(false);
@@ -1172,6 +1304,8 @@ export default function MessagesPage() {
         updatedAt: serverTimestamp(),
       });
 
+      await stopTypingForChat(targetChatId);
+
       setNewMessage('');
       setSelectedImages([]);
       requestAnimationFrame(() => {
@@ -1204,6 +1338,15 @@ export default function MessagesPage() {
       likedBy: isLiked ? arrayRemove(user.uid) : arrayUnion(user.uid),
     });
   };
+
+  const typingUserIdsExceptMe = selectedChat?.typingUserIds.filter((typingUserId) => typingUserId !== user?.uid) || [];
+  const isPartnerTyping = Boolean(!isSelectedChatGroup && typingUserIdsExceptMe.length > 0);
+  const typingParticipants = typingUserIdsExceptMe
+    .map((typingUserId) => profilesById[typingUserId]?.nickname)
+    .filter((nickname): nickname is string => Boolean(nickname));
+  const groupTypingLabel = typingParticipants.length > 1
+    ? `${typingParticipants[0]} и еще ${typingParticipants.length - 1} печатают…`
+    : `${typingParticipants[0] || 'Кто-то'} печатает…`;
 
   return (
     <div className="mx-auto relative flex h-full max-w-5xl">
@@ -1361,11 +1504,29 @@ export default function MessagesPage() {
                   ) : (
                     <p className="font-semibold">{selectedChatTitle}</p>
                   )}
-                  {!isSelectedChatGroup && <p className="text-xs text-muted-foreground">Личные сообщения</p>}
+                  {!isSelectedChatGroup && (
+                    isPartnerTyping ? (
+                      <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <TypingKeyboardIcon />
+                        <span>печатает…</span>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Личные сообщения</p>
+                    )
+                  )}
                   {isSelectedChatGroup && (
-                    <button type="button" className="mt-1 block text-xs text-muted-foreground hover:underline" onClick={() => setParticipantsOpen(true)}>
-                      Участники: {selectedChat?.participantIds.length || 0}
-                    </button>
+                    <>
+                      {typingUserIdsExceptMe.length > 0 ? (
+                        <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <TypingKeyboardIcon />
+                          <span>{groupTypingLabel}</span>
+                        </div>
+                      ) : (
+                        <button type="button" className="mt-1 block text-xs text-muted-foreground hover:underline" onClick={() => setParticipantsOpen(true)}>
+                          Участники: {selectedChat?.participantIds.length || 0}
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
