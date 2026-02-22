@@ -512,17 +512,29 @@ export default function MessagesPage() {
     };
   }, []);
 
+  const setTypingStateForChat = useCallback(async (chatId: string, isTyping: boolean) => {
+    if (!firestore || !user) {
+      return;
+    }
+
+    try {
+      await updateDoc(doc(firestore, 'chats', chatId), {
+        typingUserIds: isTyping ? arrayUnion(user.uid) : arrayRemove(user.uid),
+      });
+    } catch {
+      // Ignore typing state errors to avoid interrupting message UI.
+    }
+  }, [firestore, user]);
+
   const stopTypingForChat = useCallback(async (chatId: string | null) => {
-    if (!chatId || !firestore || !user || !isTypingRef.current || typingChatIdRef.current !== chatId) {
+    if (!chatId || !isTypingRef.current || typingChatIdRef.current !== chatId) {
       return;
     }
 
     isTypingRef.current = false;
     typingChatIdRef.current = null;
-    await updateDoc(doc(firestore, 'chats', chatId), {
-      typingUserIds: arrayRemove(user.uid),
-    });
-  }, [firestore, user]);
+    await setTypingStateForChat(chatId, false);
+  }, [setTypingStateForChat]);
 
   const updateBottomState = useCallback(() => {
     const container = messagesContainerRef.current;
@@ -815,9 +827,7 @@ export default function MessagesPage() {
     if (!isTypingRef.current || typingChatIdRef.current !== selectedChatId) {
       isTypingRef.current = true;
       typingChatIdRef.current = selectedChatId;
-      void updateDoc(doc(firestore, 'chats', selectedChatId), {
-        typingUserIds: arrayUnion(user.uid),
-      });
+      void setTypingStateForChat(selectedChatId, true);
     }
 
     if (typingStopTimeoutRef.current) {
@@ -826,8 +836,8 @@ export default function MessagesPage() {
 
     typingStopTimeoutRef.current = setTimeout(() => {
       void stopTypingForChat(selectedChatId);
-    }, 1500);
-  }, [firestore, newMessage, selectedChatId, stopTypingForChat, user]);
+    }, 2500);
+  }, [firestore, newMessage, selectedChatId, setTypingStateForChat, stopTypingForChat, user]);
 
   useEffect(() => {
     return () => {
@@ -1149,6 +1159,7 @@ export default function MessagesPage() {
         title: groupTitle.trim(),
         updatedAt: serverTimestamp(),
         lastMessageText: '',
+        typingUserIds: [],
       });
 
       setSelectedChatId(chatRef.id);
@@ -1196,6 +1207,7 @@ export default function MessagesPage() {
         title: '',
         updatedAt: serverTimestamp(),
         lastMessageText: '',
+        typingUserIds: [],
       });
     }
 
@@ -1263,6 +1275,8 @@ export default function MessagesPage() {
       lastMessageSenderId: user.uid,
       updatedAt: serverTimestamp(),
     });
+
+    await stopTypingForChat(targetChatId);
 
     setSelectedForwardMessageIds([]);
     setForwardComment('');
