@@ -192,71 +192,52 @@ function DoubleCheckIcon() {
 
 function TypingKeyboardIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 54.99 30.01" className="h-4 w-auto" aria-hidden="true">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 773.97 777.05"
+      className="h-4 w-auto"
+      style={{ overflow: 'visible' }}
+      aria-hidden="true"
+    >
       <defs>
         <style>
           {`
-            .typing-keyboard-wrapper {
+            .typing-logo-fill {
+              fill: #577f59;
+            }
+
+            .typing-roller {
               transform-origin: center;
               transform-box: fill-box;
-              animation: typeBounce 1.5s infinite linear;
+              animation: rollOneTurn 2.5s linear infinite;
             }
 
-            .typing-outer-body,
-            .typing-inner-body { fill: #FAFAFA; }
-
-            .typing-k {
-              fill: rgba(87, 127, 89, 0);
-              animation: keyPress 1.5s infinite;
-            }
-
-            .typing-k1 { animation-delay: 0s; }
-            .typing-k2 { animation-delay: 0.25s; }
-            .typing-k3 { animation-delay: 0.5s; }
-            .typing-k4 { animation-delay: 0.75s; }
-            .typing-k5 { animation-delay: 1.0s; }
-            .typing-k-enter { animation-delay: 1.25s; }
-
-            @keyframes keyPress {
-              0%, 100% { fill: rgba(87, 127, 89, 0); }
-              4%, 10% { fill: #577F59; }
-              20% { fill: rgba(87, 127, 89, 0); }
-            }
-
-            @keyframes typeBounce {
-              0% { transform: translateY(0.4px) rotate(-0.15deg); }
-              8% { transform: translateY(0) rotate(0deg); }
-              16.6% { transform: translateY(0.4px) rotate(0deg); }
-              24.6% { transform: translateY(0) rotate(0deg); }
-              33.3% { transform: translateY(0.4px) rotate(0.1deg); }
-              41.3% { transform: translateY(0) rotate(0deg); }
-              50% { transform: translateY(0.4px) rotate(0.15deg); }
-              58% { transform: translateY(0) rotate(0deg); }
-              66.6% { transform: translateY(0.4px) rotate(0deg); }
-              74.6% { transform: translateY(0) rotate(0deg); }
-              83.3% { transform: translateY(0.6px) rotate(0.25deg); }
-              91.3% { transform: translateY(0) rotate(0deg); }
-              100% { transform: translateY(0.4px) rotate(-0.15deg); }
+            @keyframes rollOneTurn {
+              0% {
+                transform: translateX(-1000px) rotate(0deg);
+              }
+              100% {
+                transform: translateX(1434px) rotate(360deg);
+              }
             }
           `}
         </style>
       </defs>
-      <g className="typing-keyboard-wrapper">
-        <path className="typing-outer-body" d="M2.74,0C1.23,0,0,1.23,0,2.74v24.52c0,1.51,1.23,2.74,2.74,2.74h49.5c1.51,0,2.74-1.23,2.74-2.74V2.74c0-1.51-1.23-2.74-2.74-2.74M53.08,27.26c0,.46-.38.84-.84.84H2.74c-.46,0-.84-.38-.84-.84V2.74c0-.46.38-.84.84-.84h49.5c.46,0,.84.38.84.84v24.52Z" />
-        <rect className="typing-k typing-k1" x="8.47" y="10.01" width="6.89" height="4.54" />
-        <rect className="typing-k typing-k2" x="20.15" y="15.45" width="6.89" height="4.54" />
-        <rect className="typing-k typing-k3" x="31.84" y="10.01" width="6.89" height="4.54" />
-        <rect className="typing-k typing-k4" x="35.73" y="4.57" width="6.89" height="4.53" />
-        <rect className="typing-k typing-k5" x="24.05" y="20.90" width="6.89" height="4.53" />
-        <g className="typing-k typing-k-enter">
-          <rect x="44.5" y="10.0" width="6.0" height="6.0" />
-          <rect x="43.5" y="15.5" width="7.0" height="4.5" />
-        </g>
-        <path className="typing-inner-body" d="M50.87,3.17H4.12c-.53,0-.95.43-.95.95v21.76c0,.53.43.95.95.95h46.74c.53,0,.95-.43.95-.95V4.12c0-.53-.43-.95-.95-.95ZM36.23,5.07h5.89v3.53h-5.89v-3.53ZM12.86,15.95h5.89v3.54h-5.89v-3.54ZM8.97,14.05v-3.54h5.89v3.54h-5.89ZM16.76,14.05v-3.54h5.89v3.54h-5.89ZM20.65,15.95h5.89v3.54h-5.89v-3.54ZM24.55,14.05v-3.54h5.89v3.54h-5.89ZM28.44,15.95h5.89v3.54h-5.89v-3.54ZM32.34,14.05v-3.54h5.89v3.54h-5.89ZM36.23,15.95h5.89v3.54h-5.89v-3.54ZM40.13,14.05v-3.54h4.13v3.54h-4.13ZM28.44,5.07h5.89v3.53h-5.89v-3.53ZM20.65,5.07h5.89v3.53h-5.89v-3.53ZM12.86,5.07h5.89v3.53h-5.89v-3.53ZM5.07,5.07h5.89v3.53h-5.89v-3.53ZM5.07,10.51h1.99v3.54h-1.99v-3.54ZM5.07,15.95h5.89v3.54h-5.89v-3.54ZM7.07,24.93h-1.99v-3.53h1.99v3.53ZM14.86,24.93h-5.89v-3.53h5.89v3.53h0ZM22.65,24.93h-5.89v-3.53h5.89v3.53ZM30.44,24.93h-5.89v-3.53h5.89v3.53ZM38.23,24.93h-5.89v-3.53h5.89v3.53ZM46.02,24.93h-5.89v-3.53h5.89v3.53ZM49.91,24.93h-1.99v-3.53h1.99v3.53ZM49.91,19.5h-5.89v-3.54h1.19c.53,0,.95-.43.95-.95v-4.49h3.75v8.99h0ZM49.91,8.61h-5.89v-3.53h5.89v3.53Z" />
+
+      <g className="typing-roller">
+        <path
+          className="typing-logo-fill"
+          d="M374.38.24c20.4-.7,40.82.16,61.09,2.58,81.32,9.6,157.39,45.1,216.98,101.27,18.48,17.54,33.16,35.07,48.76,54.91-5.77,4.85-12.09,11.53-17.49,16.97l-23.23,23.19-86.52,86.56-243.55,243.99c-28.45,28.45-57,58.17-85.75,86.19,9.2,6.53,20.07,11.97,30.26,16.79,101.25,47.93,221.42,26.77,300.25-52.73,41.56-41.36,68.32-95.28,76.11-153.4,2.08-16.01,2.28-29.64,2.22-45.6,13.17-.75,32.33-.17,45.99-.16l74.28-.24c3.24,103.67-33.68,198.21-103.68,274.2-70.04,74.93-167.05,118.86-269.58,122.07-27.57.93-55.16-1.01-82.33-5.79-82.64-14.68-158.36-55.59-215.95-116.67-11.27-11.93-22.11-24.26-31.52-37.75l124.89-124.72,191.9-192.12,86.96-87.06c17.19-17.22,35.07-35.7,52.58-52.46-28.24-20.09-70.96-34.9-105.15-38.82C255.99,102.38,119.1,231.65,120.43,395.96l-120.43.03c.57-7.1.32-16.66.62-24.15.58-11.79,1.7-23.54,3.34-35.23,10.44-79.29,45.25-153.38,99.62-212.02C173.56,48.55,271.11,3.76,374.38.24Z"
+        />
+        <path
+          className="typing-logo-fill"
+          d="M377.76,18.24c17.19-.54,34.39.13,51.49,1.99,77.16,8.53,149.62,41.31,206.98,93.62,14.52,13.54,27.99,28.16,40.31,43.73-20.93,21.51-43.1,43.05-64.4,64.33l-120.26,120.41-275.58,275.87c50.8,37.26,104.83,56.9,168.29,57.77,75.32,1.03,147.93-28.05,201.72-80.79,53.01-51.7,83.58-122.16,85.11-196.19h83.83c-1.18,88.51-34.79,173.5-94.46,238.87-53.12,58.68-123.71,98.73-201.33,114.21-20.84,4.11-38.47,5.83-59.48,6.87-16.13.4-32.27-.13-48.33-1.58-84.17-8.08-163.13-44.38-224.08-102.99-11.8-11.36-21.88-22.91-32.26-35.52,12.01-13.36,28.09-28.76,40.94-41.72l89.04-89.02,211.09-211.44,65.93-66.06c17.45-17.35,35.83-35.06,52.88-52.71-8.34-7.08-22.1-15.99-31.64-21.37-37.73-21.45-80.1-33.44-123.47-34.95-77.04-2.86-151.98,25.46-207.88,78.57-53.44,50.22-87.52,123.99-89.84,197.38l-83.39-.04c3.75-91.32,36.39-174.44,99.06-241.65C185.38,63.47,278.93,21.11,377.76,18.24Z"
+        />
       </g>
     </svg>
   );
 }
+
 
 export default function MessagesPage() {
   const { user } = useAuth();
