@@ -1358,13 +1358,14 @@ export default function MessagesPage() {
     });
   };
 
-  const isPartnerTyping = Boolean(
-    user &&
-      selectedChat &&
-      selectedPartnerId &&
-      !isSelectedChatGroup &&
-      selectedChat.typingUserIds.includes(selectedPartnerId)
-  );
+  const typingUserIdsExceptMe = selectedChat?.typingUserIds.filter((typingUserId) => typingUserId !== user?.uid) || [];
+  const isPartnerTyping = Boolean(!isSelectedChatGroup && typingUserIdsExceptMe.length > 0);
+  const typingParticipants = typingUserIdsExceptMe
+    .map((typingUserId) => profilesById[typingUserId]?.nickname)
+    .filter((nickname): nickname is string => Boolean(nickname));
+  const groupTypingLabel = typingParticipants.length > 1
+    ? `${typingParticipants[0]} и еще ${typingParticipants.length - 1} печатают…`
+    : `${typingParticipants[0] || 'Кто-то'} печатает…`;
 
   return (
     <div className="mx-auto relative flex h-full max-w-5xl">
@@ -1524,18 +1525,27 @@ export default function MessagesPage() {
                   )}
                   {!isSelectedChatGroup && (
                     isPartnerTyping ? (
-                      <div className="mt-1 flex items-center gap-1.5 rounded-full bg-[#577F59] px-2 py-0.5 text-xs text-white w-fit">
+                      <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                         <TypingKeyboardIcon />
-                        <span>{selectedPartnerProfile?.nickname || 'Собеседник'} печатает…</span>
+                        <span>печатает…</span>
                       </div>
                     ) : (
                       <p className="text-xs text-muted-foreground">Личные сообщения</p>
                     )
                   )}
                   {isSelectedChatGroup && (
-                    <button type="button" className="mt-1 block text-xs text-muted-foreground hover:underline" onClick={() => setParticipantsOpen(true)}>
-                      Участники: {selectedChat?.participantIds.length || 0}
-                    </button>
+                    <>
+                      {typingUserIdsExceptMe.length > 0 ? (
+                        <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <TypingKeyboardIcon />
+                          <span>{groupTypingLabel}</span>
+                        </div>
+                      ) : (
+                        <button type="button" className="mt-1 block text-xs text-muted-foreground hover:underline" onClick={() => setParticipantsOpen(true)}>
+                          Участники: {selectedChat?.participantIds.length || 0}
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
