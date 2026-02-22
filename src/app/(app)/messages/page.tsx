@@ -41,6 +41,7 @@ type ChatItem = {
   participantIds: string[];
   lastMessageText: string;
   updatedAt: string;
+  typingUserIds: string[];
   title?: string;
   isGroup?: boolean;
 };
@@ -189,6 +190,74 @@ function DoubleCheckIcon() {
   );
 }
 
+function TypingKeyboardIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 54.99 30.01" className="h-4 w-auto" aria-hidden="true">
+      <defs>
+        <style>
+          {`
+            .typing-keyboard-wrapper {
+              transform-origin: center;
+              transform-box: fill-box;
+              animation: typeBounce 1.5s infinite linear;
+            }
+
+            .typing-outer-body,
+            .typing-inner-body { fill: #FAFAFA; }
+
+            .typing-k {
+              fill: rgba(87, 127, 89, 0);
+              animation: keyPress 1.5s infinite;
+            }
+
+            .typing-k1 { animation-delay: 0s; }
+            .typing-k2 { animation-delay: 0.25s; }
+            .typing-k3 { animation-delay: 0.5s; }
+            .typing-k4 { animation-delay: 0.75s; }
+            .typing-k5 { animation-delay: 1.0s; }
+            .typing-k-enter { animation-delay: 1.25s; }
+
+            @keyframes keyPress {
+              0%, 100% { fill: rgba(87, 127, 89, 0); }
+              4%, 10% { fill: #577F59; }
+              20% { fill: rgba(87, 127, 89, 0); }
+            }
+
+            @keyframes typeBounce {
+              0% { transform: translateY(0.4px) rotate(-0.15deg); }
+              8% { transform: translateY(0) rotate(0deg); }
+              16.6% { transform: translateY(0.4px) rotate(0deg); }
+              24.6% { transform: translateY(0) rotate(0deg); }
+              33.3% { transform: translateY(0.4px) rotate(0.1deg); }
+              41.3% { transform: translateY(0) rotate(0deg); }
+              50% { transform: translateY(0.4px) rotate(0.15deg); }
+              58% { transform: translateY(0) rotate(0deg); }
+              66.6% { transform: translateY(0.4px) rotate(0deg); }
+              74.6% { transform: translateY(0) rotate(0deg); }
+              83.3% { transform: translateY(0.6px) rotate(0.25deg); }
+              91.3% { transform: translateY(0) rotate(0deg); }
+              100% { transform: translateY(0.4px) rotate(-0.15deg); }
+            }
+          `}
+        </style>
+      </defs>
+      <g className="typing-keyboard-wrapper">
+        <path className="typing-outer-body" d="M2.74,0C1.23,0,0,1.23,0,2.74v24.52c0,1.51,1.23,2.74,2.74,2.74h49.5c1.51,0,2.74-1.23,2.74-2.74V2.74c0-1.51-1.23-2.74-2.74-2.74M53.08,27.26c0,.46-.38.84-.84.84H2.74c-.46,0-.84-.38-.84-.84V2.74c0-.46.38-.84.84-.84h49.5c.46,0,.84.38.84.84v24.52Z" />
+        <rect className="typing-k typing-k1" x="8.47" y="10.01" width="6.89" height="4.54" />
+        <rect className="typing-k typing-k2" x="20.15" y="15.45" width="6.89" height="4.54" />
+        <rect className="typing-k typing-k3" x="31.84" y="10.01" width="6.89" height="4.54" />
+        <rect className="typing-k typing-k4" x="35.73" y="4.57" width="6.89" height="4.53" />
+        <rect className="typing-k typing-k5" x="24.05" y="20.90" width="6.89" height="4.53" />
+        <g className="typing-k typing-k-enter">
+          <rect x="44.5" y="10.0" width="6.0" height="6.0" />
+          <rect x="43.5" y="15.5" width="7.0" height="4.5" />
+        </g>
+        <path className="typing-inner-body" d="M50.87,3.17H4.12c-.53,0-.95.43-.95.95v21.76c0,.53.43.95.95.95h46.74c.53,0,.95-.43.95-.95V4.12c0-.53-.43-.95-.95-.95ZM36.23,5.07h5.89v3.53h-5.89v-3.53ZM12.86,15.95h5.89v3.54h-5.89v-3.54ZM8.97,14.05v-3.54h5.89v3.54h-5.89ZM16.76,14.05v-3.54h5.89v3.54h-5.89ZM20.65,15.95h5.89v3.54h-5.89v-3.54ZM24.55,14.05v-3.54h5.89v3.54h-5.89ZM28.44,15.95h5.89v3.54h-5.89v-3.54ZM32.34,14.05v-3.54h5.89v3.54h-5.89ZM36.23,15.95h5.89v3.54h-5.89v-3.54ZM40.13,14.05v-3.54h4.13v3.54h-4.13ZM28.44,5.07h5.89v3.53h-5.89v-3.53ZM20.65,5.07h5.89v3.53h-5.89v-3.53ZM12.86,5.07h5.89v3.53h-5.89v-3.53ZM5.07,5.07h5.89v3.53h-5.89v-3.53ZM5.07,10.51h1.99v3.54h-1.99v-3.54ZM5.07,15.95h5.89v3.54h-5.89v-3.54ZM7.07,24.93h-1.99v-3.53h1.99v3.53ZM14.86,24.93h-5.89v-3.53h5.89v3.53h0ZM22.65,24.93h-5.89v-3.53h5.89v3.53ZM30.44,24.93h-5.89v-3.53h5.89v3.53ZM38.23,24.93h-5.89v-3.53h5.89v3.53ZM46.02,24.93h-5.89v-3.53h5.89v3.53ZM49.91,24.93h-1.99v-3.53h1.99v3.53ZM49.91,19.5h-5.89v-3.54h1.19c.53,0,.95-.43.95-.95v-4.49h3.75v8.99h0ZM49.91,8.61h-5.89v-3.53h5.89v3.53Z" />
+      </g>
+    </svg>
+  );
+}
+
 export default function MessagesPage() {
   const { user } = useAuth();
   const firestore = useFirestore();
@@ -249,6 +318,9 @@ export default function MessagesPage() {
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastChatAndMessagesRef = useRef<{ chatId: string; messageIds: string[] } | null>(null);
   const initialScrollDoneForChatRef = useRef<string | null>(null);
+  const typingStopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingChatIdRef = useRef<string | null>(null);
+  const isTypingRef = useRef(false);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
 
   const LINE_HEIGHT_PX = 20;
@@ -431,11 +503,38 @@ export default function MessagesPage() {
 
   useEffect(() => {
     return () => {
+      if (typingStopTimeoutRef.current) {
+        clearTimeout(typingStopTimeoutRef.current);
+      }
       if (highlightTimeoutRef.current) {
         clearTimeout(highlightTimeoutRef.current);
       }
     };
   }, []);
+
+  const setTypingStateForChat = useCallback(async (chatId: string, isTyping: boolean) => {
+    if (!firestore || !user) {
+      return;
+    }
+
+    try {
+      await updateDoc(doc(firestore, 'chats', chatId), {
+        typingUserIds: isTyping ? arrayUnion(user.uid) : arrayRemove(user.uid),
+      });
+    } catch {
+      // Ignore typing state errors to avoid interrupting message UI.
+    }
+  }, [firestore, user]);
+
+  const stopTypingForChat = useCallback(async (chatId: string | null) => {
+    if (!chatId || !isTypingRef.current || typingChatIdRef.current !== chatId) {
+      return;
+    }
+
+    isTypingRef.current = false;
+    typingChatIdRef.current = null;
+    await setTypingStateForChat(chatId, false);
+  }, [setTypingStateForChat]);
 
   const updateBottomState = useCallback(() => {
     const container = messagesContainerRef.current;
@@ -488,6 +587,7 @@ export default function MessagesPage() {
               participantIds: data.participantIds || [],
               lastMessageText: data.lastMessageText || '',
               updatedAt: toIsoDate(data.updatedAt),
+              typingUserIds: data.typingUserIds || [],
               title: data.title || '',
               isGroup: Boolean(data.isGroup),
             };
@@ -702,6 +802,53 @@ export default function MessagesPage() {
       }
     });
   }, [selectedChatId, messages, user, scrollToBottom]);
+
+  useEffect(() => {
+    const previousChatId = typingChatIdRef.current;
+    if (previousChatId && previousChatId !== selectedChatId) {
+      void stopTypingForChat(previousChatId);
+    }
+
+    if (!firestore || !user || !selectedChatId) {
+      return;
+    }
+
+    const hasText = newMessage.trim().length > 0;
+
+    if (!hasText) {
+      if (typingStopTimeoutRef.current) {
+        clearTimeout(typingStopTimeoutRef.current);
+        typingStopTimeoutRef.current = null;
+      }
+      void stopTypingForChat(selectedChatId);
+      return;
+    }
+
+    if (!isTypingRef.current || typingChatIdRef.current !== selectedChatId) {
+      isTypingRef.current = true;
+      typingChatIdRef.current = selectedChatId;
+      void setTypingStateForChat(selectedChatId, true);
+    }
+
+    if (typingStopTimeoutRef.current) {
+      clearTimeout(typingStopTimeoutRef.current);
+    }
+
+    typingStopTimeoutRef.current = setTimeout(() => {
+      void stopTypingForChat(selectedChatId);
+    }, 2500);
+  }, [firestore, newMessage, selectedChatId, setTypingStateForChat, stopTypingForChat, user]);
+
+  useEffect(() => {
+    return () => {
+      if (typingStopTimeoutRef.current) {
+        clearTimeout(typingStopTimeoutRef.current);
+      }
+      if (typingChatIdRef.current) {
+        void stopTypingForChat(typingChatIdRef.current);
+      }
+    };
+  }, [stopTypingForChat]);
 
   useEffect(() => {
     if (!selectedChatId) {
@@ -1012,6 +1159,7 @@ export default function MessagesPage() {
         title: groupTitle.trim(),
         updatedAt: serverTimestamp(),
         lastMessageText: '',
+        typingUserIds: [],
       });
 
       setSelectedChatId(chatRef.id);
@@ -1059,6 +1207,7 @@ export default function MessagesPage() {
         title: '',
         updatedAt: serverTimestamp(),
         lastMessageText: '',
+        typingUserIds: [],
       });
     }
 
@@ -1127,6 +1276,8 @@ export default function MessagesPage() {
       updatedAt: serverTimestamp(),
     });
 
+    await stopTypingForChat(targetChatId);
+
     setSelectedForwardMessageIds([]);
     setForwardComment('');
     setForwardPickerOpen(false);
@@ -1172,6 +1323,8 @@ export default function MessagesPage() {
         updatedAt: serverTimestamp(),
       });
 
+      await stopTypingForChat(targetChatId);
+
       setNewMessage('');
       setSelectedImages([]);
       requestAnimationFrame(() => {
@@ -1204,6 +1357,14 @@ export default function MessagesPage() {
       likedBy: isLiked ? arrayRemove(user.uid) : arrayUnion(user.uid),
     });
   };
+
+  const isPartnerTyping = Boolean(
+    user &&
+      selectedChat &&
+      selectedPartnerId &&
+      !isSelectedChatGroup &&
+      selectedChat.typingUserIds.includes(selectedPartnerId)
+  );
 
   return (
     <div className="mx-auto relative flex h-full max-w-5xl">
@@ -1361,7 +1522,16 @@ export default function MessagesPage() {
                   ) : (
                     <p className="font-semibold">{selectedChatTitle}</p>
                   )}
-                  {!isSelectedChatGroup && <p className="text-xs text-muted-foreground">Личные сообщения</p>}
+                  {!isSelectedChatGroup && (
+                    isPartnerTyping ? (
+                      <div className="mt-1 flex items-center gap-1.5 rounded-full bg-[#577F59] px-2 py-0.5 text-xs text-white w-fit">
+                        <TypingKeyboardIcon />
+                        <span>{selectedPartnerProfile?.nickname || 'Собеседник'} печатает…</span>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Личные сообщения</p>
+                    )
+                  )}
                   {isSelectedChatGroup && (
                     <button type="button" className="mt-1 block text-xs text-muted-foreground hover:underline" onClick={() => setParticipantsOpen(true)}>
                       Участники: {selectedChat?.participantIds.length || 0}
