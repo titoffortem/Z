@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Search, MessageSquare, LogOut } from 'lucide-react';
+import { Home, Search, MessageSquare, Megaphone, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/components/auth-provider';
@@ -16,6 +16,7 @@ const navItems = [
   { href: '/feed', icon: Home, label: 'Лента' },
   { href: '/search', icon: Search, label: 'Поиск' },
   { href: '/messages', icon: MessageSquare, label: 'Сообщения' },
+  { href: '/channels', icon: Megaphone, label: 'Каналы' },
 ];
 
 export function MainNav() {

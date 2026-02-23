@@ -31,6 +31,25 @@ service cloud.firestore {
         && request.writeFields.hasOnly(['likedBy']);
     }
     
+
+    // Каналы и посты каналов
+    match /channels/{channelId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.creatorId == request.auth.uid;
+      allow update: if request.auth != null && (
+        resource.data.creatorId == request.auth.uid ||
+        request.writeFields.hasOnly(['subscriberIds', 'updatedAt'])
+      );
+
+      match /posts/{postId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null &&
+          get(/databases/$(database)/documents/channels/$(channelId)).data.creatorId == request.auth.uid &&
+          request.resource.data.authorId == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
+
     // Если у тебя есть чаты (коллекция chats)
     match /chats/{chatId}/{allChildren=**} {
       allow read, write: if request.auth != null;
