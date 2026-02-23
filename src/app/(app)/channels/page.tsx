@@ -572,69 +572,71 @@ export default function ChannelsPage() {
           )}
         </div>
 
-        <footer className="border-t border-border/50 bg-background p-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}>
-          {canPost && selectedImagePreviews.length > 0 && (
-            <div className="mx-1 mb-2 flex flex-wrap gap-2">
-              {selectedImagePreviews.map((preview, index) => (
-                <div key={preview.key} className="relative h-16 w-16 overflow-hidden rounded-md border border-border/60">
-                  <img src={preview.url} alt="preview" className="h-full w-full object-cover" />
-                  <button
-                    type="button"
-                    className="absolute right-0 top-0 rounded-bl bg-black/55 p-0.5 text-white"
-                    onClick={() => setSelectedImages((prev) => prev.filter((_, i) => i !== index))}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+        {canPost && (
+          <footer className="border-t border-border/50 bg-background p-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}>
+            {selectedImagePreviews.length > 0 && (
+              <div className="mx-1 mb-2 flex flex-wrap gap-2">
+                {selectedImagePreviews.map((preview, index) => (
+                  <div key={preview.key} className="relative h-16 w-16 overflow-hidden rounded-md border border-border/60">
+                    <img src={preview.url} alt="preview" className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      className="absolute right-0 top-0 rounded-bl bg-black/55 p-0.5 text-white"
+                      onClick={() => setSelectedImages((prev) => prev.filter((_, i) => i !== index))}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
-          <div className="rounded-2xl bg-muted/50 p-2">
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={(event) => {
-                const files = Array.from(event.target.files || []);
-                if (files.length > 0) {
-                  setSelectedImages((prev) => [...prev, ...files]);
-                }
-                event.currentTarget.value = '';
-              }}
-            />
-
-            <div className="flex gap-2">
-              <Textarea
-                value={postText}
-                onChange={(event) => setPostText(event.target.value)}
-                placeholder={composePlaceholder}
-                className="min-h-[44px] max-h-28 flex-1 resize-none border-none bg-transparent px-2 py-1.5 shadow-none focus-visible:ring-0"
-                disabled={!selectedChannelId || sendingPost || !canPost}
+            <div className="rounded-2xl bg-muted/50 p-2">
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(event) => {
+                  const files = Array.from(event.target.files || []);
+                  if (files.length > 0) {
+                    setSelectedImages((prev) => [...prev, ...files]);
+                  }
+                  event.currentTarget.value = '';
+                }}
               />
 
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 self-center rounded-full"
-                onClick={() => imageInputRef.current?.click()}
-                disabled={!selectedChannelId || sendingPost || !canPost}
-              >
-                <Paperclip className="h-4 w-4" />
-              </Button>
+              <div className="flex gap-2">
+                <Textarea
+                  value={postText}
+                  onChange={(event) => setPostText(event.target.value)}
+                  placeholder="Написать пост…"
+                  className="min-h-[44px] max-h-28 flex-1 resize-none border-none bg-transparent px-2 py-1.5 shadow-none focus-visible:ring-0"
+                  disabled={!selectedChannelId || sendingPost}
+                />
 
-              <Button
-                type="button"
-                size="icon"
-                className="h-9 w-9 self-center rounded-full"
-                onClick={() => void sendPost()}
-                disabled={!selectedChannelId || !canPost || sendingPost || (!postText.trim() && selectedImages.length === 0)}
-              >
-                {sendingPost ? <Loader2 className="h-4 w-4 animate-spin" /> : '➤'}
-              </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 self-center rounded-full"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={!selectedChannelId || sendingPost}
+                >
+                  <Paperclip className="h-4 w-4" />
+                </Button>
+
+                <Button
+                  type="button"
+                  size="icon"
+                  className="h-9 w-9 self-center rounded-full"
+                  onClick={() => void sendPost()}
+                  disabled={!selectedChannelId || sendingPost || (!postText.trim() && selectedImages.length === 0)}
+                >
+                  {sendingPost ? <Loader2 className="h-4 w-4 animate-spin" /> : '➤'}
+                </Button>
+              </div>
             </div>
           </div>
 
