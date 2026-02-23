@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import { useFirestore } from '@/firebase';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { firebaseConfig } from '@/firebase/config';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, Megaphone, Plus, Search } from 'lucide-react';
+import { Loader2, Megaphone, Paperclip, Plus, Search, X } from 'lucide-react';
 import {
   addDoc,
   collection,
@@ -18,7 +19,6 @@ import {
   orderBy,
   query,
   serverTimestamp,
-  setDoc,
   Timestamp,
   updateDoc,
 } from 'firebase/firestore';
@@ -36,6 +36,7 @@ type ChannelPost = {
   id: string;
   authorId: string;
   text: string;
+  imageUrls: string[];
   createdAt: string;
 };
 
@@ -60,6 +61,32 @@ const formatTime = (isoDate: string) => {
   });
 };
 
+async function uploadToImgBB(file: File): Promise<string | null> {
+  const apiKey = firebaseConfig.imgbbKey;
+  if (!apiKey) {
+    return null;
+  }
+
+  const formData = new FormData();
+  formData.append('image', file);
+
+  try {
+    const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return data?.data?.url ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export default function ChannelsPage() {
   const { user, userProfile } = useAuth();
   const firestore = useFirestore();
@@ -80,9 +107,22 @@ export default function ChannelsPage() {
   const [channelSearchResults, setChannelSearchResults] = useState<ChannelItem[]>([]);
   const [postText, setPostText] = useState('');
   const [sendingPost, setSendingPost] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [createChannelError, setCreateChannelError] = useState<string | null>(null);
 
   const postsContainerRef = useRef<HTMLDivElement | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+
+  const selectedImagePreviews = useMemo(
+    () => selectedImages.map((file) => ({ key: `${file.name}-${file.size}-${file.lastModified}`, url: URL.createObjectURL(file) })),
+    [selectedImages]
+  );
+
+  useEffect(() => {
+    return () => {
+      selectedImagePreviews.forEach((preview) => URL.revokeObjectURL(preview.url));
+    };
+  }, [selectedImagePreviews]);
 
   const scrollToBottom = () => {
     const container = postsContainerRef.current;
@@ -148,6 +188,7 @@ export default function ChannelsPage() {
             id: postDoc.id,
             authorId: data.authorId || '',
             text: data.text || '',
+            imageUrls: data.imageUrls || [],
             createdAt: toIsoDate(data.createdAt),
           } as ChannelPost;
         });
@@ -204,7 +245,6 @@ export default function ChannelsPage() {
     });
   }, [channels, firestore, posts]);
 
-
   useEffect(() => {
     const trimmed = channelSearchTerm.trim();
     if (!trimmed || trimmed.length < 2) {
@@ -216,10 +256,7 @@ export default function ChannelsPage() {
     setChannelSearchLoading(true);
     const timeout = setTimeout(() => {
       const normalized = trimmed.toLowerCase();
-      const found = channels
-        .filter((channel) => channel.title.toLowerCase().includes(normalized))
-        .slice(0, 8);
-
+      const found = channels.filter((channel) => channel.title.toLowerCase().includes(normalized)).slice(0, 8);
       setChannelSearchResults(found);
       setChannelSearchLoading(false);
     }, 250);
@@ -252,6 +289,7 @@ export default function ChannelsPage() {
 
     setCreatingChannel(true);
     setCreateChannelError(null);
+
     try {
       const channelRef = await addDoc(collection(firestore, 'channels'), {
         title,
@@ -287,24 +325,34 @@ export default function ChannelsPage() {
 
   const sendPost = async () => {
     const text = postText.trim();
-    if (!firestore || !user || !selectedChannel || !text || selectedChannel.creatorId !== user.uid) {
+    const hasPayload = Boolean(text || selectedImages.length > 0);
+
+    if (!firestore || !user || !selectedChannel || !hasPayload || selectedChannel.creatorId !== user.uid) {
       return;
     }
 
     setSendingPost(true);
     try {
+      let imageUrls: string[] = [];
+      if (selectedImages.length > 0) {
+        const uploaded = await Promise.all(selectedImages.map((file) => uploadToImgBB(file)));
+        imageUrls = uploaded.filter((url): url is string => Boolean(url));
+      }
+
       await addDoc(collection(firestore, 'channels', selectedChannel.id, 'posts'), {
         authorId: user.uid,
         text,
+        imageUrls,
         createdAt: serverTimestamp(),
       });
 
       await updateDoc(doc(firestore, 'channels', selectedChannel.id), {
-        lastPostText: text,
+        lastPostText: text || (imageUrls.length > 0 ? `📷 ${imageUrls.length}` : ''),
         updatedAt: serverTimestamp(),
       });
 
       setPostText('');
+      setSelectedImages([]);
       requestAnimationFrame(scrollToBottom);
     } finally {
       setSendingPost(false);
@@ -366,7 +414,6 @@ export default function ChannelsPage() {
             ))}
           </div>
         )}
-
 
         <div className="h-[calc(100%-124px)] overflow-y-auto p-2">
           {channelsLoading ? (
@@ -440,8 +487,27 @@ export default function ChannelsPage() {
               const author = profilesById[post.authorId];
               return (
                 <div key={post.id} className="max-w-[85%] rounded-2xl bg-[#f3f5f3] px-3 py-2 text-[#223524] shadow-sm">
-                  <p className="text-xs font-semibold text-[#577F59]">{author?.nickname || 'Автор'}</p>
-                  <p className="mt-1 whitespace-pre-wrap break-words text-sm">{post.text}</p>
+                  <div className="mb-1 flex items-center gap-2">
+                    <Avatar className="h-5 w-5">
+                      <AvatarImage src={author?.profilePictureUrl ?? undefined} alt={author?.nickname || 'Автор'} />
+                      <AvatarFallback>{author?.nickname?.[0]?.toUpperCase() || 'А'}</AvatarFallback>
+                    </Avatar>
+                    <p className="text-xs font-semibold text-[#577F59]">{author?.nickname || 'Автор'}</p>
+                  </div>
+                  {post.text && <p className="mt-1 whitespace-pre-wrap break-words text-sm">{post.text}</p>}
+                  {post.imageUrls.length > 0 && (
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      {post.imageUrls.map((url, idx) => (
+                        <img
+                          key={`${post.id}-${idx}`}
+                          src={url}
+                          alt="Картинка поста"
+                          className="max-h-64 w-full rounded-lg object-cover"
+                          loading="lazy"
+                        />
+                      ))}
+                    </div>
+                  )}
                   <p className="mt-1 text-[10px] text-[#6f836f]">{formatTime(post.createdAt)}</p>
                 </div>
               );
@@ -450,6 +516,23 @@ export default function ChannelsPage() {
         </div>
 
         <footer className="border-t border-border/50 bg-background p-4">
+          {selectedImagePreviews.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-2">
+              {selectedImagePreviews.map((preview, index) => (
+                <div key={preview.key} className="relative h-16 w-16 overflow-hidden rounded-md border border-border/60">
+                  <img src={preview.url} alt="preview" className="h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    className="absolute right-0 top-0 rounded-bl bg-black/55 p-0.5 text-white"
+                    onClick={() => setSelectedImages((prev) => prev.filter((_, i) => i !== index))}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="flex gap-2">
             <Textarea
               value={postText}
@@ -458,7 +541,34 @@ export default function ChannelsPage() {
               className="min-h-[44px] max-h-28"
               disabled={!selectedChannelId || !canPost || sendingPost}
             />
-            <Button type="button" onClick={() => void sendPost()} disabled={!canPost || !postText.trim() || sendingPost}>
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(event) => {
+                const files = Array.from(event.target.files || []);
+                if (files.length > 0) {
+                  setSelectedImages((prev) => [...prev, ...files]);
+                }
+                event.currentTarget.value = '';
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => imageInputRef.current?.click()}
+              disabled={!selectedChannelId || !canPost || sendingPost}
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void sendPost()}
+              disabled={!canPost || sendingPost || (!postText.trim() && selectedImages.length === 0)}
+            >
               {sendingPost ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Отправить'}
             </Button>
           </div>
@@ -471,11 +581,7 @@ export default function ChannelsPage() {
           <DialogDescription>Введите название канала. Если канал уже существует, он откроется.</DialogDescription>
           <div className="mt-2 flex gap-2">
             <Input value={channelTitle} onChange={(event) => setChannelTitle(event.target.value)} placeholder="Название канала" />
-            <Button
-              type="button"
-              onClick={() => void createOrOpenChannel(channelTitle)}
-              disabled={!channelTitle.trim() || creatingChannel}
-            >
+            <Button type="button" onClick={() => void createOrOpenChannel(channelTitle)} disabled={!channelTitle.trim() || creatingChannel}>
               {creatingChannel ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Создать'}
             </Button>
           </div>
