@@ -375,6 +375,30 @@ export default function ChannelsPage() {
     };
   }, [activeChannelPost, selectedChannel?.title, selectedChannelId]);
 
+
+  const activeChannelPost = useMemo(() => posts.find((post) => post.id === openedPostId) || null, [openedPostId, posts]);
+
+  const channelDialogPost = useMemo<Post | null>(() => {
+    if (!activeChannelPost || !selectedChannelId) {
+      return null;
+    }
+
+    return {
+      id: `channel_${selectedChannelId}_${activeChannelPost.id}`,
+      sourcePostId: activeChannelPost.id,
+      sourceType: 'channel',
+      sourceChannelId: selectedChannelId,
+      sourceChannelTitle: selectedChannel?.title || 'Канал',
+      userId: activeChannelPost.authorId || selectedChannelId,
+      caption: activeChannelPost.text || '',
+      mediaUrls: activeChannelPost.imageUrls || [],
+      mediaTypes: Array((activeChannelPost.imageUrls || []).length).fill('image'),
+      createdAt: activeChannelPost.createdAt,
+      updatedAt: activeChannelPost.createdAt,
+      likedBy: activeChannelPost.likedBy || [],
+    };
+  }, [activeChannelPost, selectedChannel?.title, selectedChannelId]);
+
   const createOrOpenChannel = async (rawTitle: string) => {
     const title = rawTitle.trim();
     if (!firestore || !user || !title) {
@@ -771,7 +795,7 @@ export default function ChannelsPage() {
 
 
       <Dialog
-        open={Boolean(openedPostAsFeedPost)}
+        open={Boolean(channelDialogPost)}
         onOpenChange={(open) => {
           if (!open) {
             setOpenedPostId(null);
@@ -781,7 +805,7 @@ export default function ChannelsPage() {
         <DialogContent className="max-w-5xl border-0 bg-card p-0">
           <DialogTitle className="sr-only">Пост канала</DialogTitle>
           <DialogDescription className="sr-only">Просмотр поста канала с лайками и комментариями.</DialogDescription>
-          {openedPostAsFeedPost && <PostView post={openedPostAsFeedPost} author={profilesById[openedPostAsFeedPost.userId] || null} />}
+          {channelDialogPost && <PostView post={channelDialogPost} author={profilesById[channelDialogPost.userId] || null} />}
         </DialogContent>
       </Dialog>
       <Dialog open={isCreateChannelOpen} onOpenChange={setCreateChannelOpen}>
