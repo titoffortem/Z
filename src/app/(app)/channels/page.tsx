@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { Loader2, Megaphone, Paperclip, Plus, Search, X } from 'lucide-react';
 import {
   addDoc,
+  arrayRemove,
+  arrayUnion,
   collection,
   doc,
   getDoc,
@@ -28,6 +30,7 @@ type ChannelItem = {
   id: string;
   title: string;
   creatorId: string;
+  subscriberIds: string[];
   updatedAt: string;
   lastPostText: string;
 };
@@ -149,6 +152,7 @@ export default function ChannelsPage() {
             id: channelDoc.id,
             title: data.title || 'Канал',
             creatorId: data.creatorId || '',
+            subscriberIds: data.subscriberIds || [],
             updatedAt: toIsoDate(data.updatedAt),
             lastPostText: data.lastPostText || '',
           } as ChannelItem;
@@ -164,10 +168,15 @@ export default function ChannelsPage() {
   }, [firestore]);
 
   useEffect(() => {
-    if (!selectedChannelId && channels.length > 0) {
-      setSelectedChannelId(channels[0].id);
+    if (!selectedChannelId && subscribedChannels.length > 0) {
+      setSelectedChannelId(subscribedChannels[0].id);
+      return;
     }
-  }, [channels, selectedChannelId]);
+
+    if (selectedChannelId && !subscribedChannels.some((channel) => channel.id === selectedChannelId)) {
+      setSelectedChannelId(subscribedChannels[0]?.id || null);
+    }
+  }, [selectedChannelId, subscribedChannels]);
 
   useEffect(() => {
     if (!firestore || !selectedChannelId) {
@@ -264,10 +273,22 @@ export default function ChannelsPage() {
     return () => clearTimeout(timeout);
   }, [channelSearchTerm, channels]);
 
+  const subscribedChannels = useMemo(
+    () => channels.filter((channel) => Boolean(user && (channel.creatorId === user.uid || channel.subscriberIds.includes(user.uid)))),
+    [channels, user]
+  );
+
   const selectedChannel = useMemo(
     () => channels.find((channel) => channel.id === selectedChannelId) || null,
     [channels, selectedChannelId]
   );
+
+  const isSubscribedToSelectedChannel = Boolean(
+    user && selectedChannel && (selectedChannel.creatorId === user.uid || selectedChannel.subscriberIds.includes(user.uid))
+  );
+  const selectedChannelSubscribersCount = selectedChannel
+    ? new Set([selectedChannel.creatorId, ...(selectedChannel.subscriberIds || [])]).size
+    : 0;
 
   const canPost = Boolean(user && selectedChannel && selectedChannel.creatorId === user.uid);
 
@@ -294,6 +315,7 @@ export default function ChannelsPage() {
       const channelRef = await addDoc(collection(firestore, 'channels'), {
         title,
         creatorId: user.uid,
+        subscriberIds: [user.uid],
         updatedAt: serverTimestamp(),
         lastPostText: '',
       });
@@ -302,6 +324,7 @@ export default function ChannelsPage() {
         id: channelRef.id,
         title,
         creatorId: user.uid,
+        subscriberIds: [user.uid],
         updatedAt: new Date().toISOString(),
         lastPostText: '',
       };
@@ -321,6 +344,23 @@ export default function ChannelsPage() {
     } finally {
       setCreatingChannel(false);
     }
+  };
+
+
+  const toggleSelectedChannelSubscription = async () => {
+    if (!firestore || !user || !selectedChannel) {
+      return;
+    }
+
+    if (selectedChannel.creatorId === user.uid) {
+      return;
+    }
+
+    const channelRef = doc(firestore, 'channels', selectedChannel.id);
+    await updateDoc(channelRef, {
+      subscriberIds: isSubscribedToSelectedChannel ? arrayRemove(user.uid) : arrayUnion(user.uid),
+      updatedAt: serverTimestamp(),
+    });
   };
 
   const sendPost = async () => {
@@ -420,13 +460,13 @@ export default function ChannelsPage() {
             <div className="flex h-40 items-center justify-center text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />
             </div>
-          ) : channels.length === 0 ? (
+          ) : subscribedChannels.length === 0 ? (
             <div className="flex h-56 flex-col items-center justify-center gap-2 p-2 text-center text-muted-foreground">
               <Megaphone className="h-10 w-10 opacity-30" />
               <p>Пока нет каналов</p>
             </div>
           ) : (
-            channels.map((channel) => {
+            subscribedChannels.map((channel) => {
               const creator = profilesById[channel.creatorId];
               return (
                 <button
@@ -464,9 +504,16 @@ export default function ChannelsPage() {
           style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
         >
           {selectedChannel ? (
-            <div>
-              <p className="font-semibold">{selectedChannel.title}</p>
-              <p className="text-xs text-muted-foreground">Писать может только создатель канала</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-semibold">{selectedChannel.title}</p>
+                <p className="text-xs text-muted-foreground">Подписчики: {selectedChannelSubscribersCount}</p>
+              </div>
+              {selectedChannel.creatorId !== user?.uid && (
+                <Button type="button" size="sm" variant={isSubscribedToSelectedChannel ? 'outline' : 'default'} onClick={() => void toggleSelectedChannelSubscription()}>
+                  {isSubscribedToSelectedChannel ? 'Отписаться' : 'Подписаться'}
+                </Button>
+              )}
             </div>
           ) : (
             <p className="text-muted-foreground">Выберите канал</p>
@@ -475,7 +522,7 @@ export default function ChannelsPage() {
 
         <div ref={postsContainerRef} className="relative flex-1 space-y-3 overflow-y-auto p-4">
           {!selectedChannelId ? (
-            <div className="flex h-full items-center justify-center text-muted-foreground">Откройте канал</div>
+            <div className="flex h-full items-center justify-center text-muted-foreground">Подпишитесь на канал через поиск</div>
           ) : postsLoading ? (
             <div className="flex h-full items-center justify-center text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -515,64 +562,56 @@ export default function ChannelsPage() {
           )}
         </div>
 
-        <footer className="border-t border-border/50 bg-background p-4">
-          {selectedImagePreviews.length > 0 && (
-            <div className="mb-2 flex flex-wrap gap-2">
-              {selectedImagePreviews.map((preview, index) => (
-                <div key={preview.key} className="relative h-16 w-16 overflow-hidden rounded-md border border-border/60">
-                  <img src={preview.url} alt="preview" className="h-full w-full object-cover" />
-                  <button
-                    type="button"
-                    className="absolute right-0 top-0 rounded-bl bg-black/55 p-0.5 text-white"
-                    onClick={() => setSelectedImages((prev) => prev.filter((_, i) => i !== index))}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+        {canPost && (
+          <footer className="border-t border-border/50 bg-background p-4">
+            {selectedImagePreviews.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-2">
+                {selectedImagePreviews.map((preview, index) => (
+                  <div key={preview.key} className="relative h-16 w-16 overflow-hidden rounded-md border border-border/60">
+                    <img src={preview.url} alt="preview" className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      className="absolute right-0 top-0 rounded-bl bg-black/55 p-0.5 text-white"
+                      onClick={() => setSelectedImages((prev) => prev.filter((_, i) => i !== index))}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
-          <div className="flex gap-2">
-            <Textarea
-              value={postText}
-              onChange={(event) => setPostText(event.target.value)}
-              placeholder={canPost ? 'Написать пост…' : 'Только создатель может публиковать'}
-              className="min-h-[44px] max-h-28"
-              disabled={!selectedChannelId || !canPost || sendingPost}
-            />
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={(event) => {
-                const files = Array.from(event.target.files || []);
-                if (files.length > 0) {
-                  setSelectedImages((prev) => [...prev, ...files]);
-                }
-                event.currentTarget.value = '';
-              }}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={() => imageInputRef.current?.click()}
-              disabled={!selectedChannelId || !canPost || sendingPost}
-            >
-              <Paperclip className="h-4 w-4" />
-            </Button>
-            <Button
-              type="button"
-              onClick={() => void sendPost()}
-              disabled={!canPost || sendingPost || (!postText.trim() && selectedImages.length === 0)}
-            >
-              {sendingPost ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Отправить'}
-            </Button>
-          </div>
-        </footer>
+            <div className="flex gap-2">
+              <Textarea
+                value={postText}
+                onChange={(event) => setPostText(event.target.value)}
+                placeholder="Написать пост…"
+                className="min-h-[44px] max-h-28"
+                disabled={!selectedChannelId || sendingPost}
+              />
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(event) => {
+                  const files = Array.from(event.target.files || []);
+                  if (files.length > 0) {
+                    setSelectedImages((prev) => [...prev, ...files]);
+                  }
+                  event.currentTarget.value = '';
+                }}
+              />
+              <Button type="button" variant="outline" size="icon" onClick={() => imageInputRef.current?.click()} disabled={!selectedChannelId || sendingPost}>
+                <Paperclip className="h-4 w-4" />
+              </Button>
+              <Button type="button" onClick={() => void sendPost()} disabled={sendingPost || (!postText.trim() && selectedImages.length === 0)}>
+                {sendingPost ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Отправить'}
+              </Button>
+            </div>
+          </footer>
+        )}
       </section>
 
       <Dialog open={isCreateChannelOpen} onOpenChange={setCreateChannelOpen}>

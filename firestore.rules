@@ -36,7 +36,10 @@ service cloud.firestore {
     match /channels/{channelId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null && request.resource.data.creatorId == request.auth.uid;
-      allow update: if request.auth != null && resource.data.creatorId == request.auth.uid;
+      allow update: if request.auth != null && (
+        resource.data.creatorId == request.auth.uid ||
+        request.writeFields.hasOnly(['subscriberIds', 'updatedAt'])
+      );
 
       match /posts/{postId} {
         allow read: if request.auth != null;
