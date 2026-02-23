@@ -572,7 +572,7 @@ export default function ChannelsPage() {
           )}
         </div>
 
-        {canPost && (
+        {canPost ? (
           <footer className="border-t border-border/50 bg-background p-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}>
             {selectedImagePreviews.length > 0 && (
               <div className="mx-1 mb-2 flex flex-wrap gap-2">
@@ -638,12 +638,8 @@ export default function ChannelsPage() {
                 </Button>
               </div>
             </div>
-          </div>
-
-          {!canPost && selectedChannelId && (
-            <p className="mt-2 px-1 text-xs text-muted-foreground">Чтобы публиковать посты, создайте свой канал.</p>
-          )}
-        </footer>
+          </footer>
+        ) : null}
       </section>
 
       <Dialog open={isCreateChannelOpen} onOpenChange={setCreateChannelOpen}>
