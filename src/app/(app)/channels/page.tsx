@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Loader2, Megaphone, Plus, Search } from 'lucide-react';
 import {
   addDoc,
@@ -73,6 +74,7 @@ export default function ChannelsPage() {
 
   const [channelTitle, setChannelTitle] = useState('');
   const [creatingChannel, setCreatingChannel] = useState(false);
+  const [isCreateChannelOpen, setCreateChannelOpen] = useState(false);
   const [channelSearchTerm, setChannelSearchTerm] = useState('');
   const [channelSearchLoading, setChannelSearchLoading] = useState(false);
   const [channelSearchResults, setChannelSearchResults] = useState<ChannelItem[]>([]);
@@ -230,8 +232,6 @@ export default function ChannelsPage() {
     [channels, selectedChannelId]
   );
 
-  const exactSearchChannel = channelSearchResults.find((channel) => channel.title.trim().toLowerCase() === channelSearchTerm.trim().toLowerCase()) || null;
-
   const canPost = Boolean(user && selectedChannel && selectedChannel.creatorId === user.uid);
 
   const createOrOpenChannel = async (rawTitle: string) => {
@@ -244,6 +244,7 @@ export default function ChannelsPage() {
     if (existing) {
       setSelectedChannelId(existing.id);
       setCreateChannelError(null);
+      setCreateChannelOpen(false);
       setChannelSearchTerm('');
       setChannelSearchResults([]);
       return;
@@ -276,6 +277,7 @@ export default function ChannelsPage() {
       setChannelSearchTerm('');
       setChannelSearchResults([]);
       setSelectedChannelId(channelRef.id);
+      setCreateChannelOpen(false);
     } catch {
       setCreateChannelError('Не удалось создать канал. Попробуйте снова.');
     } finally {
@@ -316,11 +318,11 @@ export default function ChannelsPage() {
           className="sticky top-0 z-10 border-b border-border/50 bg-background/80 p-4 backdrop-blur-sm"
           style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
         >
-          <h1 className="text-xl font-bold">Каналы</h1>
-          <div className="mt-3 flex gap-2">
-            <Input value={channelTitle} onChange={(event) => setChannelTitle(event.target.value)} placeholder="Название канала" />
-            <Button type="button" onClick={() => void createOrOpenChannel(channelTitle)} disabled={!channelTitle.trim() || creatingChannel}>
-              {creatingChannel ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-bold">Каналы</h1>
+            <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => setCreateChannelOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Канал
             </Button>
           </div>
 
@@ -341,7 +343,7 @@ export default function ChannelsPage() {
           </div>
         </header>
 
-        {(channelSearchResults.length > 0 || (channelSearchTerm.trim().length >= 2 && !exactSearchChannel)) && (
+        {channelSearchResults.length > 0 && (
           <div className="space-y-1 border-b border-border/50 p-2">
             {channelSearchResults.map((channel) => (
               <button
@@ -362,12 +364,6 @@ export default function ChannelsPage() {
                 <span className="font-medium">{channel.title}</span>
               </button>
             ))}
-            {channelSearchTerm.trim().length >= 2 && !exactSearchChannel && (
-              <Button type="button" variant="outline" className="w-full justify-start gap-2" onClick={() => void createOrOpenChannel(channelSearchTerm)}>
-                <Plus className="h-4 w-4" />
-                Создать канал «{channelSearchTerm.trim()}»
-              </Button>
-            )}
           </div>
         )}
 
@@ -468,6 +464,23 @@ export default function ChannelsPage() {
           </div>
         </footer>
       </section>
+
+      <Dialog open={isCreateChannelOpen} onOpenChange={setCreateChannelOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogTitle>Создать канал</DialogTitle>
+          <DialogDescription>Введите название канала. Если канал уже существует, он откроется.</DialogDescription>
+          <div className="mt-2 flex gap-2">
+            <Input value={channelTitle} onChange={(event) => setChannelTitle(event.target.value)} placeholder="Название канала" />
+            <Button
+              type="button"
+              onClick={() => void createOrOpenChannel(channelTitle)}
+              disabled={!channelTitle.trim() || creatingChannel}
+            >
+              {creatingChannel ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Создать'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
