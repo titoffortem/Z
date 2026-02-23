@@ -1400,7 +1400,7 @@ export default function MessagesPage() {
         updatedAt: serverTimestamp(),
       });
 
-      fetch('https://https://z-xi-plum.vercel.app//api/send-push', { 
+      fetch('https://z-xi-plum.vercel.app/api/send-push', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
