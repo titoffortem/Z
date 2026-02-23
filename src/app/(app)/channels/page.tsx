@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Megaphone, Plus } from 'lucide-react';
+import { Loader2, Megaphone, Plus, Search } from 'lucide-react';
 import {
   addDoc,
   collection,
@@ -73,6 +73,9 @@ export default function ChannelsPage() {
 
   const [channelTitle, setChannelTitle] = useState('');
   const [creatingChannel, setCreatingChannel] = useState(false);
+  const [channelSearchTerm, setChannelSearchTerm] = useState('');
+  const [channelSearchLoading, setChannelSearchLoading] = useState(false);
+  const [channelSearchResults, setChannelSearchResults] = useState<ChannelItem[]>([]);
   const [postText, setPostText] = useState('');
   const [sendingPost, setSendingPost] = useState(false);
 
@@ -198,16 +201,49 @@ export default function ChannelsPage() {
     });
   }, [channels, firestore, posts]);
 
+
+  useEffect(() => {
+    const trimmed = channelSearchTerm.trim();
+    if (!trimmed || trimmed.length < 2) {
+      setChannelSearchResults([]);
+      setChannelSearchLoading(false);
+      return;
+    }
+
+    setChannelSearchLoading(true);
+    const timeout = setTimeout(() => {
+      const normalized = trimmed.toLowerCase();
+      const found = channels
+        .filter((channel) => channel.title.toLowerCase().includes(normalized))
+        .slice(0, 8);
+
+      setChannelSearchResults(found);
+      setChannelSearchLoading(false);
+    }, 250);
+
+    return () => clearTimeout(timeout);
+  }, [channelSearchTerm, channels]);
+
   const selectedChannel = useMemo(
     () => channels.find((channel) => channel.id === selectedChannelId) || null,
     [channels, selectedChannelId]
   );
 
+  const exactSearchChannel = channelSearchResults.find((channel) => channel.title.trim().toLowerCase() === channelSearchTerm.trim().toLowerCase()) || null;
+
   const canPost = Boolean(user && selectedChannel && selectedChannel.creatorId === user.uid);
 
-  const createChannel = async () => {
-    const title = channelTitle.trim();
+  const createOrOpenChannel = async (rawTitle: string) => {
+    const title = rawTitle.trim();
     if (!firestore || !user || !title) {
+      return;
+    }
+
+    const existing = channels.find((channel) => channel.title.trim().toLowerCase() === title.toLowerCase());
+    if (existing) {
+      setSelectedChannelId(existing.id);
+      setChannelSearchTerm('');
+      setChannelSearchResults([]);
       return;
     }
 
@@ -222,6 +258,8 @@ export default function ChannelsPage() {
       });
 
       setChannelTitle('');
+      setChannelSearchTerm('');
+      setChannelSearchResults([]);
       setSelectedChannelId(channelRef.id);
     } finally {
       setCreatingChannel(false);
@@ -264,11 +302,56 @@ export default function ChannelsPage() {
           <h1 className="text-xl font-bold">Каналы</h1>
           <div className="mt-3 flex gap-2">
             <Input value={channelTitle} onChange={(event) => setChannelTitle(event.target.value)} placeholder="Название канала" />
-            <Button type="button" onClick={() => void createChannel()} disabled={!channelTitle.trim() || creatingChannel}>
+            <Button type="button" onClick={() => void createOrOpenChannel(channelTitle)} disabled={!channelTitle.trim() || creatingChannel}>
               {creatingChannel ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             </Button>
           </div>
+
+          <div className="relative mt-3">
+            {channelSearchLoading ? (
+              <Loader2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+            ) : (
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            )}
+            <Input
+              value={channelSearchTerm}
+              onChange={(event) => setChannelSearchTerm(event.target.value)}
+              className="pl-10"
+              placeholder="Найти канал..."
+            />
+          </div>
         </header>
+
+        {(channelSearchResults.length > 0 || (channelSearchTerm.trim().length >= 2 && !exactSearchChannel)) && (
+          <div className="space-y-1 border-b border-border/50 p-2">
+            {channelSearchResults.map((channel) => (
+              <button
+                key={channel.id}
+                type="button"
+                onClick={() => {
+                  setSelectedChannelId(channel.id);
+                  setChannelSearchTerm('');
+                  setChannelSearchResults([]);
+                }}
+                className="flex w-full items-center gap-3 rounded-lg p-2 text-left transition hover:bg-accent/50"
+              >
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback>
+                    <Megaphone className="h-5 w-5" />
+                  </AvatarFallback>
+                </Avatar>
+                <span className="font-medium">{channel.title}</span>
+              </button>
+            ))}
+            {channelSearchTerm.trim().length >= 2 && !exactSearchChannel && (
+              <Button type="button" variant="outline" className="w-full justify-start gap-2" onClick={() => void createOrOpenChannel(channelSearchTerm)}>
+                <Plus className="h-4 w-4" />
+                Создать канал «{channelSearchTerm.trim()}»
+              </Button>
+            )}
+          </div>
+        )}
+
 
         <div className="h-[calc(100%-124px)] overflow-y-auto p-2">
           {channelsLoading ? (
