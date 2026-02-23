@@ -881,6 +881,53 @@ export default function MessagesPage() {
   }, [stopTypingForChat]);
 
   useEffect(() => {
+    const previousChatId = typingChatIdRef.current;
+    if (previousChatId && previousChatId !== selectedChatId) {
+      void stopTypingForChat(previousChatId);
+    }
+
+    if (!firestore || !user || !selectedChatId) {
+      return;
+    }
+
+    const hasText = newMessage.trim().length > 0;
+
+    if (!hasText) {
+      if (typingStopTimeoutRef.current) {
+        clearTimeout(typingStopTimeoutRef.current);
+        typingStopTimeoutRef.current = null;
+      }
+      void stopTypingForChat(selectedChatId);
+      return;
+    }
+
+    if (!isTypingRef.current || typingChatIdRef.current !== selectedChatId) {
+      isTypingRef.current = true;
+      typingChatIdRef.current = selectedChatId;
+      void setTypingStateForChat(selectedChatId, true);
+    }
+
+    if (typingStopTimeoutRef.current) {
+      clearTimeout(typingStopTimeoutRef.current);
+    }
+
+    typingStopTimeoutRef.current = setTimeout(() => {
+      void stopTypingForChat(selectedChatId);
+    }, 2500);
+  }, [firestore, newMessage, selectedChatId, setTypingStateForChat, stopTypingForChat, user]);
+
+  useEffect(() => {
+    return () => {
+      if (typingStopTimeoutRef.current) {
+        clearTimeout(typingStopTimeoutRef.current);
+      }
+      if (typingChatIdRef.current) {
+        void stopTypingForChat(typingChatIdRef.current);
+      }
+    };
+  }, [stopTypingForChat]);
+
+  useEffect(() => {
     if (!selectedChatId) {
       initialScrollDoneForChatRef.current = null;
       return;
