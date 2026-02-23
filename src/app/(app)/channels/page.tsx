@@ -351,6 +351,30 @@ export default function ChannelsPage() {
     };
   }, [openedPost, selectedChannel?.title, selectedChannelId]);
 
+
+  const activeChannelPost = useMemo(() => posts.find((post) => post.id === openedPostId) || null, [openedPostId, posts]);
+
+  const openedPostAsFeedPost = useMemo<Post | null>(() => {
+    if (!activeChannelPost || !selectedChannelId) {
+      return null;
+    }
+
+    return {
+      id: `channel_${selectedChannelId}_${activeChannelPost.id}`,
+      sourcePostId: activeChannelPost.id,
+      sourceType: 'channel',
+      sourceChannelId: selectedChannelId,
+      sourceChannelTitle: selectedChannel?.title || 'Канал',
+      userId: activeChannelPost.authorId || selectedChannelId,
+      caption: activeChannelPost.text || '',
+      mediaUrls: activeChannelPost.imageUrls || [],
+      mediaTypes: Array((activeChannelPost.imageUrls || []).length).fill('image'),
+      createdAt: activeChannelPost.createdAt,
+      updatedAt: activeChannelPost.createdAt,
+      likedBy: activeChannelPost.likedBy || [],
+    };
+  }, [activeChannelPost, selectedChannel?.title, selectedChannelId]);
+
   const createOrOpenChannel = async (rawTitle: string) => {
     const title = rawTitle.trim();
     if (!firestore || !user || !title) {
