@@ -210,36 +210,21 @@ function TypingKeyboardIcon() {
             .typing-btn {
               transform-origin: center;
               transform-box: fill-box;
+              fill: #a3a3a3;
               animation: typingPressSequence 1.5s ease-in-out infinite;
-            }
-
-            .typing-btn path {
-              fill: #222222;
-              animation: typingColorSequence 1.5s ease-in-out infinite;
             }
 
             .typing-btn-1 { animation-delay: 0s; }
             .typing-btn-2 { animation-delay: 0.5s; }
             .typing-btn-3 { animation-delay: 1s; }
 
-            .typing-btn-1 path { animation-delay: 0s; }
-            .typing-btn-2 path { animation-delay: 0.5s; }
-            .typing-btn-3 path { animation-delay: 1s; }
-
             @keyframes typingPressSequence {
-              0%, 25%, 100% {
+              0%, 35%, 100% {
                 transform: scale(1) translateY(0);
+                fill: #a3a3a3;
               }
-              10% {
-                transform: scale(0.92) translateY(15px);
-              }
-            }
-
-            @keyframes typingColorSequence {
-              0%, 25%, 100% {
-                fill: #222222;
-              }
-              10% {
+              10%, 20% {
+                transform: scale(0.65) translateY(120px);
                 fill: #577f59;
               }
             }
@@ -827,9 +812,9 @@ export default function MessagesPage() {
     });
     void batch.commit();
   }, [firestore, isMobile, isMobileDialogOpen, messages, selectedChatId, user]);
-  // Initial scroll when opening chat: last read at top, reveal up to 3 new messages
+  // Initial scroll when opening chat: always go to the latest message.
   useEffect(() => {
-    if (!selectedChatId || !user || messages.length === 0) {
+    if (!selectedChatId || messages.length === 0) {
       return;
     }
     if (lastChatAndMessagesRef.current?.chatId !== selectedChatId) {
@@ -838,24 +823,62 @@ export default function MessagesPage() {
     if (initialScrollDoneForChatRef.current === selectedChatId) {
       return;
     }
+
     initialScrollDoneForChatRef.current = selectedChatId;
-    const firstUnreadIndex = messages.findIndex((m) => m.senderId !== user.uid && !m.readBy.includes(user.uid));
-    const lastReadIndex = firstUnreadIndex === -1 ? messages.length - 1 : firstUnreadIndex - 1;
-    const lastReadMessageId = lastReadIndex >= 0 ? messages[lastReadIndex].id : null;
-    const unreadCount = firstUnreadIndex === -1 ? 0 : messages.length - firstUnreadIndex;
-    const targetIndex = firstUnreadIndex === -1 ? lastReadIndex : Math.min(firstUnreadIndex + Math.min(3, unreadCount) - 1, messages.length - 1);
-    const targetMessageId = messages[targetIndex]?.id ?? lastReadMessageId;
-    isAtBottomRef.current = targetIndex >= messages.length - 1;
-    setIsAtBottom(targetIndex >= messages.length - 1);
+    isAtBottomRef.current = true;
+    setIsAtBottom(true);
+
     requestAnimationFrame(() => {
-      const el = messageElementRefs.current[targetMessageId ?? ''];
-      if (el) {
-        el.scrollIntoView({ behavior: 'auto', block: 'end' });
-      } else {
-        scrollToBottom('auto');
-      }
+      scrollToBottom('auto');
     });
-  }, [selectedChatId, messages, user, scrollToBottom]);
+  }, [selectedChatId, messages, scrollToBottom]);
+
+  useEffect(() => {
+    const previousChatId = typingChatIdRef.current;
+    if (previousChatId && previousChatId !== selectedChatId) {
+      void stopTypingForChat(previousChatId);
+    }
+
+    if (!firestore || !user || !selectedChatId) {
+      return;
+    }
+
+    const hasText = newMessage.trim().length > 0;
+
+    if (!hasText) {
+      if (typingStopTimeoutRef.current) {
+        clearTimeout(typingStopTimeoutRef.current);
+        typingStopTimeoutRef.current = null;
+      }
+      void stopTypingForChat(selectedChatId);
+      return;
+    }
+
+    if (!isTypingRef.current || typingChatIdRef.current !== selectedChatId) {
+      isTypingRef.current = true;
+      typingChatIdRef.current = selectedChatId;
+      void setTypingStateForChat(selectedChatId, true);
+    }
+
+    if (typingStopTimeoutRef.current) {
+      clearTimeout(typingStopTimeoutRef.current);
+    }
+
+    typingStopTimeoutRef.current = setTimeout(() => {
+      void stopTypingForChat(selectedChatId);
+    }, 2500);
+  }, [firestore, newMessage, selectedChatId, setTypingStateForChat, stopTypingForChat, user]);
+
+  useEffect(() => {
+    return () => {
+      if (typingStopTimeoutRef.current) {
+        clearTimeout(typingStopTimeoutRef.current);
+      }
+      if (typingChatIdRef.current) {
+        void stopTypingForChat(typingChatIdRef.current);
+      }
+    };
+  }, [stopTypingForChat]);
 
   useEffect(() => {
     const previousChatId = typingChatIdRef.current;
