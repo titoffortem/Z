@@ -63,6 +63,53 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     const currentUrl = mediaUrls[currentIndex];
     const currentType = mediaTypes[currentIndex];
 
+
+    const isChannelPost = post.sourceType === 'channel';
+    const resolvedPostId = isChannelPost ? (post.sourcePostId || post.id) : post.id;
+    const channelAuthorName = post.sourceChannelTitle || 'Канал';
+    const authorDisplayName = author ? `@${author.nickname}` : (isChannelPost ? channelAuthorName : null);
+    const authorAvatarFallback = authorDisplayName?.[0]?.toUpperCase() || 'К';
+
+    const getPostRef = () => {
+        if (!firestore) {
+            return null;
+        }
+
+        if (isChannelPost) {
+            if (!post.sourceChannelId || !resolvedPostId) {
+                return null;
+            }
+
+            return doc(firestore, 'channels', post.sourceChannelId, 'posts', resolvedPostId);
+        }
+
+        if (!resolvedPostId) {
+            return null;
+        }
+
+        return doc(firestore, 'posts', resolvedPostId);
+    };
+
+    const getCommentsCollectionRef = () => {
+        if (!firestore) {
+            return null;
+        }
+
+        if (isChannelPost) {
+            if (!post.sourceChannelId || !resolvedPostId) {
+                return null;
+            }
+
+            return collection(firestore, 'channels', post.sourceChannelId, 'posts', resolvedPostId, 'comments');
+        }
+
+        if (!resolvedPostId) {
+            return null;
+        }
+
+        return collection(firestore, 'posts', resolvedPostId, 'comments');
+    };
+
     React.useEffect(() => {
         const likedBy = post.likedBy || [];
         const likedFromServer = Boolean(user && likedBy.includes(user.uid));
@@ -80,9 +127,11 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     }, [post.likedBy, user, isLikeUpdating, pendingLikeStatus]);
 
     React.useEffect(() => {
-        if (!firestore || !post.id) return;
+        const commentsCollectionRef = getCommentsCollectionRef();
+        if (!commentsCollectionRef) return;
+
         setCommentsLoading(true);
-        const commentsQuery = query(collection(firestore, 'posts', post.id, 'comments'), orderBy('createdAt', 'asc'));
+        const commentsQuery = query(commentsCollectionRef, orderBy('createdAt', 'asc'));
         
         const unsubscribe = onSnapshot(commentsQuery, async (snapshot) => {
             const commentsData = snapshot.docs.map(doc => {
@@ -115,14 +164,18 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
             setCommentsLoading(false);
         });
         return () => unsubscribe();
-    }, [firestore, post.id]);
+    }, [firestore, post.id, post.sourceType, post.sourceChannelId, post.sourcePostId]);
 
     const handleLike = async () => {
         if (!user || !firestore) {
             toast({ title: "Вход не выполнен", description: "Войдите, чтобы поставить лайк", variant: "destructive" });
             return;
         }
-        const postRef = doc(firestore, 'posts', post.id);
+        const postRef = getPostRef();
+        if (!postRef) {
+            toast({ title: "Не удалось определить запись для лайка.", variant: "destructive" });
+            return;
+        }
         const newLikeStatus = !isLiked;
         setPostHeartAnimationKey((current) => current + 1);
         setIsLikeUpdating(true);
@@ -148,12 +201,19 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     const handleCommentSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user || !userProfile || !newComment.trim()) return;
+
+        const commentsCollectionRef = getCommentsCollectionRef();
+        if (!commentsCollectionRef) {
+            toast({ title: 'Не удалось определить запись для комментария.', variant: 'destructive' });
+            return;
+        }
+
         setCommentSendAnimationKey((current) => current + 1);
         const sendStartedAt = Date.now();
         setIsSubmittingComment(true);
         try {
-            await addDoc(collection(firestore, 'posts', post.id, 'comments'), {
-                postId: post.id, userId: user.uid, text: newComment.trim(), createdAt: serverTimestamp(),
+            await addDoc(commentsCollectionRef, {
+                postId: resolvedPostId, userId: user.uid, text: newComment.trim(), createdAt: serverTimestamp(),
             });
             setNewComment('');
             if (!showComments) setShowComments(true);
@@ -184,7 +244,13 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
         }));
 
         try {
-            await updateDoc(doc(firestore, 'posts', post.id, 'comments', commentId), {
+            const commentsCollectionRef = getCommentsCollectionRef();
+            if (!commentsCollectionRef) {
+                toast({ title: "Не удалось определить комментарий для лайка.", variant: "destructive" });
+                return;
+            }
+
+            await updateDoc(doc(commentsCollectionRef, commentId), {
                 likedBy: isLiked ? arrayRemove(user.uid) : arrayUnion(user.uid),
             });
         } catch (error: any) {
@@ -288,13 +354,13 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                 */}
                 {!isImageExpanded && (
                     <div className="flex-shrink-0 md:hidden p-3 bg-background/95 backdrop-blur border-t border-border flex items-center justify-between z-10 w-full">
-                        {author ? (
+                        {authorDisplayName ? (
                             <div className="flex items-center gap-2 opacity-90">
                                 <Avatar className="h-7 w-7 ring-1 ring-border/50">
-                                    <AvatarImage src={author.profilePictureUrl || undefined} />
-                                    <AvatarFallback>{author.nickname?.[0].toUpperCase()}</AvatarFallback>
+                                    <AvatarImage src={author?.profilePictureUrl || undefined} />
+                                    <AvatarFallback>{authorAvatarFallback}</AvatarFallback>
                                 </Avatar>
-                                <span className="text-sm font-bold truncate max-w-[120px]">@{author.nickname}</span>
+                                <span className="text-sm font-bold truncate max-w-[120px]">{authorDisplayName}</span>
                             </div>
                         ) : <div></div>}
 
@@ -340,7 +406,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                         </button>
                     )}
 
-                    {( !showComments || (showComments && author) || isSingleContent ) && author && (
+                    {( !showComments || (showComments && authorDisplayName) || isSingleContent ) && authorDisplayName && (
                         <div className={cn(
                             "flex items-center gap-3 min-w-0", 
                             showComments && !isSingleContent && "hidden md:hidden", 
@@ -348,13 +414,17 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                             showComments && isSingleContent && "hidden md:flex" 
                         )}> 
                             <Avatar className="h-10 w-10 ring-1 ring-border flex-shrink-0">
-                                <AvatarImage src={author.profilePictureUrl || undefined} />
-                                <AvatarFallback>{author.nickname?.[0].toUpperCase()}</AvatarFallback>
+                                <AvatarImage src={author?.profilePictureUrl || undefined} />
+                                <AvatarFallback>{authorAvatarFallback}</AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col">
-                                <Link href={`/profile?nickname=${author.nickname}`} className="font-bold text-base text-foreground hover:text-primary">
-                                    @{author.nickname}
-                                </Link>
+                                {author ? (
+                                    <Link href={`/profile?nickname=${author.nickname}`} className="font-bold text-base text-foreground hover:text-primary">
+                                        @{author.nickname}
+                                    </Link>
+                                ) : (
+                                    <span className="font-bold text-base text-foreground">{channelAuthorName}</span>
+                                )}
                                 <span className="text-xs text-muted-foreground">
                                     {post.createdAt ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: ru }) : "только что"}
                                 </span>

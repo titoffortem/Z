@@ -18,7 +18,7 @@ import {
 import { PostView } from './post-view';
 import { useAuth } from "./auth-provider";
 import { useToast } from "@/hooks/use-toast";
-import { Heart } from "lucide-react";
+import { Heart, Megaphone } from "lucide-react";
 import { PostForwardButton } from "@/components/post-forward-button";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +28,7 @@ export function PostCard({ post }: { post: Post }) {
     const { toast } = useToast();
 
     const [author, setAuthor] = React.useState<UserProfile | null>(null);
+    const channelAuthorName = post.sourceChannelTitle || 'Канал';
     const [isLiked, setIsLiked] = React.useState(false);
     const [likeCount, setLikeCount] = React.useState(post.likedBy?.length ?? 0);
     const [isLikeUpdating, setIsLikeUpdating] = React.useState(false);
@@ -105,6 +106,11 @@ export function PostCard({ post }: { post: Post }) {
     React.useEffect(() => {
         const fetchAuthor = async () => {
             // ... (код загрузки автора без изменений)
+            if (post.sourceType === 'channel') {
+                setAuthor(null);
+                return;
+            }
+
             if (post.userId && firestore) {
                 try {
                     const userDoc = await getDoc(doc(firestore, 'users', post.userId));
@@ -139,7 +145,9 @@ export function PostCard({ post }: { post: Post }) {
             return;
         }
 
-        const postRef = doc(firestore, 'posts', post.id);
+        const postRef = post.sourceType === 'channel'
+            ? doc(firestore, 'channels', post.sourceChannelId || '', 'posts', post.sourcePostId || post.id)
+            : doc(firestore, 'posts', post.id);
         const newLikeStatus = !isLiked;
 
         setHeartAnimationKey((current) => current + 1);
@@ -217,17 +225,25 @@ export function PostCard({ post }: { post: Post }) {
                                 {post.caption}
                             </p>
                         )}
-                        {author && (
+                        {(author || post.sourceType === 'channel') && (
                             <div className="flex items-center justify-between gap-3 mt-auto">
                                 <div className="flex items-center gap-3 min-w-0">
-                                    <Link href={`/profile?nickname=${author.nickname}`} className="flex-shrink-0">
-                                         <Avatar className="h-8 w-8">
-                                            <AvatarImage src={author.profilePictureUrl ?? undefined} alt={author.nickname} />
-                                            <AvatarFallback>{author.nickname[0].toUpperCase()}</AvatarFallback>
-                                        </Avatar>
-                                    </Link>
+                                    {post.sourceType === 'channel' ? (
+                                        <div className="flex-shrink-0">
+                                            <Avatar className="h-8 w-8">
+                                                <AvatarFallback><Megaphone className="h-4 w-4" /></AvatarFallback>
+                                            </Avatar>
+                                        </div>
+                                    ) : author ? (
+                                        <Link href={`/profile?nickname=${author.nickname}`} className="flex-shrink-0">
+                                            <Avatar className="h-8 w-8">
+                                                <AvatarImage src={author.profilePictureUrl ?? undefined} alt={author.nickname} />
+                                                <AvatarFallback>{author.nickname[0].toUpperCase()}</AvatarFallback>
+                                            </Avatar>
+                                        </Link>
+                                    ) : null}
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-semibold text-foreground truncate">{author.nickname}</p>
+                                        <p className="text-sm font-semibold text-foreground truncate">{post.sourceType === 'channel' ? channelAuthorName : author?.nickname}</p>
                                         <p className="text-xs text-muted-foreground">
                                             {post.createdAt ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: ru }) : 'только что'}
                                         </p>
@@ -271,7 +287,7 @@ export function PostCard({ post }: { post: Post }) {
             <DialogContent className="p-0 border-0 max-w-5xl bg-card">
                  <DialogTitle className="sr-only">Просмотр записи</DialogTitle>
                  <DialogDescription className="sr-only">
-                    {`Подробный вид записи от пользователя ${author?.nickname || '...'} с подписью: ${post.caption || 'изображение'}`}
+                    {`Подробный вид записи от ${post.sourceType === 'channel' ? channelAuthorName : `пользователя ${author?.nickname || '...'}`} с подписью: ${post.caption || 'изображение'}`}
                  </DialogDescription>
                  <PostView post={post} author={author} />
             </DialogContent>
