@@ -135,6 +135,12 @@ export default function ChannelsPage() {
     container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
   };
 
+
+  const subscribedChannels = useMemo(
+    () => channels.filter((channel) => Boolean(user && (channel.creatorId === user.uid || channel.subscriberIds.includes(user.uid)))),
+    [channels, user]
+  );
+
   useEffect(() => {
     if (!firestore) {
       return;
@@ -272,12 +278,6 @@ export default function ChannelsPage() {
 
     return () => clearTimeout(timeout);
   }, [channelSearchTerm, channels]);
-
-  const subscribedChannels = useMemo(
-    () => channels.filter((channel) => Boolean(user && (channel.creatorId === user.uid || channel.subscriberIds.includes(user.uid)))),
-    [channels, user]
-  );
-
   const selectedChannel = useMemo(
     () => channels.find((channel) => channel.id === selectedChannelId) || null,
     [channels, selectedChannelId]
