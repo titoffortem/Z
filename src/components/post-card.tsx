@@ -18,7 +18,7 @@ import {
 import { PostView } from './post-view';
 import { useAuth } from "./auth-provider";
 import { useToast } from "@/hooks/use-toast";
-import { Heart } from "lucide-react";
+import { Heart, Megaphone } from "lucide-react";
 import { PostForwardButton } from "@/components/post-forward-button";
 import { cn } from "@/lib/utils";
 
@@ -139,7 +139,9 @@ export function PostCard({ post }: { post: Post }) {
             return;
         }
 
-        const postRef = doc(firestore, 'posts', post.id);
+        const postRef = post.sourceType === 'channel'
+            ? doc(firestore, 'channels', post.sourceChannelId || '', 'posts', post.sourcePostId || post.id)
+            : doc(firestore, 'posts', post.id);
         const newLikeStatus = !isLiked;
 
         setHeartAnimationKey((current) => current + 1);
@@ -220,12 +222,21 @@ export function PostCard({ post }: { post: Post }) {
                         {author && (
                             <div className="flex items-center justify-between gap-3 mt-auto">
                                 <div className="flex items-center gap-3 min-w-0">
-                                    <Link href={`/profile?nickname=${author.nickname}`} className="flex-shrink-0">
-                                         <Avatar className="h-8 w-8">
-                                            <AvatarImage src={author.profilePictureUrl ?? undefined} alt={author.nickname} />
-                                            <AvatarFallback>{author.nickname[0].toUpperCase()}</AvatarFallback>
-                                        </Avatar>
-                                    </Link>
+                                    {post.sourceType === 'channel' ? (
+                                        <div className="flex-shrink-0">
+                                            <Avatar className="h-8 w-8">
+                                                <AvatarImage src={author.profilePictureUrl ?? undefined} alt={author.nickname} />
+                                                <AvatarFallback><Megaphone className="h-4 w-4" /></AvatarFallback>
+                                            </Avatar>
+                                        </div>
+                                    ) : (
+                                        <Link href={`/profile?nickname=${author.nickname}`} className="flex-shrink-0">
+                                            <Avatar className="h-8 w-8">
+                                                <AvatarImage src={author.profilePictureUrl ?? undefined} alt={author.nickname} />
+                                                <AvatarFallback>{author.nickname[0].toUpperCase()}</AvatarFallback>
+                                            </Avatar>
+                                        </Link>
+                                    )}
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-semibold text-foreground truncate">{author.nickname}</p>
                                         <p className="text-xs text-muted-foreground">
