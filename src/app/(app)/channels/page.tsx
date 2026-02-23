@@ -174,15 +174,17 @@ export default function ChannelsPage() {
   }, [firestore]);
 
   useEffect(() => {
-    if (!selectedChannelId && subscribedChannels.length > 0) {
-      setSelectedChannelId(subscribedChannels[0].id);
+    if (!selectedChannelId) {
+      if (subscribedChannels.length > 0) {
+        setSelectedChannelId(subscribedChannels[0].id);
+      }
       return;
     }
 
-    if (selectedChannelId && !subscribedChannels.some((channel) => channel.id === selectedChannelId)) {
+    if (!channels.some((channel) => channel.id === selectedChannelId)) {
       setSelectedChannelId(subscribedChannels[0]?.id || null);
     }
-  }, [selectedChannelId, subscribedChannels]);
+  }, [channels, selectedChannelId, subscribedChannels]);
 
   useEffect(() => {
     if (!firestore || !selectedChannelId) {
@@ -291,6 +293,11 @@ export default function ChannelsPage() {
     : 0;
 
   const canPost = Boolean(user && selectedChannel && selectedChannel.creatorId === user.uid);
+  const composePlaceholder = !selectedChannelId
+    ? 'Сначала выберите канал'
+    : canPost
+      ? 'Написать пост…'
+      : 'Публикация доступна только владельцу канала';
 
   const createOrOpenChannel = async (rawTitle: string) => {
     const title = rawTitle.trim();
@@ -534,85 +541,107 @@ export default function ChannelsPage() {
             posts.map((post) => {
               const author = profilesById[post.authorId];
               return (
-                <div key={post.id} className="max-w-[85%] rounded-2xl bg-[#f3f5f3] px-3 py-2 text-[#223524] shadow-sm">
-                  <div className="mb-1 flex items-center gap-2">
-                    <Avatar className="h-5 w-5">
-                      <AvatarImage src={author?.profilePictureUrl ?? undefined} alt={author?.nickname || 'Автор'} />
-                      <AvatarFallback>{author?.nickname?.[0]?.toUpperCase() || 'А'}</AvatarFallback>
-                    </Avatar>
-                    <p className="text-xs font-semibold text-[#577F59]">{author?.nickname || 'Автор'}</p>
-                  </div>
-                  {post.text && <p className="mt-1 whitespace-pre-wrap break-words text-sm">{post.text}</p>}
-                  {post.imageUrls.length > 0 && (
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      {post.imageUrls.map((url, idx) => (
-                        <img
-                          key={`${post.id}-${idx}`}
-                          src={url}
-                          alt="Картинка поста"
-                          className="max-h-64 w-full rounded-lg object-cover"
-                          loading="lazy"
-                        />
-                      ))}
+                <div key={post.id} className="flex w-full justify-start">
+                  <div className="max-w-[75%] rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-foreground shadow-sm">
+                    <div className="mb-1 flex items-center gap-2">
+                      <Avatar className="h-5 w-5">
+                        <AvatarImage src={author?.profilePictureUrl ?? undefined} alt={author?.nickname || 'Автор'} />
+                        <AvatarFallback>{author?.nickname?.[0]?.toUpperCase() || 'А'}</AvatarFallback>
+                      </Avatar>
+                      <p className="text-xs font-semibold text-primary">{author?.nickname || 'Автор'}</p>
                     </div>
-                  )}
-                  <p className="mt-1 text-[10px] text-[#6f836f]">{formatTime(post.createdAt)}</p>
+                    {post.text && <p className="mt-1 whitespace-pre-wrap break-words text-sm">{post.text}</p>}
+                    {post.imageUrls.length > 0 && (
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        {post.imageUrls.map((url, idx) => (
+                          <img
+                            key={`${post.id}-${idx}`}
+                            src={url}
+                            alt="Картинка поста"
+                            className="max-h-64 w-full rounded-lg object-cover"
+                            loading="lazy"
+                          />
+                        ))}
+                      </div>
+                    )}
+                    <p className="mt-1 text-[10px] text-muted-foreground">{formatTime(post.createdAt)}</p>
+                  </div>
                 </div>
               );
             })
           )}
         </div>
 
-        {canPost && (
-          <footer className="border-t border-border/50 bg-background p-4">
-            {selectedImagePreviews.length > 0 && (
-              <div className="mb-2 flex flex-wrap gap-2">
-                {selectedImagePreviews.map((preview, index) => (
-                  <div key={preview.key} className="relative h-16 w-16 overflow-hidden rounded-md border border-border/60">
-                    <img src={preview.url} alt="preview" className="h-full w-full object-cover" />
-                    <button
-                      type="button"
-                      className="absolute right-0 top-0 rounded-bl bg-black/55 p-0.5 text-white"
-                      onClick={() => setSelectedImages((prev) => prev.filter((_, i) => i !== index))}
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+        <footer className="border-t border-border/50 bg-background p-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}>
+          {canPost && selectedImagePreviews.length > 0 && (
+            <div className="mx-1 mb-2 flex flex-wrap gap-2">
+              {selectedImagePreviews.map((preview, index) => (
+                <div key={preview.key} className="relative h-16 w-16 overflow-hidden rounded-md border border-border/60">
+                  <img src={preview.url} alt="preview" className="h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    className="absolute right-0 top-0 rounded-bl bg-black/55 p-0.5 text-white"
+                    onClick={() => setSelectedImages((prev) => prev.filter((_, i) => i !== index))}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="rounded-2xl bg-muted/50 p-2">
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(event) => {
+                const files = Array.from(event.target.files || []);
+                if (files.length > 0) {
+                  setSelectedImages((prev) => [...prev, ...files]);
+                }
+                event.currentTarget.value = '';
+              }}
+            />
 
             <div className="flex gap-2">
               <Textarea
                 value={postText}
                 onChange={(event) => setPostText(event.target.value)}
-                placeholder="Написать пост…"
-                className="min-h-[44px] max-h-28"
-                disabled={!selectedChannelId || sendingPost}
+                placeholder={composePlaceholder}
+                className="min-h-[44px] max-h-28 flex-1 resize-none border-none bg-transparent px-2 py-1.5 shadow-none focus-visible:ring-0"
+                disabled={!selectedChannelId || sendingPost || !canPost}
               />
-              <input
-                ref={imageInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={(event) => {
-                  const files = Array.from(event.target.files || []);
-                  if (files.length > 0) {
-                    setSelectedImages((prev) => [...prev, ...files]);
-                  }
-                  event.currentTarget.value = '';
-                }}
-              />
-              <Button type="button" variant="outline" size="icon" onClick={() => imageInputRef.current?.click()} disabled={!selectedChannelId || sendingPost}>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 self-center rounded-full"
+                onClick={() => imageInputRef.current?.click()}
+                disabled={!selectedChannelId || sendingPost || !canPost}
+              >
                 <Paperclip className="h-4 w-4" />
               </Button>
-              <Button type="button" onClick={() => void sendPost()} disabled={sendingPost || (!postText.trim() && selectedImages.length === 0)}>
-                {sendingPost ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Отправить'}
+
+              <Button
+                type="button"
+                size="icon"
+                className="h-9 w-9 self-center rounded-full"
+                onClick={() => void sendPost()}
+                disabled={!selectedChannelId || !canPost || sendingPost || (!postText.trim() && selectedImages.length === 0)}
+              >
+                {sendingPost ? <Loader2 className="h-4 w-4 animate-spin" /> : '➤'}
               </Button>
             </div>
-          </footer>
-        )}
+          </div>
+
+          {!canPost && selectedChannelId && (
+            <p className="mt-2 px-1 text-xs text-muted-foreground">Чтобы публиковать посты, создайте свой канал.</p>
+          )}
+        </footer>
       </section>
 
       <Dialog open={isCreateChannelOpen} onOpenChange={setCreateChannelOpen}>
