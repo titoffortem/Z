@@ -18,6 +18,10 @@ export type Post = {
   createdAt: string;
   updatedAt: string;
   likedBy: string[];
+  sourceType?: 'feed' | 'channel';
+  sourceChannelId?: string;
+  sourceChannelTitle?: string;
+  sourcePostId?: string;
 };
 
 export type Comment = {

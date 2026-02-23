@@ -384,6 +384,7 @@ export default function ChannelsPage() {
         text,
         imageUrls,
         createdAt: serverTimestamp(),
+        likedBy: [],
       });
 
       await updateDoc(doc(firestore, 'channels', selectedChannel.id), {
