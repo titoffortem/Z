@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, Megaphone, Paperclip, Plus, Search, X } from 'lucide-react';
+import { PostView } from '@/components/post-view';
+import { Heart, Loader2, Megaphone, MessageCircle, Paperclip, Plus, Search, X } from 'lucide-react';
 import {
   addDoc,
   arrayRemove,
@@ -24,7 +25,7 @@ import {
   Timestamp,
   updateDoc,
 } from 'firebase/firestore';
-import type { UserProfile } from '@/types';
+import type { Post, UserProfile } from '@/types';
 
 type ChannelItem = {
   id: string;
@@ -40,6 +41,7 @@ type ChannelPost = {
   authorId: string;
   text: string;
   imageUrls: string[];
+  likedBy: string[];
   createdAt: string;
 };
 
@@ -112,6 +114,7 @@ export default function ChannelsPage() {
   const [sendingPost, setSendingPost] = useState(false);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [createChannelError, setCreateChannelError] = useState<string | null>(null);
+  const [openedPostId, setOpenedPostId] = useState<string | null>(null);
 
   const postsContainerRef = useRef<HTMLDivElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
@@ -206,6 +209,7 @@ export default function ChannelsPage() {
             authorId: data.authorId || '',
             text: data.text || '',
             imageUrls: data.imageUrls || [],
+            likedBy: data.likedBy || [],
             createdAt: toIsoDate(data.createdAt),
           } as ChannelPost;
         });
@@ -299,6 +303,30 @@ export default function ChannelsPage() {
       ? 'Написать пост…'
       : 'Публикация доступна только владельцу канала';
 
+
+  const openedPost = useMemo(() => posts.find((post) => post.id === openedPostId) || null, [openedPostId, posts]);
+
+  const openedPostAsFeedPost = useMemo<Post | null>(() => {
+    if (!openedPost || !selectedChannelId) {
+      return null;
+    }
+
+    return {
+      id: `channel_${selectedChannelId}_${openedPost.id}`,
+      sourcePostId: openedPost.id,
+      sourceType: 'channel',
+      sourceChannelId: selectedChannelId,
+      sourceChannelTitle: selectedChannel?.title || 'Канал',
+      userId: openedPost.authorId || selectedChannelId,
+      caption: openedPost.text || '',
+      mediaUrls: openedPost.imageUrls || [],
+      mediaTypes: Array((openedPost.imageUrls || []).length).fill('image'),
+      createdAt: openedPost.createdAt,
+      updatedAt: openedPost.createdAt,
+      likedBy: openedPost.likedBy || [],
+    };
+  }, [openedPost, selectedChannel?.title, selectedChannelId]);
+
   const createOrOpenChannel = async (rawTitle: string) => {
     const title = rawTitle.trim();
     if (!firestore || !user || !title) {
@@ -368,6 +396,38 @@ export default function ChannelsPage() {
       subscriberIds: isSubscribedToSelectedChannel ? arrayRemove(user.uid) : arrayUnion(user.uid),
       updatedAt: serverTimestamp(),
     });
+  };
+
+
+  const toggleChannelPostLike = async (post: ChannelPost) => {
+    if (!firestore || !user || !selectedChannelId) {
+      return;
+    }
+
+    const isLiked = post.likedBy.includes(user.uid);
+    setPosts((prev) => prev.map((item) => {
+      if (item.id !== post.id) {
+        return item;
+      }
+
+      const likedBy = isLiked ? item.likedBy.filter((id) => id !== user.uid) : [...item.likedBy, user.uid];
+      return { ...item, likedBy };
+    }));
+
+    try {
+      await updateDoc(doc(firestore, 'channels', selectedChannelId, 'posts', post.id), {
+        likedBy: isLiked ? arrayRemove(user.uid) : arrayUnion(user.uid),
+      });
+    } catch {
+      setPosts((prev) => prev.map((item) => {
+        if (item.id !== post.id) {
+          return item;
+        }
+
+        const likedBy = isLiked ? [...item.likedBy, user.uid] : item.likedBy.filter((id) => id !== user.uid);
+        return { ...item, likedBy };
+      }));
+    }
   };
 
   const sendPost = async () => {
@@ -565,6 +625,25 @@ export default function ChannelsPage() {
                       </div>
                     )}
                     <p className="mt-1 text-[10px] text-muted-foreground">{formatTime(post.createdAt)}</p>
+
+                    <div className="mt-2 flex items-center gap-3">
+                      <button
+                        type="button"
+                        className={`flex items-center gap-1 text-xs transition ${user && post.likedBy.includes(user.uid) ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
+                        onClick={() => void toggleChannelPostLike(post)}
+                      >
+                        <Heart className={`h-4 w-4 ${user && post.likedBy.includes(user.uid) ? 'fill-current' : ''}`} />
+                        <span>{post.likedBy.length}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 text-xs text-muted-foreground transition hover:text-primary"
+                        onClick={() => setOpenedPostId(post.id)}
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        <span>Комментарии</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -642,6 +721,21 @@ export default function ChannelsPage() {
         ) : null}
       </section>
 
+
+      <Dialog
+        open={Boolean(openedPostAsFeedPost)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setOpenedPostId(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-5xl border-0 bg-card p-0">
+          <DialogTitle className="sr-only">Пост канала</DialogTitle>
+          <DialogDescription className="sr-only">Просмотр поста канала с лайками и комментариями.</DialogDescription>
+          {openedPostAsFeedPost && <PostView post={openedPostAsFeedPost} author={profilesById[openedPostAsFeedPost.userId] || null} />}
+        </DialogContent>
+      </Dialog>
       <Dialog open={isCreateChannelOpen} onOpenChange={setCreateChannelOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogTitle>Создать канал</DialogTitle>
