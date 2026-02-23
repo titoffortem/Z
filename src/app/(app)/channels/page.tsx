@@ -60,7 +60,7 @@ const formatTime = (isoDate: string) => {
 };
 
 export default function ChannelsPage() {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const firestore = useFirestore();
 
   const [channels, setChannels] = useState<ChannelItem[]>([]);
@@ -78,6 +78,7 @@ export default function ChannelsPage() {
   const [channelSearchResults, setChannelSearchResults] = useState<ChannelItem[]>([]);
   const [postText, setPostText] = useState('');
   const [sendingPost, setSendingPost] = useState(false);
+  const [createChannelError, setCreateChannelError] = useState<string | null>(null);
 
   const postsContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -242,25 +243,41 @@ export default function ChannelsPage() {
     const existing = channels.find((channel) => channel.title.trim().toLowerCase() === title.toLowerCase());
     if (existing) {
       setSelectedChannelId(existing.id);
+      setCreateChannelError(null);
       setChannelSearchTerm('');
       setChannelSearchResults([]);
       return;
     }
 
     setCreatingChannel(true);
+    setCreateChannelError(null);
     try {
-      const channelRef = doc(collection(firestore, 'channels'));
-      await setDoc(channelRef, {
+      const channelRef = await addDoc(collection(firestore, 'channels'), {
         title,
         creatorId: user.uid,
         updatedAt: serverTimestamp(),
         lastPostText: '',
       });
 
+      const optimisticChannel: ChannelItem = {
+        id: channelRef.id,
+        title,
+        creatorId: user.uid,
+        updatedAt: new Date().toISOString(),
+        lastPostText: '',
+      };
+
+      setChannels((prev) => (prev.some((channel) => channel.id === optimisticChannel.id) ? prev : [optimisticChannel, ...prev]));
+      if (userProfile) {
+        setProfilesById((prev) => ({ ...prev, [user.uid]: userProfile }));
+      }
+
       setChannelTitle('');
       setChannelSearchTerm('');
       setChannelSearchResults([]);
       setSelectedChannelId(channelRef.id);
+    } catch {
+      setCreateChannelError('Не удалось создать канал. Попробуйте снова.');
     } finally {
       setCreatingChannel(false);
     }
@@ -306,6 +323,8 @@ export default function ChannelsPage() {
               {creatingChannel ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             </Button>
           </div>
+
+          {createChannelError && <p className="mt-2 text-xs text-destructive">{createChannelError}</p>}
 
           <div className="relative mt-3">
             {channelSearchLoading ? (
