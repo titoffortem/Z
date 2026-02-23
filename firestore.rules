@@ -49,6 +49,15 @@ service cloud.firestore {
         allow update: if request.auth != null && request.writeFields.hasOnly(['likedBy']);
         allow delete: if false;
       }
+
+
+      match /posts/{postId}/comments/{commentId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+        allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+        allow update: if request.auth != null
+          && request.writeFields.hasOnly(['likedBy']);
+      }
     }
 
     // Если у тебя есть чаты (коллекция chats)

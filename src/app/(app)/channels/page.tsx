@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, Megaphone, Paperclip, Plus, Search, X } from 'lucide-react';
+import { PostView } from '@/components/post-view';
+import { Heart, Loader2, Megaphone, MessageCircle, Paperclip, Plus, Search, X } from 'lucide-react';
 import {
   addDoc,
   arrayRemove,
@@ -24,7 +25,7 @@ import {
   Timestamp,
   updateDoc,
 } from 'firebase/firestore';
-import type { UserProfile } from '@/types';
+import type { Post, UserProfile } from '@/types';
 
 type ChannelItem = {
   id: string;
@@ -40,6 +41,7 @@ type ChannelPost = {
   authorId: string;
   text: string;
   imageUrls: string[];
+  likedBy: string[];
   createdAt: string;
 };
 
@@ -112,6 +114,7 @@ export default function ChannelsPage() {
   const [sendingPost, setSendingPost] = useState(false);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [createChannelError, setCreateChannelError] = useState<string | null>(null);
+  const [openedPostId, setOpenedPostId] = useState<string | null>(null);
 
   const postsContainerRef = useRef<HTMLDivElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
@@ -174,15 +177,17 @@ export default function ChannelsPage() {
   }, [firestore]);
 
   useEffect(() => {
-    if (!selectedChannelId && subscribedChannels.length > 0) {
-      setSelectedChannelId(subscribedChannels[0].id);
+    if (!selectedChannelId) {
+      if (subscribedChannels.length > 0) {
+        setSelectedChannelId(subscribedChannels[0].id);
+      }
       return;
     }
 
-    if (selectedChannelId && !subscribedChannels.some((channel) => channel.id === selectedChannelId)) {
+    if (!channels.some((channel) => channel.id === selectedChannelId)) {
       setSelectedChannelId(subscribedChannels[0]?.id || null);
     }
-  }, [selectedChannelId, subscribedChannels]);
+  }, [channels, selectedChannelId, subscribedChannels]);
 
   useEffect(() => {
     if (!firestore || !selectedChannelId) {
@@ -204,6 +209,7 @@ export default function ChannelsPage() {
             authorId: data.authorId || '',
             text: data.text || '',
             imageUrls: data.imageUrls || [],
+            likedBy: data.likedBy || [],
             createdAt: toIsoDate(data.createdAt),
           } as ChannelPost;
         });
@@ -292,6 +298,30 @@ export default function ChannelsPage() {
 
   const canPost = Boolean(user && selectedChannel && selectedChannel.creatorId === user.uid);
 
+
+  const activeChannelPost = useMemo(() => posts.find((post) => post.id === openedPostId) || null, [openedPostId, posts]);
+
+  const openedPostAsFeedPost = useMemo<Post | null>(() => {
+    if (!activeChannelPost || !selectedChannelId) {
+      return null;
+    }
+
+    return {
+      id: `channel_${selectedChannelId}_${activeChannelPost.id}`,
+      sourcePostId: activeChannelPost.id,
+      sourceType: 'channel',
+      sourceChannelId: selectedChannelId,
+      sourceChannelTitle: selectedChannel?.title || 'Канал',
+      userId: activeChannelPost.authorId || selectedChannelId,
+      caption: activeChannelPost.text || '',
+      mediaUrls: activeChannelPost.imageUrls || [],
+      mediaTypes: Array((activeChannelPost.imageUrls || []).length).fill('image'),
+      createdAt: activeChannelPost.createdAt,
+      updatedAt: activeChannelPost.createdAt,
+      likedBy: activeChannelPost.likedBy || [],
+    };
+  }, [activeChannelPost, selectedChannel?.title, selectedChannelId]);
+
   const createOrOpenChannel = async (rawTitle: string) => {
     const title = rawTitle.trim();
     if (!firestore || !user || !title) {
@@ -361,6 +391,38 @@ export default function ChannelsPage() {
       subscriberIds: isSubscribedToSelectedChannel ? arrayRemove(user.uid) : arrayUnion(user.uid),
       updatedAt: serverTimestamp(),
     });
+  };
+
+
+  const toggleChannelPostLike = async (post: ChannelPost) => {
+    if (!firestore || !user || !selectedChannelId) {
+      return;
+    }
+
+    const isLiked = post.likedBy.includes(user.uid);
+    setPosts((prev) => prev.map((item) => {
+      if (item.id !== post.id) {
+        return item;
+      }
+
+      const likedBy = isLiked ? item.likedBy.filter((id) => id !== user.uid) : [...item.likedBy, user.uid];
+      return { ...item, likedBy };
+    }));
+
+    try {
+      await updateDoc(doc(firestore, 'channels', selectedChannelId, 'posts', post.id), {
+        likedBy: isLiked ? arrayRemove(user.uid) : arrayUnion(user.uid),
+      });
+    } catch {
+      setPosts((prev) => prev.map((item) => {
+        if (item.id !== post.id) {
+          return item;
+        }
+
+        const likedBy = isLiked ? [...item.likedBy, user.uid] : item.likedBy.filter((id) => id !== user.uid);
+        return { ...item, likedBy };
+      }));
+    }
   };
 
   const sendPost = async () => {
@@ -534,39 +596,60 @@ export default function ChannelsPage() {
             posts.map((post) => {
               const author = profilesById[post.authorId];
               return (
-                <div key={post.id} className="max-w-[85%] rounded-2xl bg-[#f3f5f3] px-3 py-2 text-[#223524] shadow-sm">
-                  <div className="mb-1 flex items-center gap-2">
-                    <Avatar className="h-5 w-5">
-                      <AvatarImage src={author?.profilePictureUrl ?? undefined} alt={author?.nickname || 'Автор'} />
-                      <AvatarFallback>{author?.nickname?.[0]?.toUpperCase() || 'А'}</AvatarFallback>
-                    </Avatar>
-                    <p className="text-xs font-semibold text-[#577F59]">{author?.nickname || 'Автор'}</p>
-                  </div>
-                  {post.text && <p className="mt-1 whitespace-pre-wrap break-words text-sm">{post.text}</p>}
-                  {post.imageUrls.length > 0 && (
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      {post.imageUrls.map((url, idx) => (
-                        <img
-                          key={`${post.id}-${idx}`}
-                          src={url}
-                          alt="Картинка поста"
-                          className="max-h-64 w-full rounded-lg object-cover"
-                          loading="lazy"
-                        />
-                      ))}
+                <div key={post.id} className="flex w-full justify-start">
+                  <div className="max-w-[75%] rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-foreground shadow-sm">
+                    <div className="mb-1 flex items-center gap-2">
+                      <Avatar className="h-5 w-5">
+                        <AvatarImage src={author?.profilePictureUrl ?? undefined} alt={author?.nickname || 'Автор'} />
+                        <AvatarFallback>{author?.nickname?.[0]?.toUpperCase() || 'А'}</AvatarFallback>
+                      </Avatar>
+                      <p className="text-xs font-semibold text-primary">{author?.nickname || 'Автор'}</p>
                     </div>
-                  )}
-                  <p className="mt-1 text-[10px] text-[#6f836f]">{formatTime(post.createdAt)}</p>
+                    {post.text && <p className="mt-1 whitespace-pre-wrap break-words text-sm">{post.text}</p>}
+                    {post.imageUrls.length > 0 && (
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        {post.imageUrls.map((url, idx) => (
+                          <img
+                            key={`${post.id}-${idx}`}
+                            src={url}
+                            alt="Картинка поста"
+                            className="max-h-64 w-full rounded-lg object-cover"
+                            loading="lazy"
+                          />
+                        ))}
+                      </div>
+                    )}
+                    <p className="mt-1 text-[10px] text-muted-foreground">{formatTime(post.createdAt)}</p>
+
+                    <div className="mt-2 flex items-center gap-3">
+                      <button
+                        type="button"
+                        className={`flex items-center gap-1 text-xs transition ${user && post.likedBy.includes(user.uid) ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
+                        onClick={() => void toggleChannelPostLike(post)}
+                      >
+                        <Heart className={`h-4 w-4 ${user && post.likedBy.includes(user.uid) ? 'fill-current' : ''}`} />
+                        <span>{post.likedBy.length}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 text-xs text-muted-foreground transition hover:text-primary"
+                        onClick={() => setOpenedPostId(post.id)}
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        <span>Комментарии</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               );
             })
           )}
         </div>
 
-        {canPost && (
-          <footer className="border-t border-border/50 bg-background p-4">
+        {canPost ? (
+          <footer className="border-t border-border/50 bg-background p-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}>
             {selectedImagePreviews.length > 0 && (
-              <div className="mb-2 flex flex-wrap gap-2">
+              <div className="mx-1 mb-2 flex flex-wrap gap-2">
                 {selectedImagePreviews.map((preview, index) => (
                   <div key={preview.key} className="relative h-16 w-16 overflow-hidden rounded-md border border-border/60">
                     <img src={preview.url} alt="preview" className="h-full w-full object-cover" />
@@ -582,14 +665,7 @@ export default function ChannelsPage() {
               </div>
             )}
 
-            <div className="flex gap-2">
-              <Textarea
-                value={postText}
-                onChange={(event) => setPostText(event.target.value)}
-                placeholder="Написать пост…"
-                className="min-h-[44px] max-h-28"
-                disabled={!selectedChannelId || sendingPost}
-              />
+            <div className="rounded-2xl bg-muted/50 p-2">
               <input
                 ref={imageInputRef}
                 type="file"
@@ -604,17 +680,57 @@ export default function ChannelsPage() {
                   event.currentTarget.value = '';
                 }}
               />
-              <Button type="button" variant="outline" size="icon" onClick={() => imageInputRef.current?.click()} disabled={!selectedChannelId || sendingPost}>
-                <Paperclip className="h-4 w-4" />
-              </Button>
-              <Button type="button" onClick={() => void sendPost()} disabled={sendingPost || (!postText.trim() && selectedImages.length === 0)}>
-                {sendingPost ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Отправить'}
-              </Button>
+
+              <div className="flex gap-2">
+                <Textarea
+                  value={postText}
+                  onChange={(event) => setPostText(event.target.value)}
+                  placeholder="Написать пост…"
+                  className="min-h-[44px] max-h-28 flex-1 resize-none border-none bg-transparent px-2 py-1.5 shadow-none focus-visible:ring-0"
+                  disabled={!selectedChannelId || sendingPost}
+                />
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 self-center rounded-full"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={!selectedChannelId || sendingPost}
+                >
+                  <Paperclip className="h-4 w-4" />
+                </Button>
+
+                <Button
+                  type="button"
+                  size="icon"
+                  className="h-9 w-9 self-center rounded-full"
+                  onClick={() => void sendPost()}
+                  disabled={!selectedChannelId || sendingPost || (!postText.trim() && selectedImages.length === 0)}
+                >
+                  {sendingPost ? <Loader2 className="h-4 w-4 animate-spin" /> : '➤'}
+                </Button>
+              </div>
             </div>
           </footer>
-        )}
+        ) : null}
       </section>
 
+
+      <Dialog
+        open={Boolean(openedPostAsFeedPost)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setOpenedPostId(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-5xl border-0 bg-card p-0">
+          <DialogTitle className="sr-only">Пост канала</DialogTitle>
+          <DialogDescription className="sr-only">Просмотр поста канала с лайками и комментариями.</DialogDescription>
+          {openedPostAsFeedPost && <PostView post={openedPostAsFeedPost} author={profilesById[openedPostAsFeedPost.userId] || null} />}
+        </DialogContent>
+      </Dialog>
       <Dialog open={isCreateChannelOpen} onOpenChange={setCreateChannelOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogTitle>Создать канал</DialogTitle>
