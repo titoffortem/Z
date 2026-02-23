@@ -297,6 +297,11 @@ export default function ChannelsPage() {
     : 0;
 
   const canPost = Boolean(user && selectedChannel && selectedChannel.creatorId === user.uid);
+  const composePlaceholder = !selectedChannelId
+    ? 'Сначала выберите канал'
+    : canPost
+      ? 'Написать пост…'
+      : 'Публикация доступна только владельцу канала';
 
 
   const openedPost = useMemo(() => posts.find((post) => post.id === openedPostId) || null, [openedPostId, posts]);
