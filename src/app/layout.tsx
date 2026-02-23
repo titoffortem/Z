@@ -7,6 +7,8 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 // Импортируем нашу новую обертку
 import AppShell from '@/components/app-shell';
 
+import { PushNotificationsHandler } from '@/components/push-notifications-handler';
+
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
@@ -24,6 +26,8 @@ export default function RootLayout({
       <body className={`${inter.variable} font-sans antialiased`}>
         <FirebaseClientProvider>
           <AuthProvider>
+            {/* 1. Добавляем обработчик уведомлений здесь */}
+            <PushNotificationsHandler />
             {/* AppShell должен быть ВНУТРИ AuthProvider, чтобы использовать useAuth */}
             <AppShell>
               {children}
