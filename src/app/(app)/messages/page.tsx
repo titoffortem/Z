@@ -19,6 +19,7 @@ import {
   arrayRemove,
   arrayUnion,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -291,6 +292,7 @@ export default function MessagesPage() {
   const isMobile = useIsMobile();
 
   const [chats, setChats] = useState<ChatItem[]>([]);
+  const [typingByChatId, setTypingByChatId] = useState<Record<string, string[]>>({});
   const [profilesById, setProfilesById] = useState<Record<string, UserProfile>>({});
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -549,7 +551,18 @@ export default function MessagesPage() {
         typingUserIds: isTyping ? arrayUnion(user.uid) : arrayRemove(user.uid),
       });
     } catch {
-      // Ignore typing state errors to avoid interrupting message UI.
+      // Ignore chat-level typing update errors (some envs can restrict parent-doc writes).
+    }
+
+    try {
+      const typingRef = doc(firestore, 'chats', chatId, 'typing', user.uid);
+      if (isTyping) {
+        await setDoc(typingRef, { updatedAt: serverTimestamp() }, { merge: true });
+      } else {
+        await deleteDoc(typingRef);
+      }
+    } catch {
+      // Ignore typing subcollection errors to avoid interrupting message UI.
     }
   }, [firestore, user]);
 
@@ -690,6 +703,20 @@ export default function MessagesPage() {
       setProfilesById((prev) => ({ ...prev, ...nextProfilesById }));
     });
   }, [chats, firestore, user]);
+
+  useEffect(() => {
+    if (!firestore || !selectedChatId) {
+      return;
+    }
+
+    const typingRef = collection(firestore, 'chats', selectedChatId, 'typing');
+    const unsubscribe = onSnapshot(typingRef, (snapshot) => {
+      const ids = snapshot.docs.map((typingDoc) => typingDoc.id);
+      setTypingByChatId((prev) => ({ ...prev, [selectedChatId]: ids }));
+    });
+
+    return () => unsubscribe();
+  }, [firestore, selectedChatId]);
 
   useEffect(() => {
     if (!firestore || !selectedChatId) {
@@ -1385,7 +1412,11 @@ export default function MessagesPage() {
     });
   };
 
-  const typingUserIdsExceptMe = selectedChat?.typingUserIds.filter((typingUserId) => typingUserId !== user?.uid) || [];
+  const mergedTypingUserIds = Array.from(new Set([
+    ...(selectedChat?.typingUserIds || []),
+    ...(selectedChatId ? (typingByChatId[selectedChatId] || []) : []),
+  ]));
+  const typingUserIdsExceptMe = mergedTypingUserIds.filter((typingUserId) => typingUserId !== user?.uid);
   const isPartnerTyping = Boolean(!isSelectedChatGroup && typingUserIdsExceptMe.length > 0);
   const typingParticipants = typingUserIdsExceptMe
     .map((typingUserId) => profilesById[typingUserId]?.nickname)
