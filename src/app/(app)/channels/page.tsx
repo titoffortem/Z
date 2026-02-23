@@ -293,6 +293,11 @@ export default function ChannelsPage() {
     : 0;
 
   const canPost = Boolean(user && selectedChannel && selectedChannel.creatorId === user.uid);
+  const composePlaceholder = !selectedChannelId
+    ? 'Сначала выберите канал'
+    : canPost
+      ? 'Написать пост…'
+      : 'Публикация доступна только владельцу канала';
 
   const createOrOpenChannel = async (rawTitle: string) => {
     const title = rawTitle.trim();
@@ -633,8 +638,12 @@ export default function ChannelsPage() {
                 </Button>
               </div>
             </div>
-          </footer>
-        )}
+          </div>
+
+          {!canPost && selectedChannelId && (
+            <p className="mt-2 px-1 text-xs text-muted-foreground">Чтобы публиковать посты, создайте свой канал.</p>
+          )}
+        </footer>
       </section>
 
       <Dialog open={isCreateChannelOpen} onOpenChange={setCreateChannelOpen}>
