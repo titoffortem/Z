@@ -19,6 +19,7 @@ import {
   arrayRemove,
   arrayUnion,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -41,6 +42,7 @@ type ChatItem = {
   participantIds: string[];
   lastMessageText: string;
   updatedAt: string;
+  typingUserIds: string[];
   title?: string;
   isGroup?: boolean;
 };
@@ -189,12 +191,93 @@ function DoubleCheckIcon() {
   );
 }
 
+function TypingKeyboardIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      version="1.1"
+      viewBox="0 0 1503.55 800"
+      className="h-4 w-auto"
+      aria-hidden="true"
+    >
+      <defs>
+        <style>
+          {`
+            .typing-st0 {
+              fill: none;
+            }
+
+            .typing-btn {
+              transform-origin: center;
+              transform-box: fill-box;
+              fill: #a3a3a3;
+              animation: typingPressSequence 1.5s ease-in-out infinite;
+            }
+
+            .typing-btn-1 { animation-delay: 0s; }
+            .typing-btn-2 { animation-delay: 0.5s; }
+            .typing-btn-3 { animation-delay: 1s; }
+
+            @keyframes typingPressSequence {
+              0%, 35%, 100% {
+                transform: scale(1) translateY(0);
+                fill: #a3a3a3;
+              }
+              10%, 20% {
+                transform: scale(0.65) translateY(120px);
+                fill: #577f59;
+              }
+            }
+          `}
+        </style>
+      </defs>
+
+      <rect className="typing-st0" width="800" height="800" />
+
+      <g className="typing-btn typing-btn-1">
+        <g>
+          <path d="M80,480v-200c0-24,16-40,40-40h278v-40H120c-5.38.02-33.64.64-56.5,23.5-14.5,14.5-23.5,34.5-23.5,56.5v240c0,44,36,80,80,80h278v-80H120c-24,0-40-16-40-40Z" />
+          <line x1="398" y1="520" x2="398" y2="520" />
+        </g>
+        <g>
+          <path d="M438.03,480v-200c0-24-16-40-40-40H120.03v-40h278c5.38.02,33.64.64,56.5,23.5,14.5,14.5,23.5,34.5,23.5,56.5v240c0,44-36,80-80,80H120.03v-80h278c24,0,40-16,40-40Z" />
+          <line x1="120.03" y1="520" x2="120.03" y2="520" />
+        </g>
+      </g>
+
+      <g className="typing-btn typing-btn-2">
+        <g>
+          <path d="M558.03,480v-200c0-24,16-40,40-40h278v-40h-278c-5.38.02-33.64.64-56.5,23.5-14.5,14.5-23.5,34.5-23.5,56.5v240c0,44,36,80,80,80h278v-80h-278c-24,0-40-16-40-40Z" />
+          <line x1="876.02" y1="520" x2="876.02" y2="520" />
+        </g>
+        <g>
+          <path d="M916.05,480v-200c0-24-16-40-40-40h-278v-40h278c5.38.02,33.64.64,56.5,23.5,14.5,14.5,23.5,34.5,23.5,56.5v240c0,44-36,80-80,80h-278v-80h278c24,0,40-16,40-40Z" />
+          <line x1="598.05" y1="520" x2="598.05" y2="520" />
+        </g>
+      </g>
+
+      <g className="typing-btn typing-btn-3">
+        <g>
+          <path d="M1036.05,480v-200c0-24,16-40,40-40h278v-40h-278c-5.38.02-33.64.64-56.5,23.5-14.5,14.5-23.5,34.5-23.5,56.5v240c0,44,36,80,80,80h278v-80h-278c-24,0-40-16-40-40Z" />
+          <line x1="1354.05" y1="520" x2="1354.05" y2="520" />
+        </g>
+        <g>
+          <path d="M1394.08,480v-200c0-24-16-40-40-40h-278v-40h278c5.38.02,33.64.64,56.5,23.5,14.5,14.5,23.5,34.5,23.5,56.5v240c0,44-36,80-80,80h-278v-80h278c24,0,40-16,40-40Z" />
+          <line x1="1076.08" y1="520" x2="1076.08" y2="520" />
+        </g>
+      </g>
+    </svg>
+  );
+}
+
+
 export default function MessagesPage() {
   const { user } = useAuth();
   const firestore = useFirestore();
   const isMobile = useIsMobile();
 
   const [chats, setChats] = useState<ChatItem[]>([]);
+  const [typingByChatId, setTypingByChatId] = useState<Record<string, string[]>>({});
   const [profilesById, setProfilesById] = useState<Record<string, UserProfile>>({});
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -249,6 +332,9 @@ export default function MessagesPage() {
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastChatAndMessagesRef = useRef<{ chatId: string; messageIds: string[] } | null>(null);
   const initialScrollDoneForChatRef = useRef<string | null>(null);
+  const typingStopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingChatIdRef = useRef<string | null>(null);
+  const isTypingRef = useRef(false);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
 
   const LINE_HEIGHT_PX = 20;
@@ -431,11 +517,49 @@ export default function MessagesPage() {
 
   useEffect(() => {
     return () => {
+      if (typingStopTimeoutRef.current) {
+        clearTimeout(typingStopTimeoutRef.current);
+      }
       if (highlightTimeoutRef.current) {
         clearTimeout(highlightTimeoutRef.current);
       }
     };
   }, []);
+
+  const setTypingStateForChat = useCallback(async (chatId: string, isTyping: boolean) => {
+    if (!firestore || !user) {
+      return;
+    }
+
+    try {
+      await updateDoc(doc(firestore, 'chats', chatId), {
+        typingUserIds: isTyping ? arrayUnion(user.uid) : arrayRemove(user.uid),
+      });
+    } catch {
+      // Ignore chat-level typing update errors (some envs can restrict parent-doc writes).
+    }
+
+    try {
+      const typingRef = doc(firestore, 'chats', chatId, 'typing', user.uid);
+      if (isTyping) {
+        await setDoc(typingRef, { updatedAt: serverTimestamp() }, { merge: true });
+      } else {
+        await deleteDoc(typingRef);
+      }
+    } catch {
+      // Ignore typing subcollection errors to avoid interrupting message UI.
+    }
+  }, [firestore, user]);
+
+  const stopTypingForChat = useCallback(async (chatId: string | null) => {
+    if (!chatId || !isTypingRef.current || typingChatIdRef.current !== chatId) {
+      return;
+    }
+
+    isTypingRef.current = false;
+    typingChatIdRef.current = null;
+    await setTypingStateForChat(chatId, false);
+  }, [setTypingStateForChat]);
 
   const updateBottomState = useCallback(() => {
     const container = messagesContainerRef.current;
@@ -488,6 +612,7 @@ export default function MessagesPage() {
               participantIds: data.participantIds || [],
               lastMessageText: data.lastMessageText || '',
               updatedAt: toIsoDate(data.updatedAt),
+              typingUserIds: data.typingUserIds || [],
               title: data.title || '',
               isGroup: Boolean(data.isGroup),
             };
@@ -563,6 +688,20 @@ export default function MessagesPage() {
       setProfilesById((prev) => ({ ...prev, ...nextProfilesById }));
     });
   }, [chats, firestore, user]);
+
+  useEffect(() => {
+    if (!firestore || !selectedChatId) {
+      return;
+    }
+
+    const typingRef = collection(firestore, 'chats', selectedChatId, 'typing');
+    const unsubscribe = onSnapshot(typingRef, (snapshot) => {
+      const ids = snapshot.docs.map((typingDoc) => typingDoc.id);
+      setTypingByChatId((prev) => ({ ...prev, [selectedChatId]: ids }));
+    });
+
+    return () => unsubscribe();
+  }, [firestore, selectedChatId]);
 
   useEffect(() => {
     if (!firestore || !selectedChatId) {
@@ -673,9 +812,9 @@ export default function MessagesPage() {
     });
     void batch.commit();
   }, [firestore, isMobile, isMobileDialogOpen, messages, selectedChatId, user]);
-  // Initial scroll when opening chat: last read at top, reveal up to 3 new messages
+  // Initial scroll when opening chat: always go to the latest message.
   useEffect(() => {
-    if (!selectedChatId || !user || messages.length === 0) {
+    if (!selectedChatId || messages.length === 0) {
       return;
     }
     if (lastChatAndMessagesRef.current?.chatId !== selectedChatId) {
@@ -684,24 +823,62 @@ export default function MessagesPage() {
     if (initialScrollDoneForChatRef.current === selectedChatId) {
       return;
     }
+
     initialScrollDoneForChatRef.current = selectedChatId;
-    const firstUnreadIndex = messages.findIndex((m) => m.senderId !== user.uid && !m.readBy.includes(user.uid));
-    const lastReadIndex = firstUnreadIndex === -1 ? messages.length - 1 : firstUnreadIndex - 1;
-    const lastReadMessageId = lastReadIndex >= 0 ? messages[lastReadIndex].id : null;
-    const unreadCount = firstUnreadIndex === -1 ? 0 : messages.length - firstUnreadIndex;
-    const targetIndex = firstUnreadIndex === -1 ? lastReadIndex : Math.min(firstUnreadIndex + Math.min(3, unreadCount) - 1, messages.length - 1);
-    const targetMessageId = messages[targetIndex]?.id ?? lastReadMessageId;
-    isAtBottomRef.current = targetIndex >= messages.length - 1;
-    setIsAtBottom(targetIndex >= messages.length - 1);
+    isAtBottomRef.current = true;
+    setIsAtBottom(true);
+
     requestAnimationFrame(() => {
-      const el = messageElementRefs.current[targetMessageId ?? ''];
-      if (el) {
-        el.scrollIntoView({ behavior: 'auto', block: 'end' });
-      } else {
-        scrollToBottom('auto');
-      }
+      scrollToBottom('auto');
     });
-  }, [selectedChatId, messages, user, scrollToBottom]);
+  }, [selectedChatId, messages, scrollToBottom]);
+
+  useEffect(() => {
+    const previousChatId = typingChatIdRef.current;
+    if (previousChatId && previousChatId !== selectedChatId) {
+      void stopTypingForChat(previousChatId);
+    }
+
+    if (!firestore || !user || !selectedChatId) {
+      return;
+    }
+
+    const hasText = newMessage.trim().length > 0;
+
+    if (!hasText) {
+      if (typingStopTimeoutRef.current) {
+        clearTimeout(typingStopTimeoutRef.current);
+        typingStopTimeoutRef.current = null;
+      }
+      void stopTypingForChat(selectedChatId);
+      return;
+    }
+
+    if (!isTypingRef.current || typingChatIdRef.current !== selectedChatId) {
+      isTypingRef.current = true;
+      typingChatIdRef.current = selectedChatId;
+      void setTypingStateForChat(selectedChatId, true);
+    }
+
+    if (typingStopTimeoutRef.current) {
+      clearTimeout(typingStopTimeoutRef.current);
+    }
+
+    typingStopTimeoutRef.current = setTimeout(() => {
+      void stopTypingForChat(selectedChatId);
+    }, 2500);
+  }, [firestore, newMessage, selectedChatId, setTypingStateForChat, stopTypingForChat, user]);
+
+  useEffect(() => {
+    return () => {
+      if (typingStopTimeoutRef.current) {
+        clearTimeout(typingStopTimeoutRef.current);
+      }
+      if (typingChatIdRef.current) {
+        void stopTypingForChat(typingChatIdRef.current);
+      }
+    };
+  }, [stopTypingForChat]);
 
   useEffect(() => {
     if (!selectedChatId) {
@@ -723,6 +900,16 @@ export default function MessagesPage() {
       });
     }
   }, [messages, selectedChatId, scrollToBottom]);
+
+  useEffect(() => {
+    if (!selectedChatId || messages.length === 0 || !isAtBottomRef.current) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      scrollToBottom('auto');
+    });
+  }, [forwardedPostLikesById, profilesById, messages, selectedChatId, scrollToBottom]);
 
   useEffect(() => {
     const trimmedTerm = searchTerm.trim();
@@ -1012,6 +1199,7 @@ export default function MessagesPage() {
         title: groupTitle.trim(),
         updatedAt: serverTimestamp(),
         lastMessageText: '',
+        typingUserIds: [],
       });
 
       setSelectedChatId(chatRef.id);
@@ -1059,6 +1247,7 @@ export default function MessagesPage() {
         title: '',
         updatedAt: serverTimestamp(),
         lastMessageText: '',
+        typingUserIds: [],
       });
     }
 
@@ -1127,6 +1316,8 @@ export default function MessagesPage() {
       updatedAt: serverTimestamp(),
     });
 
+    await stopTypingForChat(targetChatId);
+
     setSelectedForwardMessageIds([]);
     setForwardComment('');
     setForwardPickerOpen(false);
@@ -1172,6 +1363,8 @@ export default function MessagesPage() {
         updatedAt: serverTimestamp(),
       });
 
+      await stopTypingForChat(targetChatId);
+
       setNewMessage('');
       setSelectedImages([]);
       requestAnimationFrame(() => {
@@ -1204,6 +1397,19 @@ export default function MessagesPage() {
       likedBy: isLiked ? arrayRemove(user.uid) : arrayUnion(user.uid),
     });
   };
+
+  const mergedTypingUserIds = Array.from(new Set([
+    ...(selectedChat?.typingUserIds || []),
+    ...(selectedChatId ? (typingByChatId[selectedChatId] || []) : []),
+  ]));
+  const typingUserIdsExceptMe = mergedTypingUserIds.filter((typingUserId) => typingUserId !== user?.uid);
+  const isPartnerTyping = Boolean(!isSelectedChatGroup && typingUserIdsExceptMe.length > 0);
+  const typingParticipants = typingUserIdsExceptMe
+    .map((typingUserId) => profilesById[typingUserId]?.nickname)
+    .filter((nickname): nickname is string => Boolean(nickname));
+  const groupTypingLabel = typingParticipants.length > 1
+    ? `${typingParticipants[0]} и еще ${typingParticipants.length - 1} печатают…`
+    : `${typingParticipants[0] || 'Кто-то'} печатает…`;
 
   return (
     <div className="mx-auto relative flex h-full max-w-5xl">
@@ -1361,11 +1567,29 @@ export default function MessagesPage() {
                   ) : (
                     <p className="font-semibold">{selectedChatTitle}</p>
                   )}
-                  {!isSelectedChatGroup && <p className="text-xs text-muted-foreground">Личные сообщения</p>}
+                  {!isSelectedChatGroup && (
+                    isPartnerTyping ? (
+                      <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <TypingKeyboardIcon />
+                        <span>печатает…</span>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Личные сообщения</p>
+                    )
+                  )}
                   {isSelectedChatGroup && (
-                    <button type="button" className="mt-1 block text-xs text-muted-foreground hover:underline" onClick={() => setParticipantsOpen(true)}>
-                      Участники: {selectedChat?.participantIds.length || 0}
-                    </button>
+                    <>
+                      {typingUserIdsExceptMe.length > 0 ? (
+                        <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <TypingKeyboardIcon />
+                          <span>{groupTypingLabel}</span>
+                        </div>
+                      ) : (
+                        <button type="button" className="mt-1 block text-xs text-muted-foreground hover:underline" onClick={() => setParticipantsOpen(true)}>
+                          Участники: {selectedChat?.participantIds.length || 0}
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
