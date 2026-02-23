@@ -293,6 +293,11 @@ export default function ChannelsPage() {
     : 0;
 
   const canPost = Boolean(user && selectedChannel && selectedChannel.creatorId === user.uid);
+  const composePlaceholder = !selectedChannelId
+    ? 'Сначала выберите канал'
+    : canPost
+      ? 'Написать пост…'
+      : 'Публикация доступна только владельцу канала';
 
   const createOrOpenChannel = async (rawTitle: string) => {
     const title = rawTitle.trim();
