@@ -66,6 +66,9 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
 
     const isChannelPost = post.sourceType === 'channel';
     const resolvedPostId = isChannelPost ? (post.sourcePostId || post.id) : post.id;
+    const channelAuthorName = post.sourceChannelTitle || 'Канал';
+    const authorDisplayName = author ? `@${author.nickname}` : (isChannelPost ? channelAuthorName : null);
+    const authorAvatarFallback = authorDisplayName?.[0]?.toUpperCase() || 'К';
 
     const getPostRef = () => {
         if (!firestore) {
@@ -351,13 +354,13 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                 */}
                 {!isImageExpanded && (
                     <div className="flex-shrink-0 md:hidden p-3 bg-background/95 backdrop-blur border-t border-border flex items-center justify-between z-10 w-full">
-                        {author ? (
+                        {authorDisplayName ? (
                             <div className="flex items-center gap-2 opacity-90">
                                 <Avatar className="h-7 w-7 ring-1 ring-border/50">
-                                    <AvatarImage src={author.profilePictureUrl || undefined} />
-                                    <AvatarFallback>{author.nickname?.[0].toUpperCase()}</AvatarFallback>
+                                    <AvatarImage src={author?.profilePictureUrl || undefined} />
+                                    <AvatarFallback>{authorAvatarFallback}</AvatarFallback>
                                 </Avatar>
-                                <span className="text-sm font-bold truncate max-w-[120px]">@{author.nickname}</span>
+                                <span className="text-sm font-bold truncate max-w-[120px]">{authorDisplayName}</span>
                             </div>
                         ) : <div></div>}
 
@@ -403,7 +406,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                         </button>
                     )}
 
-                    {( !showComments || (showComments && author) || isSingleContent ) && author && (
+                    {( !showComments || (showComments && authorDisplayName) || isSingleContent ) && authorDisplayName && (
                         <div className={cn(
                             "flex items-center gap-3 min-w-0", 
                             showComments && !isSingleContent && "hidden md:hidden", 
@@ -411,13 +414,17 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                             showComments && isSingleContent && "hidden md:flex" 
                         )}> 
                             <Avatar className="h-10 w-10 ring-1 ring-border flex-shrink-0">
-                                <AvatarImage src={author.profilePictureUrl || undefined} />
-                                <AvatarFallback>{author.nickname?.[0].toUpperCase()}</AvatarFallback>
+                                <AvatarImage src={author?.profilePictureUrl || undefined} />
+                                <AvatarFallback>{authorAvatarFallback}</AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col">
-                                <Link href={`/profile?nickname=${author.nickname}`} className="font-bold text-base text-foreground hover:text-primary">
-                                    @{author.nickname}
-                                </Link>
+                                {author ? (
+                                    <Link href={`/profile?nickname=${author.nickname}`} className="font-bold text-base text-foreground hover:text-primary">
+                                        @{author.nickname}
+                                    </Link>
+                                ) : (
+                                    <span className="font-bold text-base text-foreground">{channelAuthorName}</span>
+                                )}
                                 <span className="text-xs text-muted-foreground">
                                     {post.createdAt ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: ru }) : "только что"}
                                 </span>
