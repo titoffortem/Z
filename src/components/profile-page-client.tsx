@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { uploadToImageBan } from '@/lib/imageban';
 import { Post, UserProfile } from '@/types';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
 import { collection, doc, getDocs, limit, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import { ChangeEvent, useEffect, useState } from 'react';
@@ -177,6 +177,7 @@ export default function ProfilePageClient() {
         profilePictureUrl: avatarUrl,
         avatarHistoryUrls: nextAvatarHistory,
         updatedAt: serverTimestamp(),
+        likedBy: [],
       });
 
       const avatarPostId = doc(collection(firestore, 'posts')).id;
@@ -269,22 +270,22 @@ export default function ProfilePageClient() {
       <header className="p-4 border-b border-border/50">
         <div className="flex flex-col md:flex-row gap-4 md:items-center">
           <div className="flex items-center gap-4 flex-grow">
-            <Avatar className="h-20 w-20 shrink-0 border border-border cursor-pointer" onClick={openAvatarViewer}>
-              <AvatarImage src={user.profilePictureUrl ?? undefined} alt={user.nickname} />
-              <AvatarFallback>{user.nickname[0].toUpperCase()}</AvatarFallback>
-            </Avatar>
+            <div className="relative h-20 w-20 shrink-0">
+              <Avatar className="h-20 w-20 border border-border cursor-pointer" onClick={openAvatarViewer}>
+                <AvatarImage src={user.profilePictureUrl ?? undefined} alt={user.nickname} />
+                <AvatarFallback>{user.nickname[0].toUpperCase()}</AvatarFallback>
+              </Avatar>
 
-            <div className="flex flex-col">
-              <h1 className="text-2xl font-bold break-all">{user.nickname}</h1>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground mt-1 text-sm sm:text-base">
-                <span className="whitespace-nowrap"><span className="font-bold text-foreground">{posts.length}</span> Публикации</span>
-                <span className="whitespace-nowrap"><span className="font-bold text-foreground">{followerCount}</span> Подписчики</span>
-                <span className="whitespace-nowrap"><span className="font-bold text-foreground">{followingCount}</span> Подписки</span>
-              </div>
               {isOwnProfile && (
-                <div className="mt-3">
-                  <label htmlFor="change-avatar" className="text-sm text-primary cursor-pointer hover:underline">
-                    {isAvatarUploading ? 'Обновление аватарки...' : 'Сменить аватарку'}
+                <>
+                  <label
+                    htmlFor="change-avatar"
+                    className={`absolute -bottom-1 -right-1 z-10 flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-md transition-opacity ${isAvatarUploading ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:opacity-90'}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                    }}
+                  >
+                    <Plus className="h-5 w-5" />
                   </label>
                   <input
                     id="change-avatar"
@@ -294,7 +295,19 @@ export default function ProfilePageClient() {
                     onChange={handleAvatarChange}
                     disabled={isAvatarUploading}
                   />
-                </div>
+                </>
+              )}
+            </div>
+
+            <div className="flex flex-col">
+              <h1 className="text-2xl font-bold break-all">{user.nickname}</h1>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground mt-1 text-sm sm:text-base">
+                <span className="whitespace-nowrap"><span className="font-bold text-foreground">{posts.length}</span> Публикации</span>
+                <span className="whitespace-nowrap"><span className="font-bold text-foreground">{followerCount}</span> Подписчики</span>
+                <span className="whitespace-nowrap"><span className="font-bold text-foreground">{followingCount}</span> Подписки</span>
+              </div>
+              {isOwnProfile && isAvatarUploading && (
+                <p className="mt-3 text-sm text-primary">Обновление аватарки...</p>
               )}
             </div>
           </div>
