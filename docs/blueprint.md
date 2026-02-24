@@ -3,7 +3,7 @@
 ## Core Features:
 
 - Google Auth & Profile Creation: Secure user authentication via Google's signInWithRedirect, with a mandatory, unique nickname selection for profile completion, stored in Firestore's 'users' collection.
-- Versatile Content Publishing: Users can compose posts including image uploads via ImgBB, embedding YouTube/MP4 video links for in-app playback, and attaching document links for direct download, with all media URLs stored in Firestore.
+- Versatile Content Publishing: Users can compose posts including image uploads via ImageBan API, embedding YouTube/MP4 video links for in-app playback, and attaching document links for direct download, with all media URLs stored in Firestore.
 - Personalized Smart Mix Feed: A dynamic content feed that prioritizes posts from followed users, intelligently surfaces trending content, and introduces new discoveries through random posts, reflecting user interaction data from Firestore for a 'YouTube Shorts-like' experience.
 - Real-time Social Interaction: Enable real-time direct messaging between users with a dedicated 'Messages' section, and instant feedback on posts via a 'like' mechanism, all synchronized through Firestore's 'chats' and 'posts' collections.
 - User Discovery Search: Efficiently locate and connect with other users through a dedicated search functionality based on their unique nicknames, utilizing the 'users' collection in Firestore.
