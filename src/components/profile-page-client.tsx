@@ -2,12 +2,14 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { uploadToImageBan } from '@/lib/imageban';
 import { Post, UserProfile } from '@/types';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
-import { collection, doc, getDocs, limit, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
+import { collection, doc, getDocs, limit, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import { ChangeEvent, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PostCard } from '@/components/post-card';
@@ -23,6 +25,8 @@ export default function ProfilePageClient() {
   const [loading, setLoading] = useState(true);
   const [userFound, setUserFound] = useState(true);
   const [isAvatarUploading, setIsAvatarUploading] = useState(false);
+  const [isAvatarViewerOpen, setIsAvatarViewerOpen] = useState(false);
+  const [avatarViewerIndex, setAvatarViewerIndex] = useState(0);
   const firestore = useFirestore();
   const { user: authUser } = useUser();
   const { toast } = useToast();
@@ -94,6 +98,43 @@ export default function ProfilePageClient() {
     fetchData();
   }, [nickname, firestore, authUser]);
 
+  const getAvatarHistory = (profile: UserProfile | null): string[] => {
+    if (!profile) {
+      return [];
+    }
+
+    const fromHistory = (profile.avatarHistoryUrls ?? []).filter((url) => typeof url === 'string' && url.length > 0);
+    const fallbackCurrent = profile.profilePictureUrl ? [profile.profilePictureUrl] : [];
+    return Array.from(new Set([...fromHistory, ...fallbackCurrent]));
+  };
+
+  const avatarHistory = getAvatarHistory(user);
+
+  const openAvatarViewer = () => {
+    if (avatarHistory.length === 0) {
+      return;
+    }
+
+    setAvatarViewerIndex(0);
+    setIsAvatarViewerOpen(true);
+  };
+
+  const showPreviousAvatar = () => {
+    if (avatarHistory.length <= 1) {
+      return;
+    }
+
+    setAvatarViewerIndex((prev) => (prev - 1 + avatarHistory.length) % avatarHistory.length);
+  };
+
+  const showNextAvatar = () => {
+    if (avatarHistory.length <= 1) {
+      return;
+    }
+
+    setAvatarViewerIndex((prev) => (prev + 1) % avatarHistory.length);
+  };
+
   const handleAvatarChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -128,16 +169,44 @@ export default function ProfilePageClient() {
         throw new Error('Не удалось загрузить изображение аватарки.');
       }
 
+      const previousHistory = getAvatarHistory(user);
+      const nextAvatarHistory = Array.from(new Set([avatarUrl, ...previousHistory]));
+
       await updateProfile(authUser, { photoURL: avatarUrl });
       await updateDoc(doc(firestore, 'users', authUser.uid), {
         profilePictureUrl: avatarUrl,
+        avatarHistoryUrls: nextAvatarHistory,
         updatedAt: serverTimestamp(),
       });
 
-      setUser((prev) => (prev ? { ...prev, profilePictureUrl: avatarUrl } : prev));
+      const avatarPostId = doc(collection(firestore, 'posts')).id;
+      await setDoc(doc(firestore, 'posts', avatarPostId), {
+        id: avatarPostId,
+        userId: authUser.uid,
+        caption: 'Обновил(а) аватарку',
+        mediaUrls: [avatarUrl],
+        mediaTypes: ['image'],
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        likedBy: [],
+      });
+
+      const nowIso = new Date().toISOString();
+
+      setUser((prev) => (prev ? { ...prev, profilePictureUrl: avatarUrl, avatarHistoryUrls: nextAvatarHistory } : prev));
+      setPosts((prev) => ([{
+        id: avatarPostId,
+        userId: authUser.uid,
+        caption: 'Обновил(а) аватарку',
+        mediaUrls: [avatarUrl],
+        mediaTypes: ['image'],
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        likedBy: [],
+      }, ...prev]));
       toast({
         title: 'Готово',
-        description: 'Аватар успешно обновлён.',
+        description: 'Аватар успешно обновлён, и создан пост с новой аватаркой.',
       });
     } catch (error: any) {
       toast({
@@ -200,7 +269,7 @@ export default function ProfilePageClient() {
       <header className="p-4 border-b border-border/50">
         <div className="flex flex-col md:flex-row gap-4 md:items-center">
           <div className="flex items-center gap-4 flex-grow">
-            <Avatar className="h-20 w-20 shrink-0 border border-border">
+            <Avatar className="h-20 w-20 shrink-0 border border-border cursor-pointer" onClick={openAvatarViewer}>
               <AvatarImage src={user.profilePictureUrl ?? undefined} alt={user.nickname} />
               <AvatarFallback>{user.nickname[0].toUpperCase()}</AvatarFallback>
             </Avatar>
@@ -247,6 +316,33 @@ export default function ProfilePageClient() {
           </div>
         )}
       </div>
+
+      <Dialog open={isAvatarViewerOpen} onOpenChange={setIsAvatarViewerOpen}>
+        <DialogContent className="max-w-3xl border-0 bg-card p-0">
+          <DialogTitle className="sr-only">История аватарок</DialogTitle>
+          <div className="relative flex min-h-[320px] items-center justify-center bg-black/90 p-4">
+            {avatarHistory.length > 1 && (
+              <Button type="button" size="icon" variant="secondary" className="absolute left-4 top-1/2 -translate-y-1/2" onClick={showPreviousAvatar}>
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+            )}
+
+            {avatarHistory[avatarViewerIndex] && (
+              <img
+                src={avatarHistory[avatarViewerIndex]}
+                alt={`Аватар ${avatarViewerIndex + 1}`}
+                className="max-h-[70vh] max-w-full rounded-md object-contain"
+              />
+            )}
+
+            {avatarHistory.length > 1 && (
+              <Button type="button" size="icon" variant="secondary" className="absolute right-4 top-1/2 -translate-y-1/2" onClick={showNextAvatar}>
+                <ChevronRight className="h-5 w-5" />
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

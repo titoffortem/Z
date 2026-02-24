@@ -133,6 +133,7 @@ export default function CreateProfilePage() {
           id: user.uid,
           nickname: values.nickname,
           profilePictureUrl: avatarUrl,
+          avatarHistoryUrls: avatarUrl ? [avatarUrl] : [],
           createdAt: serverTimestamp(),
           followingUserIds: [],
           followerUserIds: [],
