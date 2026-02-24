@@ -112,6 +112,10 @@ const formatTime = (isoDate: string) => {
   });
 };
 
+const getChatId = (firstUserId: string, secondUserId: string) => {
+  return [firstUserId, secondUserId].sort().join('_');
+};
+
 export default function MessagesPage() {
   const { user } = useAuth();
   const firestore = useFirestore();
