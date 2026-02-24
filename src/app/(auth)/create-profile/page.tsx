@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { useFirestore, useStorage } from '@/firebase';
+import { useFirestore } from '@/firebase';
 import { AppLoader } from '@/components/app-loader';
 import { useToast } from '@/hooks/use-toast';
+import { uploadToImageBan } from '@/lib/imageban';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { updateProfile } from 'firebase/auth';
 import { collection, doc, getDocs, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { useRouter } from 'next/navigation';
 import { ChangeEvent, useEffect, useMemo, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
@@ -29,7 +29,6 @@ export default function CreateProfilePage() {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const firestore = useFirestore();
-  const storage = useStorage();
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   const avatarPreviewUrl = useMemo(() => {
@@ -94,7 +93,7 @@ export default function CreateProfilePage() {
   };
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    if (!user || !firestore || !storage) {
+    if (!user || !firestore) {
       toast({
         title: 'Ошибка',
         description: 'Вы не авторизованы или сервис недоступен.',
@@ -121,12 +120,12 @@ export default function CreateProfilePage() {
         let avatarUrl: string | null = user.photoURL ?? null;
 
         if (avatarFile) {
-          const avatarRef = ref(storage, `avatars/${user.uid}/avatar-${Date.now()}`);
-          await uploadBytes(avatarRef, avatarFile, {
-            cacheControl: 'public,max-age=31536000,immutable',
-            contentType: avatarFile.type,
-          });
-          avatarUrl = await getDownloadURL(avatarRef);
+          avatarUrl = await uploadToImageBan(avatarFile);
+
+          if (!avatarUrl) {
+            throw new Error('Не удалось загрузить аватарку. Попробуйте ещё раз.');
+          }
+
           await updateProfile(user, { photoURL: avatarUrl });
         }
 
