@@ -36,11 +36,11 @@ const formSchema = z.object({
       }
   );
 
-async function uploadToImgBB(file: File): Promise<string | null> {
-  const apiKey = firebaseConfig.imgbbKey;
+async function uploadToImageBan(file: File): Promise<string | null> {
+  const clientId = firebaseConfig.imagebanClientId;
 
-  if (!apiKey) {
-    console.error('ImgBB API key is not configured in firebase/config.ts');
+  if (!clientId) {
+    console.error('ImageBan CLIENT_ID is not configured in firebase/config.ts');
     return null;
   }
   
@@ -48,26 +48,29 @@ async function uploadToImgBB(file: File): Promise<string | null> {
   formData.append('image', file);
 
   try {
-    const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+    const response = await fetch('https://api.imageban.ru/v1', {
       method: 'POST',
+      headers: {
+        Authorization: `TOKEN ${clientId}`,
+      },
       body: formData,
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('ImgBB upload failed with status:', response.status, errorText);
+      console.error('ImageBan upload failed with status:', response.status, errorText);
       return null;
     }
 
     const data = await response.json();
-    if (data.success) {
-      return data.data.url;
+    if (data?.success && Array.isArray(data.data) && data.data[0]?.link) {
+      return data.data[0].link;
     } else {
-      console.error('ImgBB API returned an error:', data);
+      console.error('ImageBan API returned an error:', data);
       return null;
     }
   } catch (error) {
-    console.error('Error during ImgBB upload:', error);
+    console.error('Error during ImageBan upload:', error);
     return null;
   }
 }
@@ -150,7 +153,7 @@ export function CreatePost() {
         let mediaTypes: string[] = [];
 
         if (values.images && values.images.length > 0) {
-          const uploadPromises = values.images.map(image => uploadToImgBB(image));
+          const uploadPromises = values.images.map(image => uploadToImageBan(image));
           const urls = await Promise.all(uploadPromises);
           
           if (urls.some(url => url === null)) {
