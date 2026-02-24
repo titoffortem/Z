@@ -37,6 +37,8 @@ import type { Post, UserProfile } from '@/types';
 import { useUnreadMessages } from '@/contexts/unread-messages-context';
 import { AppLoaderIcon } from '@/components/app-loader-icon';
 
+import { useRouter, useSearchParams } from 'next/navigation';
+
 type ChatItem = {
   id: string;
   participantIds: string[];
@@ -275,6 +277,9 @@ export default function MessagesPage() {
   const { user } = useAuth();
   const firestore = useFirestore();
   const isMobile = useIsMobile();
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [typingByChatId, setTypingByChatId] = useState<Record<string, string[]>>({});
@@ -584,6 +589,27 @@ export default function MessagesPage() {
     });
   }, []);
 
+  const handleSelectChat = useCallback((chatId: string) => {
+    setSelectedChatId(chatId);
+    setMobileDialogOpen(true);
+    // Обновляем URL без перезагрузки страницы
+    router.push(`/messages?id=${chatId}`, { scroll: false });
+  }, [router]);
+
+  useEffect(() => {
+    const chatIdFromUrl = searchParams.get('id');
+    
+    // Если в URL есть ID, и он отличается от текущего выбранного
+    if (chatIdFromUrl && chatIdFromUrl !== selectedChatId) {
+      setSelectedChatId(chatIdFromUrl);
+      setMobileDialogOpen(true);
+    }
+    // Если URL пустой, сбрасываем выделение (опционально)
+    else if (!chatIdFromUrl && selectedChatId) {
+      setSelectedChatId(null);
+      setMobileDialogOpen(false);
+    }
+  }, [searchParams, selectedChatId]);
 
   useEffect(() => {
     const handleCloseMobileChat = () => setMobileDialogOpen(false);
@@ -631,6 +657,9 @@ export default function MessagesPage() {
   }, [firestore, user]);
 
   useEffect(() => {
+    // Если чаты еще грузятся, ничего не делаем
+    if (chatLoading) return; 
+
     if (chats.length === 0) {
       if (selectedChatId !== null) {
         setSelectedChatId(null);
@@ -643,7 +672,7 @@ export default function MessagesPage() {
       setSelectedChatId(null);
       setMobileDialogOpen(false);
     }
-  }, [chats, selectedChatId]);
+  }, [chats, selectedChatId, chatLoading]); // Добавьте chatLoading в зависимости
 
   useEffect(() => {
     if (!firestore || !user || chats.length === 0) {
@@ -1286,8 +1315,7 @@ export default function MessagesPage() {
     }
 
     setProfilesById((prev) => ({ ...prev, [targetUser.id]: targetUser }));
-    setSelectedChatId(chatId);
-    setMobileDialogOpen(true);
+    handleSelectChat(chatId);
     setSearchTerm('');
     setUserSearchResults([]);
   };
@@ -1396,6 +1424,16 @@ export default function MessagesPage() {
         lastMessageSenderId: user.uid,
         updatedAt: serverTimestamp(),
       });
+
+      fetch('https://z-xi-plum.vercel.app/api/send-push', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatId: targetChatId,
+          senderId: user.uid,
+          text: text || (imageUrls.length > 0 ? '📷 Фотография' : 'Сообщение')
+        })
+      }).catch(err => console.error('Failed to send push:', err));
 
       await stopTypingForChat(targetChatId);
 
@@ -1517,8 +1555,7 @@ export default function MessagesPage() {
                   key={chat.id}
                   type="button"
                   onClick={() => {
-                    setSelectedChatId(chat.id);
-                    setMobileDialogOpen(true);
+                    handleSelectChat(chat.id);
                   }}
                   className={`mb-1 flex w-full items-center gap-3 rounded-lg p-2 text-left transition ${
                     selectedChatId === chat.id ? 'bg-[#577F59] text-white' : 'hover:bg-accent/50'
