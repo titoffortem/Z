@@ -5,5 +5,6 @@ export const firebaseConfig = {
   "authDomain": "studio-4793380372-e41da.firebaseapp.com",
   "measurementId": "",
   "messagingSenderId": "1011787360328",
-  "imgbbKey": "806efc635481539064a3411065214009"
+  "imagebanClientId": "5Eb0oB10VEuibcyXjWKC",
+  "imagebanSecretKey": "encaW0Fh8zfDcroNSe6nUZT16Bn7upELxZX"
 };

@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import { useFirestore } from '@/firebase';
-import { firebaseConfig } from '@/firebase/config';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +26,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import type { Post, UserProfile } from '@/types';
+import { uploadToImageBan } from '@/lib/imageban';
 
 type ChannelItem = {
   id: string;
@@ -66,32 +66,6 @@ const formatTime = (isoDate: string) => {
     minute: '2-digit',
   });
 };
-
-async function uploadToImgBB(file: File): Promise<string | null> {
-  const apiKey = firebaseConfig.imgbbKey;
-  if (!apiKey) {
-    return null;
-  }
-
-  const formData = new FormData();
-  formData.append('image', file);
-
-  try {
-    const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = await response.json();
-    return data?.data?.url ?? null;
-  } catch {
-    return null;
-  }
-}
 
 export default function ChannelsPage() {
   const { user, userProfile } = useAuth();
@@ -445,7 +419,7 @@ export default function ChannelsPage() {
     try {
       let imageUrls: string[] = [];
       if (selectedImages.length > 0) {
-        const uploaded = await Promise.all(selectedImages.map((file) => uploadToImgBB(file)));
+        const uploaded = await Promise.all(selectedImages.map((file) => uploadToImageBan(file)));
         imageUrls = uploaded.filter((url): url is string => Boolean(url));
       }
 
