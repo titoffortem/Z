@@ -1700,10 +1700,12 @@ export default function MessagesPage() {
               return messages.map((message, index) => {
               const isMine = message.senderId === user?.uid;
               const inferredReadBy = inferredReadByMessageId[message.id] || [];
-              const isReadByRecipients = selectedReadReceiptParticipantIds.length > 0
-                && selectedReadReceiptParticipantIds.every(
-                  (participantId) => message.readBy.includes(participantId) || inferredReadBy.includes(participantId),
-                );
+              const readByRecipientIds = selectedReadReceiptParticipantIds.filter(
+                (participantId) => message.readBy.includes(participantId) || inferredReadBy.includes(participantId),
+              );
+              const isReadByRecipients = isSelectedChatGroup
+                ? readByRecipientIds.length > 0
+                : selectedReadReceiptParticipantIds.length > 0 && readByRecipientIds.length === selectedReadReceiptParticipantIds.length;
               const hasMessageText = Boolean(message.text?.trim());
               const normalizedForwarded = message.forwardedMessages && message.forwardedMessages.length > 0
                 ? message.forwardedMessages
