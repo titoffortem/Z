@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight, Heart, Keyboard, Loader2, MessageSquare, Paperclip, Plus, Search, UserPlus, Users, X } from 'lucide-react';
+import { Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight, Heart, Images, Keyboard, Loader2, MessageSquare, Paperclip, Plus, Search, UserPlus, Users, X } from 'lucide-react';
 import {
   addDoc,
   arrayRemove,
@@ -165,6 +165,7 @@ export default function MessagesPage() {
 
   const [isInviteOpen, setInviteOpen] = useState(false);
   const [isParticipantsOpen, setParticipantsOpen] = useState(false);
+  const [groupDetailsTab, setGroupDetailsTab] = useState<'participants' | 'photos'>('participants');
   const [inviteSearchTerm, setInviteSearchTerm] = useState('');
   const [inviteSearchLoading, setInviteSearchLoading] = useState(false);
   const [inviteSearchResults, setInviteSearchResults] = useState<UserProfile[]>([]);
@@ -1567,7 +1568,16 @@ export default function MessagesPage() {
                 ) : null}
                 <div>
                   {isSelectedChatGroup ? (
-                    <button type="button" className="font-semibold text-left hover:underline" onClick={() => setParticipantsOpen(true)}>{selectedChatTitle}</button>
+                    <button
+                      type="button"
+                      className="font-semibold text-left hover:underline"
+                      onClick={() => {
+                        setGroupDetailsTab('participants');
+                        setParticipantsOpen(true);
+                      }}
+                    >
+                      {selectedChatTitle}
+                    </button>
                   ) : selectedPartnerProfile ? (
                     <Link href={`/profile?nickname=${selectedPartnerProfile.nickname}`} className="font-semibold hover:underline">
                       {selectedPartnerProfile.nickname}
@@ -1593,7 +1603,14 @@ export default function MessagesPage() {
                           <span>{groupTypingLabel}</span>
                         </div>
                       ) : (
-                        <button type="button" className="mt-1 block text-xs text-muted-foreground hover:underline" onClick={() => setParticipantsOpen(true)}>
+                        <button
+                          type="button"
+                          className="mt-1 block text-xs text-muted-foreground hover:underline"
+                          onClick={() => {
+                            setGroupDetailsTab('participants');
+                            setParticipantsOpen(true);
+                          }}
+                        >
                           Участники: {selectedChat?.participantIds.length || 0}
                         </button>
                       )}
@@ -1610,9 +1627,9 @@ export default function MessagesPage() {
                   Пригласить
                 </Button>
               )}
-              {selectedChat && (
-                <Button type="button" variant="outline" size="sm" onClick={() => setIsGalleryOpen(true)}>
-                  Галерея
+              {!isSelectedChatGroup && selectedChat && (
+                <Button type="button" variant="outline" size="icon" onClick={() => setIsGalleryOpen(true)}>
+                  <Images className="h-4 w-4" />
                 </Button>
               )}
             </div>
@@ -2211,25 +2228,95 @@ export default function MessagesPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isParticipantsOpen} onOpenChange={setParticipantsOpen}>
+      <Dialog
+        open={isParticipantsOpen}
+        onOpenChange={(open) => {
+          setParticipantsOpen(open);
+          if (open) {
+            setGroupDetailsTab('participants');
+          }
+        }}
+      >
         <DialogContent className="max-w-lg">
-          <DialogTitle>{selectedChatTitle || 'Участники беседы'}</DialogTitle>
-          <DialogDescription>Список участников беседы.</DialogDescription>
-          <div className="max-h-64 space-y-1 overflow-y-auto">
-            {selectedChatParticipants.map((member) => (
-              <Link
-                key={member.id}
-                href={`/profile?nickname=${member.nickname}`}
-                className="flex items-center gap-3 rounded-md border p-2 hover:bg-muted/40"
-              >
-                <Avatar className="h-9 w-9">
-                  <AvatarImage src={member.profilePictureUrl ?? undefined} alt={member.nickname} />
-                  <AvatarFallback>{member.nickname[0]?.toUpperCase() || '?'}</AvatarFallback>
-                </Avatar>
-                <span className="truncate">{member.nickname}</span>
-              </Link>
-            ))}
-          </div>
+          <DialogTitle>{selectedChatTitle || 'Детали беседы'}</DialogTitle>
+          <DialogDescription>Участники и фотографии беседы.</DialogDescription>
+
+          {isSelectedChatGroup ? (
+            <>
+              <div className="mb-3 flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 p-1">
+                <button
+                  type="button"
+                  className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm ${groupDetailsTab === 'participants' ? 'bg-background font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  onClick={() => setGroupDetailsTab('participants')}
+                >
+                  <Users className="h-4 w-4" />
+                  Участники
+                  <span className="text-xs text-muted-foreground">{selectedChatParticipants.length}</span>
+                </button>
+                <button
+                  type="button"
+                  className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm ${groupDetailsTab === 'photos' ? 'bg-background font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  onClick={() => setGroupDetailsTab('photos')}
+                >
+                  <Images className="h-4 w-4" />
+                  Фотографии
+                  <span className="text-xs text-muted-foreground">{chatImageGallery.length}</span>
+                </button>
+              </div>
+
+              {groupDetailsTab === 'participants' ? (
+                <div className="max-h-64 space-y-1 overflow-y-auto">
+                  {selectedChatParticipants.map((member) => (
+                    <Link
+                      key={member.id}
+                      href={`/profile?nickname=${member.nickname}`}
+                      className="flex items-center gap-3 rounded-md border p-2 hover:bg-muted/40"
+                    >
+                      <Avatar className="h-9 w-9">
+                        <AvatarImage src={member.profilePictureUrl ?? undefined} alt={member.nickname} />
+                        <AvatarFallback>{member.nickname[0]?.toUpperCase() || '?'}</AvatarFallback>
+                      </Avatar>
+                      <span className="truncate">{member.nickname}</span>
+                    </Link>
+                  ))}
+                </div>
+              ) : chatImageGallery.length === 0 ? (
+                <div className="py-8 text-center text-sm text-muted-foreground">В этом чате пока нет фотографий.</div>
+              ) : (
+                <div className="grid max-h-[60vh] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3">
+                  {chatImageGallery.map((url, index) => (
+                    <button
+                      key={`${url}-${index}`}
+                      type="button"
+                      className="overflow-hidden rounded-md"
+                      onClick={() => {
+                        setParticipantsOpen(false);
+                        openImageViewer(chatImageGallery, index);
+                      }}
+                    >
+                      <img src={url} alt={`group-chat-gallery-${index + 1}`} className="h-28 w-full object-cover" loading="lazy" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="max-h-64 space-y-1 overflow-y-auto">
+              {selectedChatParticipants.map((member) => (
+                <Link
+                  key={member.id}
+                  href={`/profile?nickname=${member.nickname}`}
+                  className="flex items-center gap-3 rounded-md border p-2 hover:bg-muted/40"
+                >
+                  <Avatar className="h-9 w-9">
+                    <AvatarImage src={member.profilePictureUrl ?? undefined} alt={member.nickname} />
+                    <AvatarFallback>{member.nickname[0]?.toUpperCase() || '?'}</AvatarFallback>
+                  </Avatar>
+                  <span className="truncate">{member.nickname}</span>
+                </Link>
+              ))}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
