@@ -45,7 +45,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  output: 'export',
+  output: process.env.VERCEL ? undefined : 'export',
 };
 
 export default nextConfig;
