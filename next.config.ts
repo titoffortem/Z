@@ -39,7 +39,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'i.ibb.co',
+        hostname: '**.imageban.ru',
         port: '',
         pathname: '/**',
       },

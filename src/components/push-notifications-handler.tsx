@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { PushNotifications } from '@capacitor/push-notifications';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 // Импортируем вашу функцию инициализации
 import { initializeFirebase } from '@/firebase'; 
 import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
@@ -12,6 +11,42 @@ import { useRouter } from 'next/navigation';
 
 
 
+type PermissionState = 'prompt' | 'prompt-with-rationale' | 'granted' | 'denied';
+
+type PushNotificationSchema = {
+  title?: string;
+  body?: string;
+  data?: Record<string, string>;
+};
+
+type PushNotificationActionPerformed = {
+  notification: PushNotificationSchema;
+};
+
+type PushNotificationToken = {
+  value: string;
+};
+
+type PushNotificationPermissionStatus = {
+  receive: PermissionState;
+};
+
+type PushNotificationsPlugin = {
+  checkPermissions: () => Promise<PushNotificationPermissionStatus>;
+  requestPermissions: () => Promise<PushNotificationPermissionStatus>;
+  register: () => Promise<void>;
+  addListener: (
+    eventName:
+      | 'registration'
+      | 'registrationError'
+      | 'pushNotificationReceived'
+      | 'pushNotificationActionPerformed',
+    listenerFunc: (value: unknown) => void,
+  ) => Promise<{ remove: () => Promise<void> }>;
+  removeAllListeners: () => Promise<void>;
+};
+
+const PushNotifications = registerPlugin<PushNotificationsPlugin>('PushNotifications');
 
 export const PushNotificationsHandler = () => {
 
@@ -34,19 +69,23 @@ export const PushNotificationsHandler = () => {
     };
 
     const addListeners = async () => {
-      await PushNotifications.addListener('registration', (token) => {
-        saveTokenToFirestore(token.value);
+      await PushNotifications.addListener('registration', (value) => {
+        const token = value as PushNotificationToken;
+        if (token.value) {
+          saveTokenToFirestore(token.value);
+        }
       });
 
       await PushNotifications.addListener('registrationError', (err) => {
-        console.error('Registration error: ', err.error);
+        console.error('Registration error: ', err);
       });
 
       await PushNotifications.addListener('pushNotificationReceived', (notification) => {
         console.log('Push received: ', notification);
       });
-      await PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
-        const data = notification.notification.data;
+      await PushNotifications.addListener('pushNotificationActionPerformed', (value) => {
+        const notification = value as PushNotificationActionPerformed;
+        const data = notification.notification.data ?? {};
         
         console.log('Action performed with data:', data);
 
