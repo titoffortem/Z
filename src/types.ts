@@ -20,6 +20,7 @@ export type Post = {
   sourceType?: 'feed' | 'channel';
   sourceChannelId?: string;
   sourceChannelTitle?: string;
+  sourceChannelAvatarUrl?: string;
   sourcePostId?: string;
 };
 

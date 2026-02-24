@@ -300,6 +300,7 @@ export default function ChannelsPage() {
       sourceType: 'channel',
       sourceChannelId: selectedChannelId,
       sourceChannelTitle: selectedChannel?.title || 'Канал',
+      sourceChannelAvatarUrl: selectedChannel?.avatarUrl || '',
       userId: activeChannelPost.authorId || selectedChannelId,
       caption: activeChannelPost.text || '',
       mediaUrls: activeChannelPost.imageUrls || [],
@@ -308,7 +309,7 @@ export default function ChannelsPage() {
       updatedAt: activeChannelPost.createdAt,
       likedBy: activeChannelPost.likedBy || [],
     };
-  }, [activeChannelPost, selectedChannel?.title, selectedChannelId]);
+  }, [activeChannelPost, selectedChannel?.avatarUrl, selectedChannel?.title, selectedChannelId]);
 
   const createOrOpenChannel = async (rawTitle: string) => {
     const title = rawTitle.trim();
