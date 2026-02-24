@@ -9,7 +9,11 @@ import { uploadToImageBan } from '@/lib/imageban';
 import { Post, UserProfile } from '@/types';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
+<<<<<<< nhs0r9-codex/fix-cors-issue-for-avatar-upload
 import { collection, doc, getDocs, limit, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
+=======
+import { collection, doc, getDocs, limit, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
+>>>>>>> main
 import { ChangeEvent, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PostCard } from '@/components/post-card';
@@ -168,9 +172,12 @@ export default function ProfilePageClient() {
       if (!avatarUrl) {
         throw new Error('Не удалось загрузить изображение аватарки.');
       }
+<<<<<<< nhs0r9-codex/fix-cors-issue-for-avatar-upload
 
       const previousHistory = getAvatarHistory(user);
       const nextAvatarHistory = Array.from(new Set([avatarUrl, ...previousHistory]));
+=======
+>>>>>>> main
 
       await updateProfile(authUser, { photoURL: avatarUrl });
       await updateDoc(doc(firestore, 'users', authUser.uid), {
