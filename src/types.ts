@@ -1,9 +1,8 @@
-import type { Timestamp } from 'firebase/firestore';
-
 export type UserProfile = {
   id: string;
   nickname: string;
   profilePictureUrl: string | null;
+  avatarHistoryUrls?: string[];
   createdAt: string;
   followingUserIds: string[];
   followerUserIds: string[];
