@@ -4,14 +4,15 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { uploadToImageBan } from '@/lib/imageban';
 import { Post, UserProfile } from '@/types';
+import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
-import { collection, doc, getDocs, limit, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { collection, doc, getDocs, limit, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import { ChangeEvent, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PostCard } from '@/components/post-card';
-import { useFirestore, useStorage, useUser } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase';
 
 const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024;
 export default function ProfilePageClient() {
@@ -23,8 +24,9 @@ export default function ProfilePageClient() {
   const [loading, setLoading] = useState(true);
   const [userFound, setUserFound] = useState(true);
   const [isAvatarUploading, setIsAvatarUploading] = useState(false);
+  const [isAvatarViewerOpen, setIsAvatarViewerOpen] = useState(false);
+  const [avatarViewerIndex, setAvatarViewerIndex] = useState(0);
   const firestore = useFirestore();
-  const storage = useStorage();
   const { user: authUser } = useUser();
   const { toast } = useToast();
 
@@ -95,6 +97,43 @@ export default function ProfilePageClient() {
     fetchData();
   }, [nickname, firestore, authUser]);
 
+  const getAvatarHistory = (profile: UserProfile | null): string[] => {
+    if (!profile) {
+      return [];
+    }
+
+    const fromHistory = (profile.avatarHistoryUrls ?? []).filter((url) => typeof url === 'string' && url.length > 0);
+    const fallbackCurrent = profile.profilePictureUrl ? [profile.profilePictureUrl] : [];
+    return Array.from(new Set([...fromHistory, ...fallbackCurrent]));
+  };
+
+  const avatarHistory = getAvatarHistory(user);
+
+  const openAvatarViewer = () => {
+    if (avatarHistory.length === 0) {
+      return;
+    }
+
+    setAvatarViewerIndex(0);
+    setIsAvatarViewerOpen(true);
+  };
+
+  const showPreviousAvatar = () => {
+    if (avatarHistory.length <= 1) {
+      return;
+    }
+
+    setAvatarViewerIndex((prev) => (prev - 1 + avatarHistory.length) % avatarHistory.length);
+  };
+
+  const showNextAvatar = () => {
+    if (avatarHistory.length <= 1) {
+      return;
+    }
+
+    setAvatarViewerIndex((prev) => (prev + 1) % avatarHistory.length);
+  };
+
   const handleAvatarChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -123,23 +162,50 @@ export default function ProfilePageClient() {
 
     try {
       setIsAvatarUploading(true);
-      const avatarRef = ref(storage, `avatars/${authUser.uid}/avatar-${Date.now()}`);
-      await uploadBytes(avatarRef, file, {
-        cacheControl: 'public,max-age=31536000,immutable',
-        contentType: file.type,
-      });
-      const avatarUrl = await getDownloadURL(avatarRef);
+      const avatarUrl = await uploadToImageBan(file);
+
+      if (!avatarUrl) {
+        throw new Error('Не удалось загрузить изображение аватарки.');
+      }
+
+      const previousHistory = getAvatarHistory(user);
+      const nextAvatarHistory = Array.from(new Set([avatarUrl, ...previousHistory]));
 
       await updateProfile(authUser, { photoURL: avatarUrl });
       await updateDoc(doc(firestore, 'users', authUser.uid), {
         profilePictureUrl: avatarUrl,
+        avatarHistoryUrls: nextAvatarHistory,
         updatedAt: serverTimestamp(),
       });
 
-      setUser((prev) => (prev ? { ...prev, profilePictureUrl: avatarUrl } : prev));
+      const avatarPostId = doc(collection(firestore, 'posts')).id;
+      await setDoc(doc(firestore, 'posts', avatarPostId), {
+        id: avatarPostId,
+        userId: authUser.uid,
+        caption: 'Обновил(а) аватарку',
+        mediaUrls: [avatarUrl],
+        mediaTypes: ['image'],
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        likedBy: [],
+      });
+
+      const nowIso = new Date().toISOString();
+
+      setUser((prev) => (prev ? { ...prev, profilePictureUrl: avatarUrl, avatarHistoryUrls: nextAvatarHistory } : prev));
+      setPosts((prev) => ([{
+        id: avatarPostId,
+        userId: authUser.uid,
+        caption: 'Обновил(а) аватарку',
+        mediaUrls: [avatarUrl],
+        mediaTypes: ['image'],
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        likedBy: [],
+      }, ...prev]));
       toast({
         title: 'Готово',
-        description: 'Аватар успешно обновлён.',
+        description: 'Аватар успешно обновлён, и создан пост с новой аватаркой.',
       });
     } catch (error: any) {
       toast({
@@ -202,22 +268,22 @@ export default function ProfilePageClient() {
       <header className="p-4 border-b border-border/50">
         <div className="flex flex-col md:flex-row gap-4 md:items-center">
           <div className="flex items-center gap-4 flex-grow">
-            <Avatar className="h-20 w-20 shrink-0 border border-border">
-              <AvatarImage src={user.profilePictureUrl ?? undefined} alt={user.nickname} />
-              <AvatarFallback>{user.nickname[0].toUpperCase()}</AvatarFallback>
-            </Avatar>
+            <div className="relative h-20 w-20 shrink-0">
+              <Avatar className="h-20 w-20 border border-border cursor-pointer" onClick={openAvatarViewer}>
+                <AvatarImage src={user.profilePictureUrl ?? undefined} alt={user.nickname} />
+                <AvatarFallback>{user.nickname[0].toUpperCase()}</AvatarFallback>
+              </Avatar>
 
-            <div className="flex flex-col">
-              <h1 className="text-2xl font-bold break-all">{user.nickname}</h1>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground mt-1 text-sm sm:text-base">
-                <span className="whitespace-nowrap"><span className="font-bold text-foreground">{posts.length}</span> Публикации</span>
-                <span className="whitespace-nowrap"><span className="font-bold text-foreground">{followerCount}</span> Подписчики</span>
-                <span className="whitespace-nowrap"><span className="font-bold text-foreground">{followingCount}</span> Подписки</span>
-              </div>
               {isOwnProfile && (
-                <div className="mt-3">
-                  <label htmlFor="change-avatar" className="text-sm text-primary cursor-pointer hover:underline">
-                    {isAvatarUploading ? 'Обновление аватарки...' : 'Сменить аватарку'}
+                <>
+                  <label
+                    htmlFor="change-avatar"
+                    className={`absolute -bottom-1 -right-1 z-10 flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-md transition-opacity ${isAvatarUploading ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:opacity-90'}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                    }}
+                  >
+                    <Plus className="h-5 w-5" />
                   </label>
                   <input
                     id="change-avatar"
@@ -227,7 +293,19 @@ export default function ProfilePageClient() {
                     onChange={handleAvatarChange}
                     disabled={isAvatarUploading}
                   />
-                </div>
+                </>
+              )}
+            </div>
+
+            <div className="flex flex-col">
+              <h1 className="text-2xl font-bold break-all">{user.nickname}</h1>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground mt-1 text-sm sm:text-base">
+                <span className="whitespace-nowrap"><span className="font-bold text-foreground">{posts.length}</span> Публикации</span>
+                <span className="whitespace-nowrap"><span className="font-bold text-foreground">{followerCount}</span> Подписчики</span>
+                <span className="whitespace-nowrap"><span className="font-bold text-foreground">{followingCount}</span> Подписки</span>
+              </div>
+              {isOwnProfile && isAvatarUploading && (
+                <p className="mt-3 text-sm text-primary">Обновление аватарки...</p>
               )}
             </div>
           </div>
@@ -249,6 +327,32 @@ export default function ProfilePageClient() {
           </div>
         )}
       </div>
+
+      {isAvatarViewerOpen && avatarHistory.length > 0 && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-background/95 p-4 backdrop-blur-sm">
+          <button type="button" onClick={() => setIsAvatarViewerOpen(false)} className="absolute right-4 top-4 rounded-full bg-background/70 p-2 text-foreground">
+            <X className="h-5 w-5" />
+          </button>
+
+          {avatarHistory.length > 1 && (
+            <button type="button" onClick={showPreviousAvatar} className="absolute left-4 rounded-full bg-background/70 p-2 text-foreground">
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+          )}
+
+          <img
+            src={avatarHistory[avatarViewerIndex]}
+            alt={`Аватар ${avatarViewerIndex + 1}`}
+            className="max-h-[90vh] max-w-[90vw] rounded-md object-contain"
+          />
+
+          {avatarHistory.length > 1 && (
+            <button type="button" onClick={showNextAvatar} className="absolute right-4 rounded-full bg-background/70 p-2 text-foreground">
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
