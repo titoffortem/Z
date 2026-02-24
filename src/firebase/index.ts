@@ -19,11 +19,16 @@ export function initializeFirebase() {
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
+  const storageBucket = firebaseConfig.storageBucket?.trim();
+  const storage = storageBucket
+    ? getStorage(firebaseApp, `gs://${storageBucket}`)
+    : getStorage(firebaseApp);
+
   return {
     firebaseApp,
     auth: getAuth(firebaseApp),
     firestore: getFirestore(firebaseApp),
-    storage: getStorage(firebaseApp),
+    storage,
   };
 }
 

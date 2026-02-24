@@ -19,6 +19,16 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024;
+const AVATAR_UPLOAD_TIMEOUT_MS = 30_000;
+
+const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> => {
+  return await Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error(message)), timeoutMs);
+    }),
+  ]);
+};
 
 const formSchema = z.object({
   nickname: z.string().min(3, 'Никнейм должен содержать не менее 3 символов').max(20, 'Никнейм должен содержать не более 20 символов').regex(/^[a-zA-Z0-9_]+$/, 'Никнейм может содержать только буквы, цифры и знаки подчеркивания'),
@@ -123,12 +133,24 @@ export default function CreateProfilePage() {
 
         if (avatarFile) {
           const avatarRef = ref(storage, `avatars/${user.uid}/avatar-${Date.now()}`);
-          await uploadBytes(avatarRef, avatarFile, {
-            cacheControl: 'public,max-age=31536000,immutable',
-            contentType: avatarFile.type,
-          });
-          avatarUrl = await getDownloadURL(avatarRef);
-          await updateProfile(user, { photoURL: avatarUrl });
+          await withTimeout(
+            uploadBytes(avatarRef, avatarFile, {
+              cacheControl: 'public,max-age=31536000,immutable',
+              contentType: avatarFile.type,
+            }),
+            AVATAR_UPLOAD_TIMEOUT_MS,
+            'Загрузка аватарки заняла слишком много времени. Попробуйте снова.',
+          );
+          avatarUrl = await withTimeout(
+            getDownloadURL(avatarRef),
+            AVATAR_UPLOAD_TIMEOUT_MS,
+            'Не удалось получить ссылку на аватарку. Попробуйте снова.',
+          );
+          await withTimeout(
+            updateProfile(user, { photoURL: avatarUrl }),
+            AVATAR_UPLOAD_TIMEOUT_MS,
+            'Не удалось обновить профиль. Попробуйте снова.',
+          );
         }
 
         const newUserProfile = {
