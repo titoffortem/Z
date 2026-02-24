@@ -81,9 +81,9 @@ type ChatMessage = {
   };
 };
 
-async function uploadToImgBB(file: File): Promise<string | null> {
-  const apiKey = firebaseConfig.imgbbKey;
-  if (!apiKey) {
+async function uploadToImageBan(file: File): Promise<string | null> {
+  const clientId = firebaseConfig.imagebanClientId;
+  if (!clientId) {
     return null;
   }
 
@@ -91,8 +91,11 @@ async function uploadToImgBB(file: File): Promise<string | null> {
   formData.append('image', file);
 
   try {
-    const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+    const response = await fetch('https://api.imageban.ru/v1', {
       method: 'POST',
+      headers: {
+        Authorization: `TOKEN ${clientId}`,
+      },
       body: formData,
     });
 
@@ -101,7 +104,7 @@ async function uploadToImgBB(file: File): Promise<string | null> {
     }
 
     const data = await response.json();
-    return data?.data?.url ?? null;
+    return data?.data?.[0]?.link ?? null;
   } catch {
     return null;
   }
@@ -1405,7 +1408,7 @@ export default function MessagesPage() {
       let imageUrls: string[] = [];
 
       if (selectedImages.length > 0) {
-        const uploaded = await Promise.all(selectedImages.map((file) => uploadToImgBB(file)));
+        const uploaded = await Promise.all(selectedImages.map((file) => uploadToImageBan(file)));
         imageUrls = uploaded.filter((url): url is string => Boolean(url));
       }
 
