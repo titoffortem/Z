@@ -67,8 +67,8 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     const isChannelPost = post.sourceType === 'channel';
     const resolvedPostId = isChannelPost ? (post.sourcePostId || post.id) : post.id;
     const channelAuthorName = post.sourceChannelTitle || 'Канал';
-    const authorDisplayName = author ? `@${author.nickname}` : (isChannelPost ? channelAuthorName : null);
-    const authorAvatarSrc = author?.profilePictureUrl || (isChannelPost ? post.sourceChannelAvatarUrl : undefined);
+    const authorDisplayName = isChannelPost ? channelAuthorName : (author ? `@${author.nickname}` : null);
+    const authorAvatarSrc = isChannelPost ? post.sourceChannelAvatarUrl : (author?.profilePictureUrl || undefined);
     const authorAvatarFallback = authorDisplayName?.[0]?.toUpperCase() || 'К';
 
     const getPostRef = () => {

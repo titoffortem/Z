@@ -673,7 +673,10 @@ export default function ChannelsPage() {
               const author = profilesById[post.authorId];
               return (
                 <div key={post.id} className="flex w-full justify-start">
-                  <div className="max-w-[75%] rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-foreground shadow-sm">
+                  <div
+                    className="max-w-[75%] rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-foreground shadow-sm cursor-pointer"
+                    onClick={() => setOpenedPostId(post.id)}
+                  >
                     <div className="mb-1 flex items-center gap-2">
                       <Avatar className="h-5 w-5">
                         <AvatarImage src={author?.profilePictureUrl ?? undefined} alt={author?.nickname || 'Автор'} />
@@ -683,7 +686,7 @@ export default function ChannelsPage() {
                     </div>
                     {post.text && <p className="mt-1 whitespace-pre-wrap break-words text-sm">{post.text}</p>}
                     {post.imageUrls.length > 0 && (
-                      <div className="mt-2 grid grid-cols-2 gap-2">
+                      <div className={`mt-2 grid gap-2 ${post.imageUrls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
                         {post.imageUrls.map((url, idx) => (
                           <img
                             key={`${post.id}-${idx}`}
@@ -701,7 +704,10 @@ export default function ChannelsPage() {
                       <button
                         type="button"
                         className={`flex items-center gap-1 text-xs transition ${user && post.likedBy.includes(user.uid) ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
-                        onClick={() => void toggleChannelPostLike(post)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void toggleChannelPostLike(post);
+                        }}
                       >
                         <Heart className={`h-4 w-4 ${user && post.likedBy.includes(user.uid) ? 'fill-current' : ''}`} />
                         <span>{post.likedBy.length}</span>
@@ -709,7 +715,10 @@ export default function ChannelsPage() {
                       <button
                         type="button"
                         className="flex items-center gap-1 text-xs text-muted-foreground transition hover:text-primary"
-                        onClick={() => setOpenedPostId(post.id)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setOpenedPostId(post.id);
+                        }}
                       >
                         <MessageCircle className="h-4 w-4" />
                         <span>Комментарии</span>

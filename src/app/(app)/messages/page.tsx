@@ -79,6 +79,11 @@ type ChatMessage = {
     mediaTypes: string[];
     authorId: string;
     likedBy?: string[];
+    sourceType?: 'feed' | 'channel';
+    sourceChannelId?: string;
+    sourceChannelTitle?: string;
+    sourceChannelAvatarUrl?: string;
+    sourcePostId?: string;
   };
 };
 
@@ -316,6 +321,11 @@ export default function MessagesPage() {
         createdAt: toIsoDate(data.createdAt),
         updatedAt: toIsoDate(data.updatedAt),
         likedBy: data.likedBy || [],
+        sourceType: (data.sourceType as 'feed' | 'channel' | undefined) || forwardedPost.sourceType,
+        sourceChannelId: (data.sourceChannelId as string | undefined) || forwardedPost.sourceChannelId,
+        sourceChannelTitle: (data.sourceChannelTitle as string | undefined) || forwardedPost.sourceChannelTitle,
+        sourceChannelAvatarUrl: (data.sourceChannelAvatarUrl as string | undefined) || forwardedPost.sourceChannelAvatarUrl,
+        sourcePostId: (data.sourcePostId as string | undefined) || forwardedPost.sourcePostId,
       };
     } else {
       nextPost = {
@@ -327,6 +337,11 @@ export default function MessagesPage() {
         createdAt: fallbackCreatedAt,
         updatedAt: fallbackCreatedAt,
         likedBy: forwardedPostLikesById[forwardedPost.postId] || forwardedPost.likedBy || [],
+        sourceType: forwardedPost.sourceType,
+        sourceChannelId: forwardedPost.sourceChannelId,
+        sourceChannelTitle: forwardedPost.sourceChannelTitle,
+        sourceChannelAvatarUrl: forwardedPost.sourceChannelAvatarUrl,
+        sourcePostId: forwardedPost.sourcePostId,
       };
     }
 
@@ -1819,6 +1834,11 @@ export default function MessagesPage() {
                         createdAt: message.createdAt,
                         updatedAt: message.createdAt,
                         likedBy: forwardedPostLikesById[fp.postId] || fp.likedBy || [],
+                        sourceType: fp.sourceType,
+                        sourceChannelId: fp.sourceChannelId,
+                        sourceChannelTitle: fp.sourceChannelTitle,
+                        sourceChannelAvatarUrl: fp.sourceChannelAvatarUrl,
+                        sourcePostId: fp.sourcePostId,
                       };
                       return (
                         <div className="mb-2 w-full max-w-[280px]" onClick={(e) => e.stopPropagation()}>
