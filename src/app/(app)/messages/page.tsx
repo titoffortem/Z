@@ -1004,6 +1004,31 @@ export default function MessagesPage() {
     return selectedChat.participantIds.filter((participantId) => participantId !== user.uid);
   }, [selectedChat, user]);
 
+  const inferredReadByMessageId = useMemo(() => {
+    if (!user || selectedReadReceiptParticipantIds.length === 0 || messages.length === 0) {
+      return {} as Record<string, string[]>;
+    }
+
+    const recipientSet = new Set(selectedReadReceiptParticipantIds);
+    const sendersSeenAfter = new Set<string>();
+    const inferredByMessageId: Record<string, string[]> = {};
+
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      const currentMessage = messages[index];
+
+      if (currentMessage.senderId !== user.uid) {
+        if (recipientSet.has(currentMessage.senderId)) {
+          sendersSeenAfter.add(currentMessage.senderId);
+        }
+        continue;
+      }
+
+      inferredByMessageId[currentMessage.id] = Array.from(sendersSeenAfter);
+    }
+
+    return inferredByMessageId;
+  }, [messages, selectedReadReceiptParticipantIds, user]);
+
   const selectedChatParticipants = useMemo(() => {
     if (!selectedChat) {
       return [] as UserProfile[];
@@ -1674,7 +1699,11 @@ export default function MessagesPage() {
                 : -1;
               return messages.map((message, index) => {
               const isMine = message.senderId === user?.uid;
-              const isReadByRecipients = selectedReadReceiptParticipantIds.length > 0 && selectedReadReceiptParticipantIds.every((participantId) => message.readBy.includes(participantId));
+              const inferredReadBy = inferredReadByMessageId[message.id] || [];
+              const isReadByRecipients = selectedReadReceiptParticipantIds.length > 0
+                && selectedReadReceiptParticipantIds.every(
+                  (participantId) => message.readBy.includes(participantId) || inferredReadBy.includes(participantId),
+                );
               const hasMessageText = Boolean(message.text?.trim());
               const normalizedForwarded = message.forwardedMessages && message.forwardedMessages.length > 0
                 ? message.forwardedMessages
