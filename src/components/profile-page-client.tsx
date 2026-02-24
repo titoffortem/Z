@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { uploadToImageBan } from '@/lib/imageban';
 import { Post, UserProfile } from '@/types';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
 import { collection, doc, getDocs, limit, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import { ChangeEvent, useEffect, useState } from 'react';
@@ -317,32 +317,31 @@ export default function ProfilePageClient() {
         )}
       </div>
 
-      <Dialog open={isAvatarViewerOpen} onOpenChange={setIsAvatarViewerOpen}>
-        <DialogContent className="max-w-3xl border-0 bg-card p-0">
-          <DialogTitle className="sr-only">История аватарок</DialogTitle>
-          <div className="relative flex min-h-[320px] items-center justify-center bg-black/90 p-4">
-            {avatarHistory.length > 1 && (
-              <Button type="button" size="icon" variant="secondary" className="absolute left-4 top-1/2 -translate-y-1/2" onClick={showPreviousAvatar}>
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
-            )}
+      {isAvatarViewerOpen && avatarHistory.length > 0 && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-background/95 p-4 backdrop-blur-sm">
+          <button type="button" onClick={() => setIsAvatarViewerOpen(false)} className="absolute right-4 top-4 rounded-full bg-background/70 p-2 text-foreground">
+            <X className="h-5 w-5" />
+          </button>
 
-            {avatarHistory[avatarViewerIndex] && (
-              <img
-                src={avatarHistory[avatarViewerIndex]}
-                alt={`Аватар ${avatarViewerIndex + 1}`}
-                className="max-h-[70vh] max-w-full rounded-md object-contain"
-              />
-            )}
+          {avatarHistory.length > 1 && (
+            <button type="button" onClick={showPreviousAvatar} className="absolute left-4 rounded-full bg-background/70 p-2 text-foreground">
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+          )}
 
-            {avatarHistory.length > 1 && (
-              <Button type="button" size="icon" variant="secondary" className="absolute right-4 top-1/2 -translate-y-1/2" onClick={showNextAvatar}>
-                <ChevronRight className="h-5 w-5" />
-              </Button>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+          <img
+            src={avatarHistory[avatarViewerIndex]}
+            alt={`Аватар ${avatarViewerIndex + 1}`}
+            className="max-h-[90vh] max-w-[90vw] rounded-md object-contain"
+          />
+
+          {avatarHistory.length > 1 && (
+            <button type="button" onClick={showNextAvatar} className="absolute right-4 rounded-full bg-background/70 p-2 text-foreground">
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
