@@ -2069,13 +2069,13 @@ export default function MessagesPage() {
                 <button
                   key={`${url}-${index}`}
                   type="button"
-                  className="aspect-square w-full overflow-hidden rounded-md"
+                  className="relative block aspect-square w-full overflow-hidden rounded-md"
                   onClick={() => {
                     setIsGalleryOpen(false);
                     openImageViewer(chatImageGallery, index);
                   }}
                 >
-                  <img src={url} alt={`chat-gallery-${index + 1}`} className="h-full w-full object-cover" loading="lazy" />
+                  <img src={url} alt={`chat-gallery-${index + 1}`} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
                 </button>
               ))}
             </div>
@@ -2105,7 +2105,7 @@ export default function MessagesPage() {
                 <button
                   key={chat.id}
                   type="button"
-                  className="flex w-full items-center gap-3 rounded-lg border border-border/50 p-3 text-left hover:bg-accent/30"
+                  className="flex w-full items-center gap-3 rounded-lg bg-muted/30 p-3 text-left hover:bg-accent/30"
                   onClick={async () => {
                     await forwardSelectedMessages(chat.id);
                   }}
@@ -2157,7 +2157,7 @@ export default function MessagesPage() {
                 selectedGroupMemberIds.map((memberId) => {
                   const member = profilesById[memberId];
                   return (
-                    <div key={memberId} className="flex items-center justify-between rounded-md border p-2">
+                    <div key={memberId} className="flex items-center justify-between rounded-md bg-muted/30 p-2">
                       <div className="flex min-w-0 items-center gap-2">
                         <Avatar className="h-8 w-8">
                           <AvatarImage src={member?.profilePictureUrl ?? undefined} alt={member?.nickname || 'Участник'} />
@@ -2197,7 +2197,7 @@ export default function MessagesPage() {
                 <button
                   key={candidate.id}
                   type="button"
-                  className="flex w-full items-center gap-3 rounded-md border p-2 text-left hover:bg-muted/40"
+                  className="flex w-full items-center gap-3 rounded-md bg-muted/30 p-2 text-left hover:bg-muted/50"
                   onClick={() => {
                     setSelectedGroupMemberIds((prev) => (prev.includes(candidate.id) ? prev : [...prev, candidate.id]));
                   }}
@@ -2230,7 +2230,7 @@ export default function MessagesPage() {
                 <button
                   key={candidate.id}
                   type="button"
-                  className="flex w-full items-center gap-3 rounded-md border p-2 text-left hover:bg-muted/40"
+                  className="flex w-full items-center gap-3 rounded-md bg-muted/30 p-2 text-left hover:bg-muted/50"
                   onClick={() => {
                     setProfilesById((prev) => ({ ...prev, [candidate.id]: candidate }));
                     setSelectedGroupMemberIds((prev) => (prev.includes(candidate.id) ? prev : [...prev, candidate.id]));
@@ -2290,7 +2290,7 @@ export default function MessagesPage() {
                     <Link
                       key={member.id}
                       href={`/profile?nickname=${member.nickname}`}
-                      className="flex items-center gap-3 rounded-md border p-2 hover:bg-muted/40"
+                      className="flex items-center gap-3 rounded-md bg-muted/30 p-2 hover:bg-muted/50"
                     >
                       <Avatar className="h-9 w-9">
                         <AvatarImage src={member.profilePictureUrl ?? undefined} alt={member.nickname} />
@@ -2308,13 +2308,13 @@ export default function MessagesPage() {
                     <button
                       key={`${url}-${index}`}
                       type="button"
-                      className="aspect-square w-full overflow-hidden rounded-md"
+                      className="relative block aspect-square w-full overflow-hidden rounded-md"
                       onClick={() => {
                         setParticipantsOpen(false);
                         openImageViewer(chatImageGallery, index);
                       }}
                     >
-                      <img src={url} alt={`group-chat-gallery-${index + 1}`} className="h-full w-full object-cover" loading="lazy" />
+                      <img src={url} alt={`group-chat-gallery-${index + 1}`} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
                     </button>
                   ))}
                 </div>
@@ -2326,7 +2326,7 @@ export default function MessagesPage() {
                 <Link
                   key={member.id}
                   href={`/profile?nickname=${member.nickname}`}
-                  className="flex items-center gap-3 rounded-md border p-2 hover:bg-muted/40"
+                  className="flex items-center gap-3 rounded-md bg-muted/30 p-2 hover:bg-muted/50"
                 >
                   <Avatar className="h-9 w-9">
                     <AvatarImage src={member.profilePictureUrl ?? undefined} alt={member.nickname} />
@@ -2353,7 +2353,7 @@ export default function MessagesPage() {
                 <button
                   key={candidate.id}
                   type="button"
-                  className="flex w-full items-center gap-3 rounded-md border p-2 text-left hover:bg-muted/40"
+                  className="flex w-full items-center gap-3 rounded-md bg-muted/30 p-2 text-left hover:bg-muted/50"
                   onClick={() => void addUserToSelectedChat(candidate)}
                 >
                   <Avatar className="h-9 w-9">
@@ -2384,7 +2384,7 @@ export default function MessagesPage() {
                 <button
                   key={candidate.id}
                   type="button"
-                  className="flex w-full items-center gap-3 rounded-md border p-2 text-left hover:bg-muted/40"
+                  className="flex w-full items-center gap-3 rounded-md bg-muted/30 p-2 text-left hover:bg-muted/50"
                   onClick={() => void addUserToSelectedChat(candidate)}
                 >
                   <Avatar className="h-9 w-9">

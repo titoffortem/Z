@@ -257,7 +257,7 @@ export function PostForwardButton({
                     void handleForwardPost(chat.id);
                   }}
                   disabled={Boolean(sendingChatId)}
-                  className="flex w-full items-center gap-3 rounded-lg border border-border/60 p-2 text-left transition hover:bg-muted/40 disabled:cursor-not-allowed"
+                  className="flex w-full items-center gap-3 rounded-lg bg-muted/30 p-2 text-left transition hover:bg-muted/50 disabled:cursor-not-allowed"
                 >
                   <Avatar className="h-9 w-9">
                     {isGroupChat ? (
