@@ -14,17 +14,6 @@ import { PostCard } from '@/components/post-card';
 import { useFirestore, useStorage, useUser } from '@/firebase';
 
 const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024;
-const AVATAR_UPLOAD_TIMEOUT_MS = 30_000;
-
-const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> => {
-  return await Promise.race([
-    promise,
-    new Promise<T>((_, reject) => {
-      setTimeout(() => reject(new Error(message)), timeoutMs);
-    }),
-  ]);
-};
-
 export default function ProfilePageClient() {
   const searchParams = useSearchParams();
   const nickname = searchParams.get('nickname');
@@ -135,33 +124,17 @@ export default function ProfilePageClient() {
     try {
       setIsAvatarUploading(true);
       const avatarRef = ref(storage, `avatars/${authUser.uid}/avatar-${Date.now()}`);
-      await withTimeout(
-        uploadBytes(avatarRef, file, {
-          cacheControl: 'public,max-age=31536000,immutable',
-          contentType: file.type,
-        }),
-        AVATAR_UPLOAD_TIMEOUT_MS,
-        'Загрузка аватарки заняла слишком много времени. Попробуйте снова.',
-      );
-      const avatarUrl = await withTimeout(
-        getDownloadURL(avatarRef),
-        AVATAR_UPLOAD_TIMEOUT_MS,
-        'Не удалось получить ссылку на аватарку. Попробуйте снова.',
-      );
+      await uploadBytes(avatarRef, file, {
+        cacheControl: 'public,max-age=31536000,immutable',
+        contentType: file.type,
+      });
+      const avatarUrl = await getDownloadURL(avatarRef);
 
-      await withTimeout(
-        updateProfile(authUser, { photoURL: avatarUrl }),
-        AVATAR_UPLOAD_TIMEOUT_MS,
-        'Не удалось обновить профиль пользователя. Попробуйте снова.',
-      );
-      await withTimeout(
-        updateDoc(doc(firestore, 'users', authUser.uid), {
-          profilePictureUrl: avatarUrl,
-          updatedAt: serverTimestamp(),
-        }),
-        AVATAR_UPLOAD_TIMEOUT_MS,
-        'Не удалось сохранить аватар в профиле. Попробуйте снова.',
-      );
+      await updateProfile(authUser, { photoURL: avatarUrl });
+      await updateDoc(doc(firestore, 'users', authUser.uid), {
+        profilePictureUrl: avatarUrl,
+        updatedAt: serverTimestamp(),
+      });
 
       setUser((prev) => (prev ? { ...prev, profilePictureUrl: avatarUrl } : prev));
       toast({
