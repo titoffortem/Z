@@ -67,7 +67,8 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
     const isChannelPost = post.sourceType === 'channel';
     const resolvedPostId = isChannelPost ? (post.sourcePostId || post.id) : post.id;
     const channelAuthorName = post.sourceChannelTitle || 'Канал';
-    const authorDisplayName = author ? `@${author.nickname}` : (isChannelPost ? channelAuthorName : null);
+    const authorDisplayName = isChannelPost ? channelAuthorName : (author ? `@${author.nickname}` : null);
+    const authorAvatarSrc = isChannelPost ? post.sourceChannelAvatarUrl : (author?.profilePictureUrl || undefined);
     const authorAvatarFallback = authorDisplayName?.[0]?.toUpperCase() || 'К';
 
     const getPostRef = () => {
@@ -357,7 +358,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                         {authorDisplayName ? (
                             <div className="flex items-center gap-2 opacity-90">
                                 <Avatar className="h-7 w-7 ring-1 ring-border/50">
-                                    <AvatarImage src={author?.profilePictureUrl || undefined} />
+                                    <AvatarImage src={authorAvatarSrc} />
                                     <AvatarFallback>{authorAvatarFallback}</AvatarFallback>
                                 </Avatar>
                                 <span className="text-sm font-bold truncate max-w-[120px]">{authorDisplayName}</span>
@@ -414,11 +415,11 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                             showComments && isSingleContent && "hidden md:flex" 
                         )}> 
                             <Avatar className="h-10 w-10 ring-1 ring-border flex-shrink-0">
-                                <AvatarImage src={author?.profilePictureUrl || undefined} />
+                                <AvatarImage src={authorAvatarSrc} />
                                 <AvatarFallback>{authorAvatarFallback}</AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col">
-                                {author ? (
+                                {author && !isChannelPost ? (
                                     <Link href={`/profile?nickname=${author.nickname}`} className="font-bold text-base text-foreground hover:text-primary">
                                         @{author.nickname}
                                     </Link>
