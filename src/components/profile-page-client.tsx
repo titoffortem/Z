@@ -4,14 +4,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { uploadToImageBan } from '@/lib/imageban';
 import { Post, UserProfile } from '@/types';
 import { updateProfile } from 'firebase/auth';
 import { collection, doc, getDocs, limit, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { ChangeEvent, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PostCard } from '@/components/post-card';
-import { useFirestore, useStorage, useUser } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase';
 
 const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024;
 export default function ProfilePageClient() {
@@ -24,7 +24,6 @@ export default function ProfilePageClient() {
   const [userFound, setUserFound] = useState(true);
   const [isAvatarUploading, setIsAvatarUploading] = useState(false);
   const firestore = useFirestore();
-  const storage = useStorage();
   const { user: authUser } = useUser();
   const { toast } = useToast();
 
@@ -123,12 +122,11 @@ export default function ProfilePageClient() {
 
     try {
       setIsAvatarUploading(true);
-      const avatarRef = ref(storage, `avatars/${authUser.uid}/avatar-${Date.now()}`);
-      await uploadBytes(avatarRef, file, {
-        cacheControl: 'public,max-age=31536000,immutable',
-        contentType: file.type,
-      });
-      const avatarUrl = await getDownloadURL(avatarRef);
+      const avatarUrl = await uploadToImageBan(file);
+
+      if (!avatarUrl) {
+        throw new Error('Не удалось загрузить изображение аватарки.');
+      }
 
       await updateProfile(authUser, { photoURL: avatarUrl });
       await updateDoc(doc(firestore, 'users', authUser.uid), {
