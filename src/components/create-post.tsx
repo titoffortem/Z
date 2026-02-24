@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 import { useFirestore } from '@/firebase';
 import { collection, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
-import { firebaseConfig } from '@/firebase/config';
+import { uploadToImageBan } from '@/lib/imageban';
 
 const formSchema = z.object({
     caption: z.string().optional(),
@@ -35,45 +35,6 @@ const formSchema = z.object({
           path: ["caption"],
       }
   );
-
-async function uploadToImageBan(file: File): Promise<string | null> {
-  const clientId = firebaseConfig.imagebanClientId;
-
-  if (!clientId) {
-    console.error('ImageBan CLIENT_ID is not configured in firebase/config.ts');
-    return null;
-  }
-  
-  const formData = new FormData();
-  formData.append('image', file);
-
-  try {
-    const response = await fetch('https://api.imageban.ru/v1', {
-      method: 'POST',
-      headers: {
-        Authorization: `TOKEN ${clientId}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('ImageBan upload failed with status:', response.status, errorText);
-      return null;
-    }
-
-    const data = await response.json();
-    if (data?.success && Array.isArray(data.data) && data.data[0]?.link) {
-      return data.data[0].link;
-    } else {
-      console.error('ImageBan API returned an error:', data);
-      return null;
-    }
-  } catch (error) {
-    console.error('Error during ImageBan upload:', error);
-    return null;
-  }
-}
 
 export function CreatePost() {
   const { user, userProfile } = useAuth();

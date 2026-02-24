@@ -12,7 +12,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { firebaseConfig } from '@/firebase/config';
 import { ChevronDown, ChevronLeft, ChevronRight, Heart, Loader2, MessageSquare, Paperclip, Search, UserPlus, Users, X } from 'lucide-react';
 import {
   addDoc,
@@ -38,6 +37,7 @@ import { useUnreadMessages } from '@/contexts/unread-messages-context';
 import { AppLoaderIcon } from '@/components/app-loader-icon';
 
 import { useRouter, useSearchParams } from 'next/navigation';
+import { uploadToImageBan } from '@/lib/imageban';
 
 type ChatItem = {
   id: string;
@@ -80,201 +80,6 @@ type ChatMessage = {
     likedBy?: string[];
   };
 };
-
-async function uploadToImageBan(file: File): Promise<string | null> {
-  const clientId = firebaseConfig.imagebanClientId;
-  if (!clientId) {
-    return null;
-  }
-
-  const formData = new FormData();
-  formData.append('image', file);
-
-  try {
-    const response = await fetch('https://api.imageban.ru/v1', {
-      method: 'POST',
-      headers: {
-        Authorization: `TOKEN ${clientId}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = await response.json();
-    return data?.data?.[0]?.link ?? null;
-  } catch {
-    return null;
-  }
-}
-
-const formatTime = (isoDate: string) => {
-  const date = new Date(isoDate);
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-
-  return date.toLocaleTimeString('ru-RU', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-};
-
-const toIsoDate = (value: unknown) => {
-  if (value instanceof Timestamp) {
-    return value.toDate().toISOString();
-  }
-
-  return new Date().toISOString();
-};
-
-const getChatId = (userA: string, userB: string) => [userA, userB].sort().join('_');
-
-function SingleCheckIcon() {
-  return (
-    <svg viewBox="0 0 329.14 258.16" className="h-[10px] w-auto" aria-hidden="true">
-      <rect
-        fill="#c9d5ca"
-        x="158.56"
-        y="-24.75"
-        width="83.01"
-        height="307.66"
-        rx="21.84"
-        ry="21.84"
-        transform="translate(149.87 -103.66) rotate(45)"
-      />
-      <rect
-        fill="#c9d5ca"
-        x="43.61"
-        y="81.28"
-        width="83.01"
-        height="183.31"
-        rx="21.84"
-        ry="21.84"
-        transform="translate(-97.35 110.83) rotate(-45)"
-      />
-    </svg>
-  );
-}
-
-function DoubleCheckIcon() {
-  return (
-    <svg viewBox="0 0 505.33 258.61" className="h-[10px] w-auto" aria-hidden="true">
-      <rect
-        fill="#c9d5ca"
-        x="334.74"
-        y="-24.3"
-        width="83.01"
-        height="307.66"
-        rx="21.84"
-        ry="21.84"
-        transform="translate(201.79 -228.11) rotate(45)"
-      />
-      <rect
-        fill="#c9d5ca"
-        x="158.56"
-        y="-24.75"
-        width="83.01"
-        height="307.66"
-        rx="21.84"
-        ry="21.84"
-        transform="translate(149.87 -103.66) rotate(45)"
-      />
-      <rect
-        fill="#c9d5ca"
-        x="43.61"
-        y="81.28"
-        width="83.01"
-        height="183.31"
-        rx="21.84"
-        ry="21.84"
-        transform="translate(-97.35 110.83) rotate(-45)"
-      />
-    </svg>
-  );
-}
-
-function TypingKeyboardIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      version="1.1"
-      viewBox="0 0 1503.55 800"
-      className="h-4 w-auto"
-      aria-hidden="true"
-    >
-      <defs>
-        <style>
-          {`
-            .typing-st0 {
-              fill: none;
-            }
-
-            .typing-btn {
-              transform-origin: center;
-              transform-box: fill-box;
-              fill: #a3a3a3;
-              animation: typingPressSequence 1.5s ease-in-out infinite;
-            }
-
-            .typing-btn-1 { animation-delay: 0s; }
-            .typing-btn-2 { animation-delay: 0.5s; }
-            .typing-btn-3 { animation-delay: 1s; }
-
-            @keyframes typingPressSequence {
-              0%, 35%, 100% {
-                transform: scale(1) translateY(0);
-                fill: #a3a3a3;
-              }
-              10%, 20% {
-                transform: scale(0.65) translateY(120px);
-                fill: #577f59;
-              }
-            }
-          `}
-        </style>
-      </defs>
-
-      <rect className="typing-st0" width="800" height="800" />
-
-      <g className="typing-btn typing-btn-1">
-        <g>
-          <path d="M80,480v-200c0-24,16-40,40-40h278v-40H120c-5.38.02-33.64.64-56.5,23.5-14.5,14.5-23.5,34.5-23.5,56.5v240c0,44,36,80,80,80h278v-80H120c-24,0-40-16-40-40Z" />
-          <line x1="398" y1="520" x2="398" y2="520" />
-        </g>
-        <g>
-          <path d="M438.03,480v-200c0-24-16-40-40-40H120.03v-40h278c5.38.02,33.64.64,56.5,23.5,14.5,14.5,23.5,34.5,23.5,56.5v240c0,44-36,80-80,80H120.03v-80h278c24,0,40-16,40-40Z" />
-          <line x1="120.03" y1="520" x2="120.03" y2="520" />
-        </g>
-      </g>
-
-      <g className="typing-btn typing-btn-2">
-        <g>
-          <path d="M558.03,480v-200c0-24,16-40,40-40h278v-40h-278c-5.38.02-33.64.64-56.5,23.5-14.5,14.5-23.5,34.5-23.5,56.5v240c0,44,36,80,80,80h278v-80h-278c-24,0-40-16-40-40Z" />
-          <line x1="876.02" y1="520" x2="876.02" y2="520" />
-        </g>
-        <g>
-          <path d="M916.05,480v-200c0-24-16-40-40-40h-278v-40h278c5.38.02,33.64.64,56.5,23.5,14.5,14.5,23.5,34.5,23.5,56.5v240c0,44-36,80-80,80h-278v-80h278c24,0,40-16,40-40Z" />
-          <line x1="598.05" y1="520" x2="598.05" y2="520" />
-        </g>
-      </g>
-
-      <g className="typing-btn typing-btn-3">
-        <g>
-          <path d="M1036.05,480v-200c0-24,16-40,40-40h278v-40h-278c-5.38.02-33.64.64-56.5,23.5-14.5,14.5-23.5,34.5-23.5,56.5v240c0,44,36,80,80,80h278v-80h-278c-24,0-40-16-40-40Z" />
-          <line x1="1354.05" y1="520" x2="1354.05" y2="520" />
-        </g>
-        <g>
-          <path d="M1394.08,480v-200c0-24-16-40-40-40h-278v-40h278c5.38.02,33.64.64,56.5,23.5,14.5,14.5,23.5,34.5,23.5,56.5v240c0,44-36,80-80,80h-278v-80h278c24,0,40-16,40-40Z" />
-          <line x1="1076.08" y1="520" x2="1076.08" y2="520" />
-        </g>
-      </g>
-    </svg>
-  );
-}
-
 
 export default function MessagesPage() {
   const { user } = useAuth();
