@@ -280,12 +280,12 @@ export default function ProfilePageClient() {
                 <>
                   <label
                     htmlFor="change-avatar"
-                    className={`absolute -bottom-1 -right-1 z-10 flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-md transition-opacity ${isAvatarUploading ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:opacity-90'}`}
+                    className={`absolute -bottom-1 -right-1 z-10 flex h-5 w-5 items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-md transition-opacity ${isAvatarUploading ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:opacity-90'}`}
                     onClick={(event) => {
                       event.stopPropagation();
                     }}
                   >
-                    <Plus className="h-5 w-5" />
+                    <Plus className="h-3 w-3" />
                   </label>
                   <input
                     id="change-avatar"

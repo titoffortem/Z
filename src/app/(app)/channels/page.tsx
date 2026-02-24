@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import { useFirestore } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -31,11 +31,14 @@ import { uploadToImageBan } from '@/lib/imageban';
 type ChannelItem = {
   id: string;
   title: string;
+  avatarUrl?: string;
   creatorId: string;
   subscriberIds: string[];
   updatedAt: string;
   lastPostText: string;
 };
+
+const MAX_CHANNEL_AVATAR_SIZE_BYTES = 5 * 1024 * 1024;
 
 type ChannelPost = {
   id: string;
@@ -92,9 +95,11 @@ export default function ChannelsPage() {
   const [createChannelError, setCreateChannelError] = useState<string | null>(null);
   const [openedPostId, setOpenedPostId] = useState<string | null>(null);
   const [isMobileChannelOpen, setMobileChannelOpen] = useState(false);
+  const [isChannelAvatarUploading, setIsChannelAvatarUploading] = useState(false);
 
   const postsContainerRef = useRef<HTMLDivElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const channelAvatarInputRef = useRef<HTMLInputElement | null>(null);
 
   const selectedImagePreviews = useMemo(
     () => selectedImages.map((file) => ({ key: `${file.name}-${file.size}-${file.lastModified}`, url: URL.createObjectURL(file) })),
@@ -137,6 +142,7 @@ export default function ChannelsPage() {
           return {
             id: channelDoc.id,
             title: data.title || 'Канал',
+            avatarUrl: data.avatarUrl || '',
             creatorId: data.creatorId || '',
             subscriberIds: data.subscriberIds || [],
             updatedAt: toIsoDate(data.updatedAt),
@@ -326,6 +332,7 @@ export default function ChannelsPage() {
     try {
       const channelRef = await addDoc(collection(firestore, 'channels'), {
         title,
+        avatarUrl: '',
         creatorId: user.uid,
         subscriberIds: [user.uid],
         updatedAt: serverTimestamp(),
@@ -335,6 +342,7 @@ export default function ChannelsPage() {
       const optimisticChannel: ChannelItem = {
         id: channelRef.id,
         title,
+        avatarUrl: '',
         creatorId: user.uid,
         subscriberIds: [user.uid],
         updatedAt: new Date().toISOString(),
@@ -373,6 +381,36 @@ export default function ChannelsPage() {
       subscriberIds: isSubscribedToSelectedChannel ? arrayRemove(user.uid) : arrayUnion(user.uid),
       updatedAt: serverTimestamp(),
     });
+  };
+
+  const handleChannelAvatarChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!file || !firestore || !user || !selectedChannel || selectedChannel.creatorId !== user.uid || isChannelAvatarUploading) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/') || file.size > MAX_CHANNEL_AVATAR_SIZE_BYTES) {
+      return;
+    }
+
+    try {
+      setIsChannelAvatarUploading(true);
+      const avatarUrl = await uploadToImageBan(file);
+      if (!avatarUrl) {
+        return;
+      }
+
+      await updateDoc(doc(firestore, 'channels', selectedChannel.id), {
+        avatarUrl,
+        updatedAt: serverTimestamp(),
+      });
+
+      setChannels((prev) => prev.map((channel) => (channel.id === selectedChannel.id ? { ...channel, avatarUrl } : channel)));
+    } finally {
+      setIsChannelAvatarUploading(false);
+    }
   };
 
 
@@ -491,6 +529,7 @@ export default function ChannelsPage() {
                 className="flex w-full items-center gap-3 rounded-lg p-2 text-left transition hover:bg-accent/50"
               >
                 <Avatar className="h-10 w-10">
+                  <AvatarImage src={channel.avatarUrl || undefined} alt={channel.title} />
                   <AvatarFallback>
                     <Megaphone className="h-5 w-5" />
                   </AvatarFallback>
@@ -527,6 +566,7 @@ export default function ChannelsPage() {
                   }`}
                 >
                   <Avatar className="h-11 w-11">
+                    <AvatarImage src={channel.avatarUrl || undefined} alt={channel.title} />
                     <AvatarFallback>
                       <Megaphone className="h-5 w-5" />
                     </AvatarFallback>
@@ -563,9 +603,41 @@ export default function ChannelsPage() {
                     <ChevronLeft className="h-5 w-5" />
                   </Button>
                 )}
+                <div className="relative h-10 w-10 shrink-0">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={selectedChannel.avatarUrl || undefined} alt={selectedChannel.title} />
+                    <AvatarFallback>
+                      <Megaphone className="h-5 w-5" />
+                    </AvatarFallback>
+                  </Avatar>
+                  {selectedChannel.creatorId === user?.uid && (
+                    <>
+                      <label
+                        className={`absolute -bottom-1 -right-1 z-10 flex h-5 w-5 items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-md ${isChannelAvatarUploading ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:opacity-90'}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (!isChannelAvatarUploading) {
+                            channelAvatarInputRef.current?.click();
+                          }
+                        }}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </label>
+                      <input
+                        ref={channelAvatarInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleChannelAvatarChange}
+                        disabled={isChannelAvatarUploading}
+                      />
+                    </>
+                  )}
+                </div>
                 <div>
                   <p className="font-semibold">{selectedChannel.title}</p>
                   <p className="text-xs text-muted-foreground">Подписчики: {selectedChannelSubscribersCount}</p>
+                  {isChannelAvatarUploading && <p className="text-xs text-primary">Обновление аватарки...</p>}
                 </div>
               </div>
               {selectedChannel.creatorId !== user?.uid && (

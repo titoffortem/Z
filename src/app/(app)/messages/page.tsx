@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, Fragment, type ClipboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, Fragment, type ChangeEvent, type ClipboardEvent } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/auth-provider';
 import { PostCard } from '@/components/post-card';
@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight, Heart, Keyboard, Loader2, MessageSquare, Paperclip, Search, UserPlus, Users, X } from 'lucide-react';
+import { Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight, Heart, Keyboard, Loader2, MessageSquare, Paperclip, Plus, Search, UserPlus, Users, X } from 'lucide-react';
 import {
   addDoc,
   arrayRemove,
@@ -47,6 +47,7 @@ type ChatItem = {
   typingUserIds: string[];
   title?: string;
   isGroup?: boolean;
+  avatarUrl?: string;
 };
 
 type ChatMessage = {
@@ -116,6 +117,8 @@ const getChatId = (firstUserId: string, secondUserId: string) => {
   return [firstUserId, secondUserId].sort().join('_');
 };
 
+const MAX_CHAT_AVATAR_SIZE_BYTES = 5 * 1024 * 1024;
+
 
 const TypingKeyboardIcon = () => (
   <Keyboard className="h-3.5 w-3.5" aria-hidden="true" />
@@ -177,6 +180,7 @@ export default function MessagesPage() {
   const [forwardComment, setForwardComment] = useState('');
   const [isForwardPickerOpen, setForwardPickerOpen] = useState(false);
   const [isMobileDialogOpen, setMobileDialogOpen] = useState(false);
+  const [isChatAvatarUploading, setIsChatAvatarUploading] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [expandedImages, setExpandedImages] = useState<string[] | null>(null);
   const [expandedImageIndex, setExpandedImageIndex] = useState(0);
@@ -189,6 +193,7 @@ export default function MessagesPage() {
   const isAtBottomRef = useRef(true);
   const previousMessageCountRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const chatAvatarInputRef = useRef<HTMLInputElement | null>(null);
   const messageInputRef = useRef<HTMLTextAreaElement | null>(null);
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastChatAndMessagesRef = useRef<{ chatId: string; messageIds: string[] } | null>(null);
@@ -497,6 +502,7 @@ export default function MessagesPage() {
               typingUserIds: data.typingUserIds || [],
               title: data.title || '',
               isGroup: Boolean(data.isGroup),
+              avatarUrl: data.avatarUrl || '',
             };
           })
           .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
@@ -918,6 +924,36 @@ export default function MessagesPage() {
     return selectedPartnerProfile?.nickname || 'Пользователь';
   }, [isSelectedChatGroup, profilesById, selectedChat, selectedPartnerProfile, user]);
 
+  const handleChatAvatarChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!file || !firestore || !selectedChatId || !selectedChat || !isSelectedChatGroup || isChatAvatarUploading) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/') || file.size > MAX_CHAT_AVATAR_SIZE_BYTES) {
+      return;
+    }
+
+    try {
+      setIsChatAvatarUploading(true);
+      const avatarUrl = await uploadToImageBan(file);
+      if (!avatarUrl) {
+        return;
+      }
+
+      await updateDoc(doc(firestore, 'chats', selectedChatId), {
+        avatarUrl,
+        updatedAt: serverTimestamp(),
+      });
+
+      setChats((prev) => prev.map((chat) => (chat.id === selectedChatId ? { ...chat, avatarUrl } : chat)));
+    } finally {
+      setIsChatAvatarUploading(false);
+    }
+  };
+
   const suggestedGroupParticipants = useMemo(() => {
     if (!user) {
       return [] as UserProfile[];
@@ -1116,6 +1152,7 @@ export default function MessagesPage() {
         participantIds: uniqueParticipantIds,
         isGroup: true,
         title: groupTitle.trim(),
+        avatarUrl: '',
         updatedAt: serverTimestamp(),
         lastMessageText: '',
         typingUserIds: [],
@@ -1164,6 +1201,7 @@ export default function MessagesPage() {
         participantIds: [user.uid, targetUser.id],
         isGroup: false,
         title: '',
+        avatarUrl: '',
         updatedAt: serverTimestamp(),
         lastMessageText: '',
         typingUserIds: [],
@@ -1419,9 +1457,12 @@ export default function MessagesPage() {
                 >
                   <Avatar className="h-11 w-11">
                     {isGroupChat ? (
-                      <AvatarFallback>
-                        <Users className="h-5 w-5" />
-                      </AvatarFallback>
+                      <>
+                        <AvatarImage src={chat.avatarUrl || undefined} alt={chatTitle} />
+                        <AvatarFallback>
+                          <Users className="h-5 w-5" />
+                        </AvatarFallback>
+                      </>
                     ) : (
                       <>
                         <AvatarImage src={partner?.profilePictureUrl ?? undefined} alt={partner?.nickname || 'User'} />
@@ -1469,13 +1510,35 @@ export default function MessagesPage() {
                   </Button>
                 )}
                 {isSelectedChatGroup ? (
-                  <button type="button" onClick={() => setParticipantsOpen(true)}>
-                    <Avatar>
-                      <AvatarFallback>
-                        <Users className="h-5 w-5" />
-                      </AvatarFallback>
-                    </Avatar>
-                  </button>
+                  <div className="relative h-10 w-10 shrink-0">
+                    <button type="button" onClick={() => setParticipantsOpen(true)}>
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={selectedChat.avatarUrl || undefined} alt={selectedChatTitle} />
+                        <AvatarFallback>
+                          <Users className="h-5 w-5" />
+                        </AvatarFallback>
+                      </Avatar>
+                    </button>
+                    <label
+                      className={`absolute -bottom-1 -right-1 z-10 flex h-5 w-5 items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-md ${isChatAvatarUploading ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:opacity-90'}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        if (!isChatAvatarUploading) {
+                          chatAvatarInputRef.current?.click();
+                        }
+                      }}
+                    >
+                      <Plus className="h-3 w-3" />
+                    </label>
+                    <input
+                      ref={chatAvatarInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleChatAvatarChange}
+                      disabled={isChatAvatarUploading}
+                    />
+                  </div>
                 ) : selectedPartnerProfile ? (
                   <Link href={`/profile?nickname=${selectedPartnerProfile.nickname}`} className="flex items-center gap-3">
                     <Avatar>
@@ -1515,6 +1578,9 @@ export default function MessagesPage() {
                         <button type="button" className="mt-1 block text-xs text-muted-foreground hover:underline" onClick={() => setParticipantsOpen(true)}>
                           Участники: {selectedChat?.participantIds.length || 0}
                         </button>
+                      )}
+                      {isChatAvatarUploading && (
+                        <p className="mt-1 text-xs text-primary">Обновление аватарки...</p>
                       )}
                     </>
                   )}
@@ -1945,9 +2011,12 @@ export default function MessagesPage() {
                 >
                   <Avatar className="h-10 w-10">
                     {isGroupChat ? (
-                      <AvatarFallback>
-                        <Users className="h-5 w-5" />
-                      </AvatarFallback>
+                      <>
+                        <AvatarImage src={chat.avatarUrl || undefined} alt={chatName} />
+                        <AvatarFallback>
+                          <Users className="h-5 w-5" />
+                        </AvatarFallback>
+                      </>
                     ) : (
                       <>
                         <AvatarImage src={partner?.profilePictureUrl ?? undefined} alt={partner?.nickname || 'User'} />
