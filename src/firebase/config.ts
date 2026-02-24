@@ -5,7 +5,7 @@ export const firebaseConfig = {
   "authDomain": "studio-4793380372-e41da.firebaseapp.com",
   "measurementId": "",
   "messagingSenderId": "1011787360328",
-  "storageBucket": "studio-4793380372-e41da.firebasestorage.app",
+  "storageBucket": "studio-4793380372-e41da.appspot.com",
   "imagebanClientId": "5Eb0oB10VEuibcyXjWKC",
   "imagebanSecretKey": "encaW0Fh8zfDcroNSe6nUZT16Bn7upELxZX"
 };
