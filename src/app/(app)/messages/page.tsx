@@ -2069,13 +2069,13 @@ export default function MessagesPage() {
                 <button
                   key={`${url}-${index}`}
                   type="button"
-                  className="relative block aspect-square w-full overflow-hidden rounded-md"
+                  className="block w-full overflow-hidden rounded-md"
                   onClick={() => {
                     setIsGalleryOpen(false);
                     openImageViewer(chatImageGallery, index);
                   }}
                 >
-                  <img src={url} alt={`chat-gallery-${index + 1}`} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+                  <img src={url} alt={`chat-gallery-${index + 1}`} className="block w-full object-cover" style={{ aspectRatio: "1 / 1" }} loading="lazy" />
                 </button>
               ))}
             </div>
@@ -2308,13 +2308,13 @@ export default function MessagesPage() {
                     <button
                       key={`${url}-${index}`}
                       type="button"
-                      className="relative block aspect-square w-full overflow-hidden rounded-md"
+                      className="block w-full overflow-hidden rounded-md"
                       onClick={() => {
                         setParticipantsOpen(false);
                         openImageViewer(chatImageGallery, index);
                       }}
                     >
-                      <img src={url} alt={`group-chat-gallery-${index + 1}`} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+                      <img src={url} alt={`group-chat-gallery-${index + 1}`} className="block w-full object-cover" style={{ aspectRatio: "1 / 1" }} loading="lazy" />
                     </button>
                   ))}
                 </div>
