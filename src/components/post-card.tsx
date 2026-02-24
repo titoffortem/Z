@@ -231,6 +231,7 @@ export function PostCard({ post }: { post: Post }) {
                                     {post.sourceType === 'channel' ? (
                                         <div className="flex-shrink-0">
                                             <Avatar className="h-8 w-8">
+                                                <AvatarImage src={post.sourceChannelAvatarUrl || undefined} alt={channelAuthorName} />
                                                 <AvatarFallback><Megaphone className="h-4 w-4" /></AvatarFallback>
                                             </Avatar>
                                         </div>

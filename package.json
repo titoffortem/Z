@@ -10,7 +10,8 @@
     "lint": "next lint",
     "sync": "npx cap sync",
     "mobile": "npm run buildwin && npm run sync && npx capacitor-assets generate",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:conflicts": "if rg -n '^(<<<<<<<|=======|>>>>>>>)' src; then echo 'Conflict markers found'; exit 1; else echo 'No conflict markers found'; fi"
   },
   "dependencies": {
     "@capacitor/app": "^8.0.1",
