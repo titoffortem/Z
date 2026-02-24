@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 type ChannelInfo = {
   id: string;
   title: string;
+  avatarUrl?: string;
 };
 
 export default function FeedPage() {
@@ -65,6 +66,7 @@ export default function FeedPage() {
         const channelInfos = snapshot.docs.map((channelDoc) => ({
           id: channelDoc.id,
           title: (channelDoc.data().title as string) || 'Канал',
+          avatarUrl: (channelDoc.data().avatarUrl as string) || '',
         })) as ChannelInfo[];
 
         const nextIds = new Set(channelInfos.map((channel) => channel.id));
@@ -97,6 +99,7 @@ export default function FeedPage() {
                 sourceType: 'channel',
                 sourceChannelId: channel.id,
                 sourceChannelTitle: channel.title,
+                sourceChannelAvatarUrl: channel.avatarUrl || '',
                 userId: data.authorId || channel.id,
                 caption: data.text || '',
                 mediaUrls: data.imageUrls || [],
