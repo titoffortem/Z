@@ -17,6 +17,7 @@ type ChatItem = {
   updatedAt: string;
   title?: string;
   isGroup?: boolean;
+  avatarUrl?: string;
 };
 
 const toIsoDate = (value: unknown) => {
@@ -67,6 +68,7 @@ export function PostForwardButton({
             updatedAt: toIsoDate(data.updatedAt),
             title: data.title || '',
             isGroup: Boolean(data.isGroup),
+            avatarUrl: data.avatarUrl || '',
           } as ChatItem;
         })
         .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
@@ -154,6 +156,11 @@ export function PostForwardButton({
           mediaTypes: post.mediaTypes || [],
           authorId: post.userId,
           likedBy: post.likedBy || [],
+          sourceType: post.sourceType,
+          sourceChannelId: post.sourceChannelId,
+          sourceChannelTitle: post.sourceChannelTitle,
+          sourceChannelAvatarUrl: post.sourceChannelAvatarUrl,
+          sourcePostId: post.sourcePostId,
         },
         createdAt: serverTimestamp(),
         readBy: [user.uid],
@@ -252,13 +259,16 @@ export function PostForwardButton({
                     void handleForwardPost(chat.id);
                   }}
                   disabled={Boolean(sendingChatId)}
-                  className="flex w-full items-center gap-3 rounded-lg border border-border/60 p-2 text-left transition hover:bg-muted/40 disabled:cursor-not-allowed"
+                  className="flex w-full items-center gap-3 rounded-lg bg-muted/30 p-2 text-left transition hover:bg-muted/50 disabled:cursor-not-allowed"
                 >
                   <Avatar className="h-9 w-9">
                     {isGroupChat ? (
-                      <AvatarFallback>
-                        <Users className="h-4 w-4" />
-                      </AvatarFallback>
+                      <>
+                        <AvatarImage src={chat.avatarUrl || undefined} alt={chatName} />
+                        <AvatarFallback>
+                          <Users className="h-4 w-4" />
+                        </AvatarFallback>
+                      </>
                     ) : (
                       <>
                         <AvatarImage src={partner?.profilePictureUrl ?? undefined} alt={partner?.nickname || 'Чат'} />
