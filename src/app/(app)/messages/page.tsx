@@ -184,6 +184,7 @@ export default function MessagesPage() {
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [expandedImages, setExpandedImages] = useState<string[] | null>(null);
   const [expandedImageIndex, setExpandedImageIndex] = useState(0);
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [expandedPost, setExpandedPost] = useState<Post | null>(null);
   const [expandedPostAuthor, setExpandedPostAuthor] = useState<UserProfile | null>(null);
   const [forwardedPostLikesById, setForwardedPostLikesById] = useState<Record<string, string[]>>({});
@@ -241,6 +242,10 @@ export default function MessagesPage() {
   const closeImageViewer = () => {
     setExpandedImages(null);
     setExpandedImageIndex(0);
+  };
+
+  const removeSelectedImage = (index: number) => {
+    setSelectedImages((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
   };
 
   useEffect(() => {
@@ -865,6 +870,19 @@ export default function MessagesPage() {
 
     return selectedChat.participantIds.filter((participantId) => participantId !== user.uid);
   }, [selectedChat, user]);
+
+  const chatImageGallery = useMemo(() => {
+    const galleryItems = messages.flatMap((message) =>
+      message.imageUrls.map((url) => ({
+        url,
+        createdAt: message.createdAt,
+      }))
+    );
+
+    galleryItems.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    return galleryItems.map((item) => item.url);
+  }, [messages]);
 
   const inferredReadByMessageId = useMemo(() => {
     if (!user || selectedReadReceiptParticipantIds.length === 0 || messages.length === 0) {
@@ -1592,6 +1610,11 @@ export default function MessagesPage() {
                   Пригласить
                 </Button>
               )}
+              {selectedChat && (
+                <Button type="button" variant="outline" size="sm" onClick={() => setIsGalleryOpen(true)}>
+                  Галерея
+                </Button>
+              )}
             </div>
           ) : (
             <div className="flex items-center gap-2">
@@ -1853,9 +1876,16 @@ export default function MessagesPage() {
 
         {selectedImages.length > 0 && (
           <div className="mx-3 mb-2 flex gap-2 overflow-x-auto pb-1">
-            {selectedImagePreviews.map((item) => (
+            {selectedImagePreviews.map((item, index) => (
               <div key={item.key} className="relative">
                 <img src={item.url} alt="upload" className="h-16 w-16 rounded-md object-cover" />
+                <button
+                  type="button"
+                  className="absolute -right-1 -top-1 rounded-full bg-background/80 p-0.5 text-foreground"
+                  onClick={() => removeSelectedImage(index)}
+                >
+                  <X className="h-3 w-3" />
+                </button>
               </div>
             ))}
           </div>
@@ -1900,7 +1930,15 @@ export default function MessagesPage() {
                 accept="image/*"
                 multiple
                 className="hidden"
-                onChange={(event) => setSelectedImages(Array.from(event.target.files || []))}
+                onChange={(event) => {
+                  const files = Array.from(event.target.files || []);
+                  if (files.length === 0) {
+                    return;
+                  }
+
+                  setSelectedImages((prev) => [...prev, ...files]);
+                  event.target.value = '';
+                }}
               />
               <div className="flex items-center gap-2">
                 <Textarea
@@ -1981,6 +2019,32 @@ export default function MessagesPage() {
           )}
         </div>
       )}
+
+      <Dialog open={isGalleryOpen} onOpenChange={setIsGalleryOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogTitle>Галерея чата</DialogTitle>
+          <DialogDescription>Все отправленные в этот чат фотографии.</DialogDescription>
+          {chatImageGallery.length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">В этом чате пока нет фотографий.</div>
+          ) : (
+            <div className="grid max-h-[70vh] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3 md:grid-cols-4">
+              {chatImageGallery.map((url, index) => (
+                <button
+                  key={`${url}-${index}`}
+                  type="button"
+                  className="overflow-hidden rounded-md"
+                  onClick={() => {
+                    setIsGalleryOpen(false);
+                    openImageViewer(chatImageGallery, index);
+                  }}
+                >
+                  <img src={url} alt={`chat-gallery-${index + 1}`} className="h-28 w-full object-cover" loading="lazy" />
+                </button>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {isForwardPickerOpen && (
         <div className="fixed inset-0 z-50 bg-background/95 p-4" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}>
