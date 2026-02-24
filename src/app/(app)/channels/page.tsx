@@ -10,7 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { PostView } from '@/components/post-view';
-import { Heart, Loader2, Megaphone, MessageCircle, Paperclip, Plus, Search, X } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { ChevronLeft, Heart, Loader2, Megaphone, MessageCircle, Paperclip, Plus, Search, X } from 'lucide-react';
 import {
   addDoc,
   arrayRemove,
@@ -95,6 +96,7 @@ async function uploadToImgBB(file: File): Promise<string | null> {
 export default function ChannelsPage() {
   const { user, userProfile } = useAuth();
   const firestore = useFirestore();
+  const isMobile = useIsMobile();
 
   const [channels, setChannels] = useState<ChannelItem[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
@@ -115,6 +117,7 @@ export default function ChannelsPage() {
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [createChannelError, setCreateChannelError] = useState<string | null>(null);
   const [openedPostId, setOpenedPostId] = useState<string | null>(null);
+  const [isMobileChannelOpen, setMobileChannelOpen] = useState(false);
 
   const postsContainerRef = useRef<HTMLDivElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
@@ -304,78 +307,6 @@ export default function ChannelsPage() {
       : 'Публикация доступна только владельцу канала';
 
 
-  const openedPost = useMemo(() => posts.find((post) => post.id === openedPostId) || null, [openedPostId, posts]);
-
-  const openedPostAsFeedPost = useMemo<Post | null>(() => {
-    if (!openedPost || !selectedChannelId) {
-      return null;
-    }
-
-    return {
-      id: `channel_${selectedChannelId}_${openedPost.id}`,
-      sourcePostId: openedPost.id,
-      sourceType: 'channel',
-      sourceChannelId: selectedChannelId,
-      sourceChannelTitle: selectedChannel?.title || 'Канал',
-      userId: openedPost.authorId || selectedChannelId,
-      caption: openedPost.text || '',
-      mediaUrls: openedPost.imageUrls || [],
-      mediaTypes: Array((openedPost.imageUrls || []).length).fill('image'),
-      createdAt: openedPost.createdAt,
-      updatedAt: openedPost.createdAt,
-      likedBy: openedPost.likedBy || [],
-    };
-  }, [openedPost, selectedChannel?.title, selectedChannelId]);
-
-
-  const openedPost = useMemo(() => posts.find((post) => post.id === openedPostId) || null, [openedPostId, posts]);
-
-  const openedPostAsFeedPost = useMemo<Post | null>(() => {
-    if (!openedPost || !selectedChannelId) {
-      return null;
-    }
-
-    return {
-      id: `channel_${selectedChannelId}_${openedPost.id}`,
-      sourcePostId: openedPost.id,
-      sourceType: 'channel',
-      sourceChannelId: selectedChannelId,
-      sourceChannelTitle: selectedChannel?.title || 'Канал',
-      userId: openedPost.authorId || selectedChannelId,
-      caption: openedPost.text || '',
-      mediaUrls: openedPost.imageUrls || [],
-      mediaTypes: Array((openedPost.imageUrls || []).length).fill('image'),
-      createdAt: openedPost.createdAt,
-      updatedAt: openedPost.createdAt,
-      likedBy: openedPost.likedBy || [],
-    };
-  }, [openedPost, selectedChannel?.title, selectedChannelId]);
-
-
-  const activeChannelPost = useMemo(() => posts.find((post) => post.id === openedPostId) || null, [openedPostId, posts]);
-
-  const openedPostAsFeedPost = useMemo<Post | null>(() => {
-    if (!activeChannelPost || !selectedChannelId) {
-      return null;
-    }
-
-    return {
-      id: `channel_${selectedChannelId}_${activeChannelPost.id}`,
-      sourcePostId: activeChannelPost.id,
-      sourceType: 'channel',
-      sourceChannelId: selectedChannelId,
-      sourceChannelTitle: selectedChannel?.title || 'Канал',
-      userId: activeChannelPost.authorId || selectedChannelId,
-      caption: activeChannelPost.text || '',
-      mediaUrls: activeChannelPost.imageUrls || [],
-      mediaTypes: Array((activeChannelPost.imageUrls || []).length).fill('image'),
-      createdAt: activeChannelPost.createdAt,
-      updatedAt: activeChannelPost.createdAt,
-      likedBy: activeChannelPost.likedBy || [],
-    };
-  }, [activeChannelPost, selectedChannel?.title, selectedChannelId]);
-
-
   const activeChannelPost = useMemo(() => posts.find((post) => post.id === openedPostId) || null, [openedPostId, posts]);
 
   const channelDialogPost = useMemo<Post | null>(() => {
@@ -541,7 +472,7 @@ export default function ChannelsPage() {
 
   return (
     <div className="mx-auto relative flex h-full max-w-6xl">
-      <section className="w-full border-r border-border/50 md:max-w-sm">
+      <section className={`w-full border-r border-border/50 md:max-w-sm ${isMobile && isMobileChannelOpen ? 'hidden' : 'block'}`}>
         <header
           className="sticky top-0 z-10 border-b border-border/50 bg-background/80 p-4 backdrop-blur-sm"
           style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
@@ -579,6 +510,7 @@ export default function ChannelsPage() {
                 type="button"
                 onClick={() => {
                   setSelectedChannelId(channel.id);
+                  setMobileChannelOpen(true);
                   setChannelSearchTerm('');
                   setChannelSearchResults([]);
                 }}
@@ -612,7 +544,10 @@ export default function ChannelsPage() {
                 <button
                   key={channel.id}
                   type="button"
-                  onClick={() => setSelectedChannelId(channel.id)}
+                  onClick={() => {
+                    setSelectedChannelId(channel.id);
+                    setMobileChannelOpen(true);
+                  }}
                   className={`mb-1 flex w-full items-center gap-3 rounded-lg p-2 text-left transition ${
                     selectedChannelId === channel.id ? 'bg-[#577F59] text-white' : 'hover:bg-accent/50'
                   }`}
@@ -638,16 +573,26 @@ export default function ChannelsPage() {
         </div>
       </section>
 
-      <section className="flex flex-1 flex-col bg-background">
+      <section
+        data-mobile-channel-open={isMobile && isMobileChannelOpen ? 'true' : 'false'}
+        className={`flex-1 flex-col bg-background ${isMobile ? 'fixed inset-0 z-30' : 'flex'} ${isMobile && !isMobileChannelOpen ? 'hidden' : 'flex'}`}
+      >
         <header
           className="sticky top-0 z-10 min-h-[73px] border-b border-border/50 bg-background/80 p-4 backdrop-blur-sm"
           style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
         >
           {selectedChannel ? (
             <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-semibold">{selectedChannel.title}</p>
-                <p className="text-xs text-muted-foreground">Подписчики: {selectedChannelSubscribersCount}</p>
+              <div className="flex items-start gap-2">
+                {isMobile && (
+                  <Button variant="ghost" size="icon" onClick={() => setMobileChannelOpen(false)} className="-ml-2">
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                )}
+                <div>
+                  <p className="font-semibold">{selectedChannel.title}</p>
+                  <p className="text-xs text-muted-foreground">Подписчики: {selectedChannelSubscribersCount}</p>
+                </div>
               </div>
               {selectedChannel.creatorId !== user?.uid && (
                 <Button type="button" size="sm" variant={isSubscribedToSelectedChannel ? 'outline' : 'default'} onClick={() => void toggleSelectedChannelSubscription()}>
@@ -656,7 +601,14 @@ export default function ChannelsPage() {
               )}
             </div>
           ) : (
-            <p className="text-muted-foreground">Выберите канал</p>
+            <div className="flex items-center gap-2">
+              {isMobile && (
+                <Button variant="ghost" size="icon" onClick={() => setMobileChannelOpen(false)}>
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+              )}
+              <p className="text-muted-foreground">Выберите канал</p>
+            </div>
           )}
         </header>
 
