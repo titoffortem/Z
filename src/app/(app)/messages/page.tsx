@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { ChevronDown, ChevronLeft, ChevronRight, Heart, Loader2, MessageSquare, Paperclip, Search, UserPlus, Users, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Heart, Keyboard, Loader2, MessageSquare, Paperclip, Search, UserPlus, Users, X } from 'lucide-react';
 import {
   addDoc,
   arrayRemove,
@@ -111,6 +111,15 @@ const formatTime = (isoDate: string) => {
     minute: '2-digit',
   });
 };
+
+const getChatId = (firstUserId: string, secondUserId: string) => {
+  return [firstUserId, secondUserId].sort().join('_');
+};
+
+
+const TypingKeyboardIcon = () => (
+  <Keyboard className="h-3.5 w-3.5" aria-hidden="true" />
+);
 
 export default function MessagesPage() {
   const { user } = useAuth();
