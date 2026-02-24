@@ -419,7 +419,7 @@ export function PostView({ post, author }: { post: Post, author: UserProfile | n
                                 <AvatarFallback>{authorAvatarFallback}</AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col">
-                                {author ? (
+                                {author && !isChannelPost ? (
                                     <Link href={`/profile?nickname=${author.nickname}`} className="font-bold text-base text-foreground hover:text-primary">
                                         @{author.nickname}
                                     </Link>

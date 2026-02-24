@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { PostView } from '@/components/post-view';
+import { AppLoaderIcon } from '@/components/app-loader-icon';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ChevronLeft, Heart, Loader2, Megaphone, MessageCircle, Paperclip, Plus, Search, X } from 'lucide-react';
 import {
@@ -793,7 +794,7 @@ export default function ChannelsPage() {
                   onClick={() => void sendPost()}
                   disabled={!selectedChannelId || sendingPost || (!postText.trim() && selectedImages.length === 0)}
                 >
-                  {sendingPost ? <Loader2 className="h-4 w-4 animate-spin" /> : '➤'}
+                  <AppLoaderIcon className="h-4 w-4 text-primary-foreground" spinning={sendingPost} />
                 </Button>
               </div>
             </div>
