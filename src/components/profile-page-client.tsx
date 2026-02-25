@@ -9,11 +9,12 @@ import { uploadToImageBan } from '@/lib/imageban';
 import { Post, UserProfile } from '@/types';
 import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
-import { collection, doc, getDocs, limit, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
+import { collection, doc, getDocs, limit, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import { ChangeEvent, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PostCard } from '@/components/post-card';
 import { useFirestore, useUser } from '@/firebase';
+import { getPresenceLabel, toOptionalIsoDate } from '@/lib/presence';
 
 const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024;
 export default function ProfilePageClient() {
@@ -27,6 +28,7 @@ export default function ProfilePageClient() {
   const [isAvatarUploading, setIsAvatarUploading] = useState(false);
   const [isAvatarViewerOpen, setIsAvatarViewerOpen] = useState(false);
   const [avatarViewerIndex, setAvatarViewerIndex] = useState(0);
+  const [presenceNowMs, setPresenceNowMs] = useState(() => Date.now());
   const firestore = useFirestore();
   const { user: authUser } = useUser();
   const { toast } = useToast();
@@ -37,25 +39,6 @@ export default function ProfilePageClient() {
       if (!nickname) setUserFound(false);
       return;
     }
-
-    const getUserByNickname = async (nick: string): Promise<UserProfile | null> => {
-      const usersRef = collection(firestore, 'users');
-      const q = query(usersRef, where('nickname', '==', nick), limit(1));
-      const querySnapshot = await getDocs(q);
-      if (querySnapshot.empty) {
-        return null;
-      }
-      const userDoc = querySnapshot.docs[0];
-      const data = userDoc.data();
-      const createdAt = data.createdAt && typeof data.createdAt.toDate === 'function'
-        ? data.createdAt.toDate().toISOString()
-        : new Date().toISOString();
-      return {
-        ...data,
-        id: userDoc.id,
-        createdAt,
-      } as UserProfile;
-    };
 
     const getPostsByUser = async (userId: string): Promise<Post[]> => {
       const postsRef = collection(firestore, 'posts');
@@ -81,22 +64,49 @@ export default function ProfilePageClient() {
       return userPosts;
     };
 
-    const fetchData = async () => {
-      setLoading(true);
-      setUserFound(true);
-      const userData = await getUserByNickname(nickname);
-      if (userData) {
-        setUser(userData);
-        const postData = await getPostsByUser(userData.id);
-        setPosts(postData);
-      } else {
-        setUserFound(false);
-      }
-      setLoading(false);
-    };
+    const usersRef = collection(firestore, 'users');
+    const userQuery = query(usersRef, where('nickname', '==', nickname), limit(1));
 
-    fetchData();
+    const unsubscribe = onSnapshot(userQuery, async (snapshot) => {
+      if (snapshot.empty) {
+        setUser(null);
+        setUserFound(false);
+        setLoading(false);
+        return;
+      }
+
+      const userDoc = snapshot.docs[0];
+      const data = userDoc.data();
+      const createdAt = data.createdAt && typeof data.createdAt.toDate === 'function'
+        ? data.createdAt.toDate().toISOString()
+        : new Date().toISOString();
+
+      const userData = {
+        ...data,
+        id: userDoc.id,
+        createdAt,
+        isOnline: Boolean(data.isOnline),
+        lastSeenAt: toOptionalIsoDate(data.lastSeenAt),
+      } as UserProfile;
+
+      setUser(userData);
+      setUserFound(true);
+
+      const postData = await getPostsByUser(userData.id);
+      setPosts(postData);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, [nickname, firestore, authUser]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setPresenceNowMs(Date.now());
+    }, 60_000);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   const getAvatarHistory = (profile: UserProfile | null): string[] => {
     if (!profile) {
@@ -264,6 +274,7 @@ export default function ProfilePageClient() {
   const followerCount = user.followerUserIds?.length ?? 0;
   const followingCount = user.followingUserIds?.length ?? 0;
   const isOwnProfile = authUser?.uid === user.id;
+  const presenceLabel = getPresenceLabel(user.isOnline, user.lastSeenAt, presenceNowMs);
 
   return (
     <div className="overflow-y-auto h-screen">
@@ -306,6 +317,7 @@ export default function ProfilePageClient() {
                 <span className="whitespace-nowrap"><span className="font-bold text-foreground">{followerCount}</span> Подписчики</span>
                 <span className="whitespace-nowrap"><span className="font-bold text-foreground">{followingCount}</span> Подписки</span>
               </div>
+              <p className="mt-1 text-xs text-muted-foreground">{presenceLabel}</p>
               {isOwnProfile && isAvatarUploading && (
                 <p className="mt-3 text-sm text-primary">Обновление аватарки...</p>
               )}
