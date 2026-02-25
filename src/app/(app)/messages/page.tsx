@@ -2069,7 +2069,7 @@ export default function MessagesPage() {
                 <button
                   key={`${url}-${index}`}
                   type="button"
-                  className="block w-full overflow-hidden rounded-md"
+                  className="relative block aspect-square w-full overflow-hidden rounded-md"
                   onClick={() => {
                     setIsGalleryOpen(false);
                     openImageViewer(chatImageGallery, index);
@@ -2310,7 +2310,7 @@ export default function MessagesPage() {
                     <button
                       key={`${url}-${index}`}
                       type="button"
-                      className="block w-full overflow-hidden rounded-md"
+                      className="relative block aspect-square w-full overflow-hidden rounded-md"
                       onClick={() => {
                         setParticipantsOpen(false);
                         openImageViewer(chatImageGallery, index);
