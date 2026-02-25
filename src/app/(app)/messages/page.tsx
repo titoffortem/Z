@@ -2064,18 +2064,18 @@ export default function MessagesPage() {
           {chatImageGallery.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">В этом чате пока нет фотографий.</div>
           ) : (
-            <div className="grid h-[70vh] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3 md:grid-cols-4">
+            <div className="grid h-[70vh] grid-cols-2 gap-2 overflow-x-hidden overflow-y-auto pr-1 sm:grid-cols-3 md:grid-cols-4">
               {chatImageGallery.map((url, index) => (
                 <button
                   key={`${url}-${index}`}
                   type="button"
-                  className="block w-full overflow-hidden rounded-md"
+                  className="relative block aspect-square w-full overflow-hidden rounded-md"
                   onClick={() => {
                     setIsGalleryOpen(false);
                     openImageViewer(chatImageGallery, index);
                   }}
                 >
-                  <img src={url} alt={`chat-gallery-${index + 1}`} className="block w-full object-cover" style={{ aspectRatio: "1 / 1" }} loading="lazy" />
+                  <img src={url} alt={`chat-gallery-${index + 1}`} className="block h-full w-full object-cover" loading="lazy" />
                 </button>
               ))}
             </div>
@@ -2303,18 +2303,18 @@ export default function MessagesPage() {
               ) : chatImageGallery.length === 0 ? (
                 <div className="py-8 text-center text-sm text-muted-foreground">В этом чате пока нет фотографий.</div>
               ) : (
-                <div className="grid h-[60vh] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3">
+                <div className="grid h-[60vh] grid-cols-2 gap-2 overflow-x-hidden overflow-y-auto pr-1 sm:grid-cols-3">
                   {chatImageGallery.map((url, index) => (
                     <button
                       key={`${url}-${index}`}
                       type="button"
-                      className="block w-full overflow-hidden rounded-md"
+                      className="relative block aspect-square w-full overflow-hidden rounded-md"
                       onClick={() => {
                         setParticipantsOpen(false);
                         openImageViewer(chatImageGallery, index);
                       }}
                     >
-                      <img src={url} alt={`group-chat-gallery-${index + 1}`} className="block w-full object-cover" style={{ aspectRatio: "1 / 1" }} loading="lazy" />
+                      <img src={url} alt={`group-chat-gallery-${index + 1}`} className="block h-full w-full object-cover" loading="lazy" />
                     </button>
                   ))}
                 </div>
