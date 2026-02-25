@@ -195,6 +195,7 @@ export default function MessagesPage() {
   const [expandedPost, setExpandedPost] = useState<Post | null>(null);
   const [expandedPostAuthor, setExpandedPostAuthor] = useState<UserProfile | null>(null);
   const [forwardedPostLikesById, setForwardedPostLikesById] = useState<Record<string, string[]>>({});
+  const [presenceNowMs, setPresenceNowMs] = useState(() => Date.now());
 
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const messageElementRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -573,11 +574,11 @@ export default function MessagesPage() {
       return;
     }
 
-    Promise.all(
-      partnerIds.map(async (partnerId) => {
-        const profileDoc = await getDoc(doc(firestore, 'users', partnerId));
+    const unsubscribers = partnerIds.map((partnerId) => {
+      const profileRef = doc(firestore, 'users', partnerId);
+      return onSnapshot(profileRef, (profileDoc) => {
         if (!profileDoc.exists()) {
-          return null;
+          return;
         }
 
         const profileData = profileDoc.data();
@@ -592,19 +593,22 @@ export default function MessagesPage() {
           followerUserIds: profileData.followerUserIds || [],
         };
 
-        return profile;
-      })
-    ).then((profiles) => {
-      const nextProfilesById = profiles.reduce<Record<string, UserProfile>>((acc, profile) => {
-        if (profile) {
-          acc[profile.id] = profile;
-        }
-        return acc;
-      }, {});
-
-      setProfilesById((prev) => ({ ...prev, ...nextProfilesById }));
+        setProfilesById((prev) => ({ ...prev, [profile.id]: profile }));
+      });
     });
+
+    return () => {
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
+    };
   }, [chats, firestore, user]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setPresenceNowMs(Date.now());
+    }, 60_000);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   useEffect(() => {
     if (!firestore || !selectedChatId) {
@@ -1422,7 +1426,7 @@ export default function MessagesPage() {
     ? `${typingParticipants[0]} и еще ${typingParticipants.length - 1} печатают…`
     : `${typingParticipants[0] || 'Кто-то'} печатает…`;
   const selectedPartnerPresenceLabel = selectedPartnerProfile
-    ? getPresenceLabel(selectedPartnerProfile.isOnline, selectedPartnerProfile.lastSeenAt)
+    ? getPresenceLabel(selectedPartnerProfile.isOnline, selectedPartnerProfile.lastSeenAt, presenceNowMs)
     : '';
 
   return (
@@ -2314,7 +2318,7 @@ export default function MessagesPage() {
                       </Avatar>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">{member.nickname}</p>
-                        <p className="truncate text-xs text-muted-foreground">{getPresenceLabel(member.isOnline, member.lastSeenAt)}</p>
+                        <p className="truncate text-xs text-muted-foreground">{getPresenceLabel(member.isOnline, member.lastSeenAt, presenceNowMs)}</p>
                       </div>
                     </Link>
                   ))}
@@ -2355,7 +2359,7 @@ export default function MessagesPage() {
                   </Avatar>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{member.nickname}</p>
-                    <p className="truncate text-xs text-muted-foreground">{getPresenceLabel(member.isOnline, member.lastSeenAt)}</p>
+                    <p className="truncate text-xs text-muted-foreground">{getPresenceLabel(member.isOnline, member.lastSeenAt, presenceNowMs)}</p>
                   </div>
                 </Link>
               ))}

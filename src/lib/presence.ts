@@ -21,7 +21,7 @@ export const toOptionalIsoDate = (value: unknown): string | null => {
   return null;
 };
 
-export const isUserOnline = (isOnlineFlag?: boolean, lastSeenAt?: string | null): boolean => {
+export const isUserOnline = (isOnlineFlag?: boolean, lastSeenAt?: string | null, nowMs = Date.now()): boolean => {
   if (!lastSeenAt) {
     return Boolean(isOnlineFlag);
   }
@@ -31,12 +31,12 @@ export const isUserOnline = (isOnlineFlag?: boolean, lastSeenAt?: string | null)
     return Boolean(isOnlineFlag);
   }
 
-  const isRecentlyActive = Date.now() - parsedDate.getTime() <= ONLINE_GRACE_PERIOD_MS;
+  const isRecentlyActive = nowMs - parsedDate.getTime() <= ONLINE_GRACE_PERIOD_MS;
   return Boolean(isOnlineFlag) || isRecentlyActive;
 };
 
-export const getPresenceLabel = (isOnlineFlag?: boolean, lastSeenAt?: string | null): string => {
-  const online = isUserOnline(isOnlineFlag, lastSeenAt);
+export const getPresenceLabel = (isOnlineFlag?: boolean, lastSeenAt?: string | null, nowMs = Date.now()): string => {
+  const online = isUserOnline(isOnlineFlag, lastSeenAt, nowMs);
   if (online) {
     return 'в сети';
   }
@@ -50,7 +50,7 @@ export const getPresenceLabel = (isOnlineFlag?: boolean, lastSeenAt?: string | n
     return 'давно не в сети';
   }
 
-  const diffMs = Date.now() - seenDate.getTime();
+  const diffMs = nowMs - seenDate.getTime();
   const diffMinutes = Math.max(1, Math.floor(diffMs / (60 * 1000)));
 
   if (diffMinutes < 60) {
