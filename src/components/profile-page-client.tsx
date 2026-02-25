@@ -14,6 +14,7 @@ import { ChangeEvent, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PostCard } from '@/components/post-card';
 import { useFirestore, useUser } from '@/firebase';
+import { getPresenceLabel, toOptionalIsoDate } from '@/lib/presence';
 
 const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024;
 export default function ProfilePageClient() {
@@ -54,6 +55,8 @@ export default function ProfilePageClient() {
         ...data,
         id: userDoc.id,
         createdAt,
+        isOnline: Boolean(data.isOnline),
+        lastSeenAt: toOptionalIsoDate(data.lastSeenAt),
       } as UserProfile;
     };
 
@@ -264,6 +267,7 @@ export default function ProfilePageClient() {
   const followerCount = user.followerUserIds?.length ?? 0;
   const followingCount = user.followingUserIds?.length ?? 0;
   const isOwnProfile = authUser?.uid === user.id;
+  const presenceLabel = getPresenceLabel(user.isOnline, user.lastSeenAt);
 
   return (
     <div className="overflow-y-auto h-screen">
@@ -306,6 +310,7 @@ export default function ProfilePageClient() {
                 <span className="whitespace-nowrap"><span className="font-bold text-foreground">{followerCount}</span> Подписчики</span>
                 <span className="whitespace-nowrap"><span className="font-bold text-foreground">{followingCount}</span> Подписки</span>
               </div>
+              <p className="mt-1 text-xs text-muted-foreground">{presenceLabel}</p>
               {isOwnProfile && isAvatarUploading && (
                 <p className="mt-3 text-sm text-primary">Обновление аватарки...</p>
               )}

@@ -4,6 +4,8 @@ export type UserProfile = {
   profilePictureUrl: string | null;
   avatarHistoryUrls?: string[];
   createdAt: string;
+  isOnline?: boolean;
+  lastSeenAt?: string | null;
   followingUserIds: string[];
   followerUserIds: string[];
 };
