@@ -2064,7 +2064,7 @@ export default function MessagesPage() {
           {chatImageGallery.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">В этом чате пока нет фотографий.</div>
           ) : (
-            <div className="grid max-h-[70vh] grid-cols-2 gap-2 overflow-y-auto pr-1 [grid-auto-rows:1fr] sm:grid-cols-3 md:grid-cols-4">
+            <div className="grid h-[70vh] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3 md:grid-cols-4">
               {chatImageGallery.map((url, index) => (
                 <button
                   key={`${url}-${index}`}
@@ -2303,7 +2303,7 @@ export default function MessagesPage() {
               ) : chatImageGallery.length === 0 ? (
                 <div className="py-8 text-center text-sm text-muted-foreground">В этом чате пока нет фотографий.</div>
               ) : (
-                <div className="grid max-h-[60vh] grid-cols-2 gap-2 overflow-y-auto pr-1 [grid-auto-rows:1fr] sm:grid-cols-3">
+                <div className="grid h-[60vh] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3">
                   {chatImageGallery.map((url, index) => (
                     <button
                       key={`${url}-${index}`}
