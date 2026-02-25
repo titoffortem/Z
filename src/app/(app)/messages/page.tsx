@@ -2064,7 +2064,7 @@ export default function MessagesPage() {
           {chatImageGallery.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">В этом чате пока нет фотографий.</div>
           ) : (
-            <div className="grid h-[70vh] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3 md:grid-cols-4">
+            <div className="grid h-[70vh] content-start grid-cols-2 auto-rows-max gap-3 overflow-x-hidden overflow-y-auto pr-1 sm:grid-cols-3 md:grid-cols-4">
               {chatImageGallery.map((url, index) => (
                 <button
                   key={`${url}-${index}`}
@@ -2075,7 +2075,9 @@ export default function MessagesPage() {
                     openImageViewer(chatImageGallery, index);
                   }}
                 >
-                  <img src={url} alt={`chat-gallery-${index + 1}`} className="block w-full object-cover" style={{ aspectRatio: "1 / 1" }} loading="lazy" />
+                  <span className="relative block w-full pt-[100%]">
+                    <img src={url} alt={`chat-gallery-${index + 1}`} className="absolute inset-0 block h-full w-full object-cover" loading="lazy" />
+                  </span>
                 </button>
               ))}
             </div>
@@ -2303,7 +2305,7 @@ export default function MessagesPage() {
               ) : chatImageGallery.length === 0 ? (
                 <div className="py-8 text-center text-sm text-muted-foreground">В этом чате пока нет фотографий.</div>
               ) : (
-                <div className="grid h-[60vh] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3">
+                <div className="grid h-[60vh] content-start grid-cols-2 auto-rows-max gap-3 overflow-x-hidden overflow-y-auto pr-1 sm:grid-cols-3">
                   {chatImageGallery.map((url, index) => (
                     <button
                       key={`${url}-${index}`}
@@ -2314,7 +2316,9 @@ export default function MessagesPage() {
                         openImageViewer(chatImageGallery, index);
                       }}
                     >
-                      <img src={url} alt={`group-chat-gallery-${index + 1}`} className="block w-full object-cover" style={{ aspectRatio: "1 / 1" }} loading="lazy" />
+                      <span className="relative block w-full pt-[100%]">
+                        <img src={url} alt={`group-chat-gallery-${index + 1}`} className="absolute inset-0 block h-full w-full object-cover" loading="lazy" />
+                      </span>
                     </button>
                   ))}
                 </div>
