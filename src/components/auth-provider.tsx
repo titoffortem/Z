@@ -76,6 +76,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const userDocRef = doc(firestore, 'users', user.uid);
+    let isPageHidden = false;
+
     const markPresence = async (isOnline: boolean) => {
       try {
         await updateDoc(userDocRef, {
@@ -93,23 +95,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     void markPresence(true);
 
     const heartbeatId = window.setInterval(() => {
-      void markPresence(true);
+      if (!isPageHidden) {
+        void markPresence(true);
+      }
     }, 60_000);
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
+        isPageHidden = true;
         void markPresence(false);
         return;
       }
 
+      isPageHidden = false;
       void markPresence(true);
     };
 
+    const handlePageHide = () => {
+      isPageHidden = true;
+      void markPresence(false);
+    };
+
+    const handleBeforeUnload = () => {
+      isPageHidden = true;
+      void markPresence(false);
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
       window.clearInterval(heartbeatId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       void markPresence(false);
     };
   }, [user, firestore]);

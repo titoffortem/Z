@@ -7,6 +7,35 @@ export const toOptionalIsoDate = (value: unknown): string | null => {
     return value.toDate().toISOString();
   }
 
+  if (
+    typeof value === 'object'
+    && value !== null
+    && 'toDate' in value
+    && typeof (value as { toDate?: unknown }).toDate === 'function'
+  ) {
+    const date = (value as { toDate: () => Date }).toDate();
+    if (date instanceof Date && !Number.isNaN(date.getTime())) {
+      return date.toISOString();
+    }
+  }
+
+  if (
+    typeof value === 'object'
+    && value !== null
+    && 'seconds' in value
+    && typeof (value as { seconds?: unknown }).seconds === 'number'
+  ) {
+    const timestampLike = value as { seconds: number; nanoseconds?: unknown };
+    const seconds = timestampLike.seconds;
+    const nanoseconds = typeof timestampLike.nanoseconds === 'number'
+      ? timestampLike.nanoseconds
+      : 0;
+    const date = new Date(seconds * 1000 + Math.floor(nanoseconds / 1_000_000));
+    if (!Number.isNaN(date.getTime())) {
+      return date.toISOString();
+    }
+  }
+
   if (value instanceof Date) {
     return value.toISOString();
   }
@@ -32,7 +61,13 @@ export const isUserOnline = (isOnlineFlag?: boolean, lastSeenAt?: string | null,
   }
 
   const isRecentlyActive = nowMs - parsedDate.getTime() <= ONLINE_GRACE_PERIOD_MS;
-  return Boolean(isOnlineFlag) || isRecentlyActive;
+
+  // If online flag got stale (e.g. abrupt app/tab close), fall back to recent activity window.
+  if (isOnlineFlag) {
+    return nowMs - parsedDate.getTime() <= ONLINE_GRACE_PERIOD_MS * 2;
+  }
+
+  return isRecentlyActive;
 };
 
 export const getPresenceLabel = (isOnlineFlag?: boolean, lastSeenAt?: string | null, nowMs = Date.now()): string => {
