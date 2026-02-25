@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { doc, getDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, Timestamp, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useUser, useFirestore } from '@/firebase';
 import type { UserProfile } from '@/types';
 import type { User as FirebaseAuthUser } from 'firebase/auth';
@@ -50,6 +50,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               nickname: data.nickname,
               profilePictureUrl: data.profilePictureUrl,
               createdAt: createdAt,
+              isOnline: Boolean(data.isOnline),
+              lastSeenAt: data.lastSeenAt instanceof Timestamp ? data.lastSeenAt.toDate().toISOString() : null,
               followingUserIds: data.followingUserIds || [],
               followerUserIds: data.followerUserIds || [],
             };
@@ -67,6 +69,70 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setProfileLoading(false);
     }
   }, [user, firestore, isAuthLoading]);
+
+  useEffect(() => {
+    if (!user || !firestore) {
+      return;
+    }
+
+    const userDocRef = doc(firestore, 'users', user.uid);
+    let isPageHidden = false;
+
+    const markPresence = async (isOnline: boolean) => {
+      try {
+        await updateDoc(userDocRef, {
+          isOnline,
+          lastSeenAt: serverTimestamp(),
+        });
+      } catch {
+        await setDoc(userDocRef, {
+          isOnline,
+          lastSeenAt: serverTimestamp(),
+        }, { merge: true });
+      }
+    };
+
+    void markPresence(true);
+
+    const heartbeatId = window.setInterval(() => {
+      if (!isPageHidden) {
+        void markPresence(true);
+      }
+    }, 60_000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        isPageHidden = true;
+        void markPresence(false);
+        return;
+      }
+
+      isPageHidden = false;
+      void markPresence(true);
+    };
+
+    const handlePageHide = () => {
+      isPageHidden = true;
+      void markPresence(false);
+    };
+
+    const handleBeforeUnload = () => {
+      isPageHidden = true;
+      void markPresence(false);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.clearInterval(heartbeatId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      void markPresence(false);
+    };
+  }, [user, firestore]);
 
   const loading = isAuthLoading || isProfileLoading;
 
