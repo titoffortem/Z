@@ -135,6 +135,8 @@ export default function CreateProfilePage() {
           profilePictureUrl: avatarUrl,
           avatarHistoryUrls: avatarUrl ? [avatarUrl] : [],
           createdAt: serverTimestamp(),
+          isOnline: true,
+          lastSeenAt: serverTimestamp(),
           followingUserIds: [],
           followerUserIds: [],
         };

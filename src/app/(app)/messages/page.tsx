@@ -38,6 +38,7 @@ import { AppLoaderIcon } from '@/components/app-loader-icon';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { uploadToImageBan } from '@/lib/imageban';
+import { getPresenceLabel, toOptionalIsoDate } from '@/lib/presence';
 
 type ChatItem = {
   id: string;
@@ -365,6 +366,8 @@ export default function MessagesPage() {
       nickname: data.nickname || 'Пользователь',
       profilePictureUrl: data.profilePictureUrl ?? null,
       createdAt: toIsoDate(data.createdAt),
+      isOnline: Boolean(data.isOnline),
+      lastSeenAt: toOptionalIsoDate(data.lastSeenAt),
       followingUserIds: data.followingUserIds || [],
       followerUserIds: data.followerUserIds || [],
     });
@@ -583,6 +586,8 @@ export default function MessagesPage() {
           nickname: profileData.nickname || 'Пользователь',
           profilePictureUrl: profileData.profilePictureUrl || null,
           createdAt: toIsoDate(profileData.createdAt),
+          isOnline: Boolean(profileData.isOnline),
+          lastSeenAt: toOptionalIsoDate(profileData.lastSeenAt),
           followingUserIds: profileData.followingUserIds || [],
           followerUserIds: profileData.followerUserIds || [],
         };
@@ -845,6 +850,8 @@ export default function MessagesPage() {
               nickname: data.nickname || '',
               profilePictureUrl: data.profilePictureUrl || null,
               createdAt: toIsoDate(data.createdAt),
+              isOnline: Boolean(data.isOnline),
+              lastSeenAt: toOptionalIsoDate(data.lastSeenAt),
               followingUserIds: data.followingUserIds || [],
               followerUserIds: data.followerUserIds || [],
             } as UserProfile;
@@ -1066,6 +1073,8 @@ export default function MessagesPage() {
             nickname: data.nickname || '',
             profilePictureUrl: data.profilePictureUrl || null,
             createdAt: toIsoDate(data.createdAt),
+            isOnline: Boolean(data.isOnline),
+            lastSeenAt: toOptionalIsoDate(data.lastSeenAt),
             followingUserIds: data.followingUserIds || [],
             followerUserIds: data.followerUserIds || [],
           } as UserProfile;
@@ -1151,6 +1160,8 @@ export default function MessagesPage() {
               nickname: data.nickname || '',
               profilePictureUrl: data.profilePictureUrl || null,
               createdAt: toIsoDate(data.createdAt),
+              isOnline: Boolean(data.isOnline),
+              lastSeenAt: toOptionalIsoDate(data.lastSeenAt),
               followingUserIds: data.followingUserIds || [],
               followerUserIds: data.followerUserIds || [],
             } as UserProfile;
@@ -1410,6 +1421,9 @@ export default function MessagesPage() {
   const groupTypingLabel = typingParticipants.length > 1
     ? `${typingParticipants[0]} и еще ${typingParticipants.length - 1} печатают…`
     : `${typingParticipants[0] || 'Кто-то'} печатает…`;
+  const selectedPartnerPresenceLabel = selectedPartnerProfile
+    ? getPresenceLabel(selectedPartnerProfile.isOnline, selectedPartnerProfile.lastSeenAt)
+    : '';
 
   return (
     <div className="mx-auto relative flex h-full max-w-5xl">
@@ -1607,7 +1621,7 @@ export default function MessagesPage() {
                         <span>печатает…</span>
                       </div>
                     ) : (
-                      <p className="text-xs text-muted-foreground">Личные сообщения</p>
+                      <p className="text-xs text-muted-foreground">{selectedPartnerPresenceLabel}</p>
                     )
                   )}
                   {isSelectedChatGroup && (
@@ -2298,7 +2312,10 @@ export default function MessagesPage() {
                         <AvatarImage src={member.profilePictureUrl ?? undefined} alt={member.nickname} />
                         <AvatarFallback>{member.nickname[0]?.toUpperCase() || '?'}</AvatarFallback>
                       </Avatar>
-                      <span className="truncate">{member.nickname}</span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{member.nickname}</p>
+                        <p className="truncate text-xs text-muted-foreground">{getPresenceLabel(member.isOnline, member.lastSeenAt)}</p>
+                      </div>
                     </Link>
                   ))}
                 </div>
@@ -2336,7 +2353,10 @@ export default function MessagesPage() {
                     <AvatarImage src={member.profilePictureUrl ?? undefined} alt={member.nickname} />
                     <AvatarFallback>{member.nickname[0]?.toUpperCase() || '?'}</AvatarFallback>
                   </Avatar>
-                  <span className="truncate">{member.nickname}</span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{member.nickname}</p>
+                    <p className="truncate text-xs text-muted-foreground">{getPresenceLabel(member.isOnline, member.lastSeenAt)}</p>
+                  </div>
                 </Link>
               ))}
             </div>
